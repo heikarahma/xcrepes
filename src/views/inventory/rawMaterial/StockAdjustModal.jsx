@@ -1,0 +1,400 @@
+import React, { useState, useEffect } from 'react';
+import { useRawMaterial } from '../../../controllers/RawMaterialController';
+import { useAuth } from '../../../controllers/AuthController';
+import { Modal } from '../../components/Modal';
+import { Button } from '../../components/Button';
+import { Input } from '../../components/Input';
+import { 
+  ArrowDownLeft, 
+  ArrowUpRight, 
+  RefreshCw, 
+  Package, 
+  Save, 
+  Layers,
+  AlertCircle,
+  ShieldCheck
+} from 'lucide-react';
+
+export const StockAdjustModal = () => {
+  const { 
+    adjustModalState, 
+    closeAdjustModal, 
+    adjustStock, 
+    rawMaterials 
+  } = useRawMaterial();
+  const { currentUser } = useAuth();
+  const isCashier = currentUser?.role === 'kasir';
+
+  const { isOpen, item, type: initialType } = adjustModalState;
+
+  const [selectedMaterialId, setSelectedMaterialId] = useState('');
+  const [adjustType, setAdjustType] = useState('IN'); // 'IN' | 'OUT' | 'ADJUST'
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (item) {
+        setSelectedMaterialId(item.id);
+      } else if (rawMaterials.length > 0) {
+        setSelectedMaterialId(rawMaterials[0].id);
+      }
+      setAdjustType(isCashier ? 'IN' : (initialType || 'IN'));
+      setAmount('');
+      setNote('');
+      setErrors({});
+      setIsSubmitting(false);
+    }
+  }, [isOpen, item, initialType, rawMaterials, isCashier]);
+
+  if (!isOpen) return null;
+
+  const currentMaterial = rawMaterials.find(m => m.id === selectedMaterialId);
+  const currentStock = currentMaterial ? (Number(currentMaterial.stock ?? currentMaterial.currentStock ?? 0) || 0) : 0;
+  const unitName = currentMaterial ? currentMaterial.unitName : 'Unit';
+
+  // Calculate new projected stock
+  const numAmount = Number(amount) || 0;
+  let projectedStock = currentStock;
+  const activeType = isCashier ? 'IN' : adjustType;
+
+  if (activeType === 'IN') {
+    projectedStock = currentStock + numAmount;
+  } else if (activeType === 'OUT') {
+    projectedStock = Math.max(0, currentStock - numAmount);
+  } else if (activeType === 'ADJUST') {
+    projectedStock = numAmount;
+  }
+
+  const validate = () => {
+    const err = {};
+    if (!selectedMaterialId) {
+      err.material = 'Pilih bahan baku terlebih dahulu.';
+    }
+    if (amount === '' || isNaN(Number(amount)) || Number(amount) <= 0) {
+      err.amount = 'Jumlah perubahan harus berupa angka lebih dari 0.';
+    }
+    if (!isCashier && adjustType === 'OUT' && currentStock < Number(amount)) {
+      err.amount = `Stok tidak mencukupi. Sisa stok hanya ${currentStock} ${unitName}.`;
+    }
+    setErrors(err);
+    return Object.keys(err).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    const result = adjustStock({
+      rawMaterialId: selectedMaterialId,
+      type: isCashier ? 'IN' : adjustType,
+      amount: Number(amount),
+      note,
+      user: currentUser?.nama || (isCashier ? 'Kasir' : 'Admin')
+    });
+    setIsSubmitting(false);
+
+    if (result && result.success) {
+      closeAdjustModal();
+    } else {
+      setErrors({ form: result?.error || 'Gagal menyimpan perubahan stok.' });
+    }
+  };
+
+  // Quick note chips suggestions
+  const noteSuggestions = {
+    IN: ['Restok dari supplier', 'Pembelian darurat', 'Bonus supplier'],
+    OUT: ['Pemakaian adonan / masak', 'Bahan kedaluwarsa (expired)', 'Bahan tumpah / rusak'],
+    ADJUST: ['Koreksi opname fisik mingguan', 'Koreksi selisih timbangan']
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={closeAdjustModal}
+      title={isCashier ? "Catat Stok Masuk (Restok)" : "Catat Perubahan Stok"}
+      subtitle={isCashier ? "Catat penambahan kuantitas bahan baku dari supplier atau pembelian restok." : "Perbarui kuantitas stok bahan masuk, keluar, atau opname fisik."}
+      size="md"
+      footer={
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
+          <Button variant="outline" onClick={closeAdjustModal} disabled={isSubmitting}>
+            Batal
+          </Button>
+          <Button
+            variant="primary"
+            icon={Save}
+            onClick={handleSubmit}
+            disabled={isSubmitting || !amount}
+          >
+            {isSubmitting ? 'Menyimpan...' : 'Simpan Riwayat'}
+          </Button>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Error form */}
+        {errors.form && (
+          <div style={styles.errorAlert}>
+            {errors.form}
+          </div>
+        )}
+
+        {/* 1. Pilih Bahan Baku */}
+        <div className="blue-input-group">
+          <label className="blue-label">
+            Nama Bahan Baku <span style={{ color: 'var(--red-500)' }}>*</span>
+          </label>
+          <select
+            value={selectedMaterialId}
+            onChange={(e) => {
+              setSelectedMaterialId(e.target.value);
+              setErrors(prev => ({ ...prev, material: '', amount: '' }));
+            }}
+            className="blue-input"
+            style={{ height: '42px', cursor: 'pointer', fontWeight: 600 }}
+          >
+            {rawMaterials.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name} (Sisa: {Number(m.stock ?? m.currentStock ?? 0)} {m.unitName})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 2. Jenis Perubahan */}
+        <div className="blue-input-group">
+          <label className="blue-label">
+            Jenis Perubahan <span style={{ color: 'var(--red-500)' }}>*</span>
+          </label>
+
+          {isCashier ? (
+            /* Locked single choice for Cashier */
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 14px',
+              backgroundColor: 'var(--green-50)',
+              border: '1.5px solid var(--green-400)',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--green-500)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                flexShrink: 0
+              }}>
+                <ArrowDownLeft size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--green-900)' }}>
+                  Stok Masuk (+)
+                </div>
+                <div style={{ fontSize: '0.719rem', color: 'var(--green-700)', marginTop: '1px' }}>
+                  Hak akses kasir: Khusus pencatatan penambahan stok masuk / restok barang
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* 3 Choices for Super Admin */
+            <div style={styles.typeButtonGroup}>
+              <button
+                type="button"
+                onClick={() => { setAdjustType('IN'); setErrors(prev => ({ ...prev, amount: '' })); }}
+                style={{
+                  ...styles.typeBtn,
+                  ...(adjustType === 'IN' ? styles.typeBtnInActive : {})
+                }}
+              >
+                <ArrowDownLeft size={16} />
+                <span>Stok Masuk (+)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setAdjustType('OUT'); setErrors(prev => ({ ...prev, amount: '' })); }}
+                style={{
+                  ...styles.typeBtn,
+                  ...(adjustType === 'OUT' ? styles.typeBtnOutActive : {})
+                }}
+              >
+                <ArrowUpRight size={16} />
+                <span>Stok Keluar (-)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setAdjustType('ADJUST'); setErrors(prev => ({ ...prev, amount: '' })); }}
+                style={{
+                  ...styles.typeBtn,
+                  ...(adjustType === 'ADJUST' ? styles.typeBtnAdjustActive : {})
+                }}
+              >
+                <RefreshCw size={15} />
+                <span>Opname Fisik (=)</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Jumlah Qty & Proyeksi Alur Stok */}
+        <div style={styles.amountBox}>
+          <Input
+            label={
+              (!isCashier && adjustType === 'ADJUST')
+                ? `Jumlah Stok Fisik Riil (${unitName})`
+                : `Jumlah Penambahan Masuk (${unitName})`
+            }
+            type="number"
+            min="0"
+            step="any"
+            placeholder="0"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              if (errors.amount) setErrors(prev => ({ ...prev, amount: '' }));
+            }}
+            error={errors.amount}
+            required
+            autoFocus
+          />
+
+          {/* Flow Simulation Box */}
+          {currentMaterial && amount !== '' && !isNaN(Number(amount)) && (
+            <div style={styles.projectionBox}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.813rem' }}>
+                <span style={{ color: 'var(--neutral-600)' }}>Alur Penambahan:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: 'var(--neutral-500)', fontWeight: 600 }}>
+                    {currentStock} {unitName}
+                  </span>
+                  <span style={{ color: 'var(--neutral-400)' }}>➔</span>
+                  <span style={{ 
+                    fontWeight: 800, 
+                    color: 'var(--green-700)' 
+                  }}>
+                    {projectedStock} {unitName}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Keterangan / Alasan */}
+        <div className="blue-input-group">
+          <label className="blue-label">
+            Keterangan / Catatan Restok
+          </label>
+          <input
+            type="text"
+            className="blue-input"
+            placeholder="Contoh: Restok supplier, belanja pasar, bonus agen..."
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            style={{ height: '40px' }}
+          />
+
+          {/* Quick Note Suggestions */}
+          <div style={styles.chipsRow}>
+            {(noteSuggestions[isCashier ? 'IN' : adjustType] || noteSuggestions.IN).map((suggestion, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setNote(suggestion)}
+                style={styles.chipBtn}
+              >
+                + {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const styles = {
+  errorAlert: {
+    padding: '10px 14px',
+    backgroundColor: 'var(--red-50)',
+    border: '1px solid var(--red-200)',
+    color: 'var(--red-600)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: '0.813rem',
+    fontWeight: 600
+  },
+  typeButtonGroup: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))',
+    gap: '8px'
+  },
+  typeBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    padding: '10px 8px',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border-color)',
+    backgroundColor: 'var(--neutral-50)',
+    color: 'var(--neutral-600)',
+    fontSize: '0.813rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all var(--transition-fast)'
+  },
+  typeBtnInActive: {
+    backgroundColor: 'var(--green-50)',
+    borderColor: 'var(--green-500)',
+    color: 'var(--green-700)',
+    fontWeight: 700
+  },
+  typeBtnOutActive: {
+    backgroundColor: 'var(--red-50)',
+    borderColor: 'var(--red-500)',
+    color: 'var(--red-600)',
+    fontWeight: 700
+  },
+  typeBtnAdjustActive: {
+    backgroundColor: 'var(--blue-50)',
+    borderColor: 'var(--blue-500)',
+    color: 'var(--blue-700)',
+    fontWeight: 700
+  },
+  amountBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  projectionBox: {
+    backgroundColor: 'var(--blue-50)',
+    border: '1px solid var(--blue-200)',
+    borderRadius: 'var(--radius-md)',
+    padding: '10px 14px'
+  },
+  chipsRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '6px'
+  },
+  chipBtn: {
+    fontSize: '0.688rem',
+    padding: '3px 8px',
+    borderRadius: 'var(--radius-sm)',
+    border: '1px solid var(--border-subtle)',
+    backgroundColor: 'var(--neutral-50)',
+    color: 'var(--neutral-600)',
+    cursor: 'pointer',
+    transition: 'all var(--transition-fast)'
+  }
+};

@@ -1,0 +1,293 @@
+@import './tokens.css';
+@import './components.css';
+
+/* ==========================================================
+   CSS RESET & GLOBAL STYLES
+   ========================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-family-base);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbar in Blibli BLUE aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--neutral-100);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-300);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--blue-400);
+}
+
+/* Interactive Utility Classes */
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* App Main Layout Grid */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  position: relative;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-smooth);
+}
+
+.app-content {
+  flex: 1;
+  padding: 0;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes modalScale {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-smooth) ease forwards;
+}
+
+/* Utility Flex & Grids */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.w-full { width: 100%; }
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-xs { font-size: var(--font-size-xs); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-blue { color: var(--blue-500); }
+.text-success { color: var(--green-500); }
+.text-danger { color: var(--red-500); }
+
+/* Responsive Sidebar & App Main */
+.sidebar-backdrop {
+  display: none;
+}
+
+.app-navbar {
+  padding: 0 16px !important;
+}
+
+/* ==========================================================
+   TABLET & MOBILE UNIFIED RESPONSIVE RULES (<= 1024px)
+   ========================================================== */
+@media (max-width: 1024px) {
+  .app-main {
+    margin-left: 0 !important;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(8, 33, 66, 0.45);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    animation: fadeIn 0.2s ease forwards;
+  }
+
+  .app-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .app-navbar {
+    padding: 0 16px !important;
+  }
+
+  /* Universal container padding on tablet/mobile matching Pusat Retur & Kerusakan (16px left/right, 16px top, 32px bottom) */
+  .unit-list-page,
+  .category-list-page,
+  .topping-list-page,
+  .product-menu-list-page,
+  .raw-material-list-page,
+  .stock-history-view,
+  .kasir-order-page,
+  .reports-page,
+  .sales-report-tab,
+  .material-report-tab,
+  .cashier-view-container,
+  .settings-page,
+  .returns-view-container {
+    padding: 16px 16px 32px 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Daftar Menu Product: blue-card margin & main-card padding reset */
+  .product-menu-list-page .blue-card {
+    margin: 16px 0 !important;
+  }
+  .product-menu-list-page .product-menu-main-card {
+    padding: 0 !important;
+  }
+
+  /* Safe touch targets */
+  button, input, select {
+    min-height: 42px;
+  }
+
+  /* Toolbar controls normal uniform 42px height */
+  .product-menu-search-wrapper input,
+  .product-menu-category-wrapper select,
+  .product-menu-sort-wrapper select,
+  .product-menu-view-switcher {
+    min-height: 42px !important;
+    height: 42px !important;
+    max-height: 42px !important;
+    box-sizing: border-box !important;
+  }
+
+  .product-menu-view-btn {
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* ==========================================================
+   MOBILE SCREEN SPECIFIC RULES (<= 768px)
+   ========================================================== */
+@media (max-width: 768px) {
+  .app-content {
+    padding: 16px 16px 32px 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Khusus Halaman Pusat Retur & Kerusakan: padding app-content 0px di layar mobile <= 768px */
+  .app-content.app-content-returns,
+  .app-content:has(.returns-view-container) {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Reset container inner padding so .app-content provides the 16px outer spacing cleanly */
+  .unit-list-page,
+  .category-list-page,
+  .topping-list-page,
+  .product-menu-list-page,
+  .raw-material-list-page,
+  .stock-history-view,
+  .kasir-order-page,
+  .reports-page,
+  .sales-report-tab,
+  .material-report-tab,
+  .cashier-view-container,
+  .settings-page {
+    padding: 0 0 24px 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+
+
