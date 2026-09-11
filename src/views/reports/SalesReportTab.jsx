@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useOrder } from '../../controllers/OrderController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
+import { useAuth } from '../../controllers/AuthController';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -48,6 +49,10 @@ export const SalesReportTab = () => {
 
   const { openReceiptModal, openOrderReturnModal } = useOrder();
   const { openPhotoPreviewModal } = useRawMaterial();
+  const { currentUser } = useAuth();
+
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const showProfitMetrics = isSuperAdmin;
 
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [selectedMenuForToppingDetail, setSelectedMenuForToppingDetail] = useState(null);
@@ -101,39 +106,62 @@ export const SalesReportTab = () => {
           </div>
         </div>
 
-        {/* Total Estimasi HPP */}
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiHeader}>
-            <span style={styles.kpiLabel}>Total Estimasi HPP (Bahan)</span>
-            <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--amber-50)', color: 'var(--amber-600)' }}>
-              <Receipt size={18} />
+        {/* Khusus Kasir: Tampilkan Total Transaksi sebagai card mandiri */}
+        {!showProfitMetrics && (
+          <div style={styles.kpiCard}>
+            <div style={styles.kpiHeader}>
+              <span style={styles.kpiLabel}>Total Transaksi Selesai</span>
+              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
+                <Receipt size={18} />
+              </div>
+            </div>
+            <div style={styles.kpiValue}>
+              {salesSummary.totalTransactions}{' '}
+              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--neutral-500)' }}>transaksi</span>
+            </div>
+            <div style={styles.kpiMeta}>
+              <span>Rata-rata: {salesSummary.totalTransactions > 0 ? formatIDR(salesSummary.totalGrossRevenue / salesSummary.totalTransactions) : 'Rp 0'} / order</span>
             </div>
           </div>
-          <div style={{ ...styles.kpiValue, color: 'var(--neutral-800)' }}>
-            {formatIDR(salesSummary.totalEstimatedHPP)}
-          </div>
-          <div style={styles.kpiMeta}>
-            <span>Biaya resep menu + topping</span>
-          </div>
-        </div>
+        )}
 
-        {/* Total Laba Bersih */}
-        <div style={{ ...styles.kpiCard, borderLeft: '4px solid var(--green-500)' }}>
-          <div style={styles.kpiHeader}>
-            <span style={styles.kpiLabel}>Pendapatan Bersih (Laba Kotor)</span>
-            <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
-              <TrendingUp size={18} />
+        {/* Total Estimasi HPP - Khusus Super Admin */}
+        {showProfitMetrics && (
+          <div style={styles.kpiCard}>
+            <div style={styles.kpiHeader}>
+              <span style={styles.kpiLabel}>Total Estimasi HPP (Bahan)</span>
+              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--amber-50)', color: 'var(--amber-600)' }}>
+                <Receipt size={18} />
+              </div>
+            </div>
+            <div style={{ ...styles.kpiValue, color: 'var(--neutral-800)' }}>
+              {formatIDR(salesSummary.totalEstimatedHPP)}
+            </div>
+            <div style={styles.kpiMeta}>
+              <span>Biaya resep menu + topping</span>
             </div>
           </div>
-          <div style={{ ...styles.kpiValue, color: 'var(--green-600)' }}>
-            {formatIDR(salesSummary.totalNetProfit)}
+        )}
+
+        {/* Total Laba Bersih - Khusus Super Admin */}
+        {showProfitMetrics && (
+          <div style={{ ...styles.kpiCard, borderLeft: '4px solid var(--green-500)' }}>
+            <div style={styles.kpiHeader}>
+              <span style={styles.kpiLabel}>Pendapatan Bersih (Laba Kotor)</span>
+              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
+                <TrendingUp size={18} />
+              </div>
+            </div>
+            <div style={{ ...styles.kpiValue, color: 'var(--green-600)' }}>
+              {formatIDR(salesSummary.totalNetProfit)}
+            </div>
+            <div style={styles.kpiMeta}>
+              <span style={{ ...styles.badgeGreen, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                <Percent size={11} /> Margin: {salesSummary.grossProfitMargin.toFixed(1)}%
+              </span>
+            </div>
           </div>
-          <div style={styles.kpiMeta}>
-            <span style={{ ...styles.badgeGreen, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-              <Percent size={11} /> Margin: {salesSummary.grossProfitMargin.toFixed(1)}%
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Produk Terjual */}
         <div style={styles.kpiCard}>
@@ -373,8 +401,8 @@ export const SalesReportTab = () => {
                       <th style={{ ...styles.th, minWidth: '220px' }}>Topping yang Dipilih Pelanggan</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Omset Topping</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Total Omset Gabungan</th>
-                      <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>
-                      <th style={{ ...styles.th, textAlign: 'center' }}>Margin</th>
+                      {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>}
+                      {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'center' }}>Margin</th>}
                       <th style={{ ...styles.th, textAlign: 'center', width: '85px' }}>Rincian</th>
                     </tr>
                   </thead>
@@ -391,7 +419,9 @@ export const SalesReportTab = () => {
                               <div style={styles.productName}>{item.name}</div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
                                 <span style={styles.categoryBadge}>{item.categoryName}</span>
-                                <span style={{ fontSize: '11px', color: 'var(--neutral-400)' }}>HPP: {formatIDR(item.unitHpp)}/porsi</span>
+                                {showProfitMetrics && (
+                                  <span style={{ fontSize: '11px', color: 'var(--neutral-400)' }}>HPP: {formatIDR(item.unitHpp)}/porsi</span>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -431,18 +461,22 @@ export const SalesReportTab = () => {
                           <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: 'var(--blue-600)' }}>
                             {formatIDR(item.totalCombinedRevenue)}
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: item.totalCombinedNetProfit >= 0 ? 'var(--green-600)' : 'var(--red-600)' }}>
-                            {formatIDR(item.totalCombinedNetProfit)}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>
-                            <span style={{
-                              ...styles.marginBadge,
-                              backgroundColor: item.combinedMargin >= 40 ? 'var(--green-50)' : 'var(--amber-50)',
-                              color: item.combinedMargin >= 40 ? 'var(--green-600)' : 'var(--amber-600)'
-                            }}>
-                              {item.combinedMargin.toFixed(1)}%
-                            </span>
-                          </td>
+                          {showProfitMetrics && (
+                            <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: item.totalCombinedNetProfit >= 0 ? 'var(--green-600)' : 'var(--red-600)' }}>
+                              {formatIDR(item.totalCombinedNetProfit)}
+                            </td>
+                          )}
+                          {showProfitMetrics && (
+                            <td style={{ ...styles.td, textAlign: 'center' }}>
+                              <span style={{
+                                ...styles.marginBadge,
+                                backgroundColor: item.combinedMargin >= 40 ? 'var(--green-50)' : 'var(--amber-50)',
+                                color: item.combinedMargin >= 40 ? 'var(--green-600)' : 'var(--amber-600)'
+                              }}>
+                                {item.combinedMargin.toFixed(1)}%
+                              </span>
+                            </td>
+                          )}
                           <td style={{ ...styles.td, textAlign: 'center' }}>
                             {hasToppings ? (
                               <button
@@ -486,9 +520,9 @@ export const SalesReportTab = () => {
                       <th style={{ ...styles.th, textAlign: 'center' }}>Terjual</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Harga Satuan</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Total Omset</th>
-                      <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi HPP</th>
-                      <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>
-                      <th style={{ ...styles.th, textAlign: 'center' }}>Margin</th>
+                      {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi HPP</th>}
+                      {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>}
+                      {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'center' }}>Margin</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -526,21 +560,27 @@ export const SalesReportTab = () => {
                         <td style={{ ...styles.td, textAlign: 'right', fontWeight: 600, color: 'var(--neutral-900)' }}>
                           {formatIDR(item.grossRevenue)}
                         </td>
-                        <td style={{ ...styles.td, textAlign: 'right', color: 'var(--neutral-600)' }}>
-                          {formatIDR(item.totalHpp)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: item.netProfit >= 0 ? 'var(--green-600)' : 'var(--red-600)' }}>
-                          {formatIDR(item.netProfit)}
-                        </td>
-                        <td style={{ ...styles.td, textAlign: 'center' }}>
-                          <span style={{
-                            ...styles.marginBadge,
-                            backgroundColor: item.margin >= 40 ? 'var(--green-50)' : 'var(--amber-50)',
-                            color: item.margin >= 40 ? 'var(--green-600)' : 'var(--amber-600)'
-                          }}>
-                            {item.margin.toFixed(1)}%
-                          </span>
-                        </td>
+                        {showProfitMetrics && (
+                          <td style={{ ...styles.td, textAlign: 'right', color: 'var(--neutral-600)' }}>
+                            {formatIDR(item.totalHpp)}
+                          </td>
+                        )}
+                        {showProfitMetrics && (
+                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: item.netProfit >= 0 ? 'var(--green-600)' : 'var(--red-600)' }}>
+                            {formatIDR(item.netProfit)}
+                          </td>
+                        )}
+                        {showProfitMetrics && (
+                          <td style={{ ...styles.td, textAlign: 'center' }}>
+                            <span style={{
+                              ...styles.marginBadge,
+                              backgroundColor: item.margin >= 40 ? 'var(--green-50)' : 'var(--amber-50)',
+                              color: item.margin >= 40 ? 'var(--green-600)' : 'var(--amber-600)'
+                            }}>
+                              {item.margin.toFixed(1)}%
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -569,7 +609,7 @@ export const SalesReportTab = () => {
                     <th style={styles.th}>Rincian Menu & Topping</th>
                     <th style={{ ...styles.th, textAlign: 'center' }}>Metode</th>
                     <th style={{ ...styles.th, textAlign: 'right' }}>Total Bayar</th>
-                    <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi Laba</th>
+                    {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi Laba</th>}
                     <th style={{ ...styles.th, textAlign: 'center', width: '90px' }}>Aksi</th>
                   </tr>
                 </thead>
@@ -647,14 +687,16 @@ export const SalesReportTab = () => {
                             </div>
                           )}
                         </td>
-                        <td style={{ ...styles.td, textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, color: isReturned ? '#9ca3af' : 'var(--green-600)' }}>
-                            {isReturned ? 'Rp 0' : formatIDR(order.netProfit)}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--neutral-500)' }}>
-                            HPP: {formatIDR(order.orderTotalHPP)} {isReturned && '(Terpakai)'}
-                          </div>
-                        </td>
+                        {showProfitMetrics && (
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: isReturned ? '#9ca3af' : 'var(--green-600)' }}>
+                              {isReturned ? 'Rp 0' : formatIDR(order.netProfit)}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--neutral-500)' }}>
+                              HPP: {formatIDR(order.orderTotalHPP)} {isReturned && '(Terpakai)'}
+                            </div>
+                          </td>
+                        )}
                         <td style={{ ...styles.td, textAlign: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                             {order.returnPhoto && (
@@ -766,13 +808,15 @@ export const SalesReportTab = () => {
                   <div style={styles.modalKpiSub}>Menu + Extra Topping</div>
                 </div>
 
-                <div style={{ ...styles.modalKpiBox, backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                  <div style={{ ...styles.modalKpiLabel, color: 'var(--green-700)' }}>Laba Bersih & Margin</div>
-                  <div style={{ ...styles.modalKpiVal, color: 'var(--green-600)' }}>
-                    {formatIDR(selectedMenuForToppingDetail.totalCombinedNetProfit)}
+                {showProfitMetrics && (
+                  <div style={{ ...styles.modalKpiBox, backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                    <div style={{ ...styles.modalKpiLabel, color: 'var(--green-700)' }}>Laba Bersih & Margin</div>
+                    <div style={{ ...styles.modalKpiVal, color: 'var(--green-600)' }}>
+                      {formatIDR(selectedMenuForToppingDetail.totalCombinedNetProfit)}
+                    </div>
+                    <div style={styles.modalKpiSub}>Margin: {selectedMenuForToppingDetail.combinedMargin.toFixed(1)}%</div>
                   </div>
-                  <div style={styles.modalKpiSub}>Margin: {selectedMenuForToppingDetail.combinedMargin.toFixed(1)}%</div>
-                </div>
+                )}
               </div>
 
               {/* Toppings Detail Table */}
@@ -787,8 +831,8 @@ export const SalesReportTab = () => {
                         <th style={{ ...styles.th, textAlign: 'center' }}>Qty Dipesan</th>
                         <th style={{ ...styles.th, textAlign: 'right' }}>Harga Satuan</th>
                         <th style={{ ...styles.th, textAlign: 'right' }}>Total Omset</th>
-                        <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi HPP</th>
-                        <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>
+                        {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi HPP</th>}
+                        {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Laba Bersih</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -812,12 +856,16 @@ export const SalesReportTab = () => {
                           <td style={{ ...styles.td, textAlign: 'right', fontWeight: 600, color: 'var(--neutral-900)' }}>
                             {formatIDR(top.grossRevenue)}
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'right', color: 'var(--neutral-600)' }}>
-                            {formatIDR(top.totalHpp)}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: 'var(--green-600)' }}>
-                            {formatIDR(top.netProfit)}
-                          </td>
+                          {showProfitMetrics && (
+                            <td style={{ ...styles.td, textAlign: 'right', color: 'var(--neutral-600)' }}>
+                              {formatIDR(top.totalHpp)}
+                            </td>
+                          )}
+                          {showProfitMetrics && (
+                            <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: 'var(--green-600)' }}>
+                              {formatIDR(top.netProfit)}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

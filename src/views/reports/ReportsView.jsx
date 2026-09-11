@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useUnit } from '../../controllers/UnitController';
+import { useAuth } from '../../controllers/AuthController';
 import { SalesReportTab } from './SalesReportTab';
 import { MaterialUsageReportTab } from './MaterialUsageReportTab';
 import { Badge } from '../components/Badge';
@@ -17,6 +18,8 @@ import {
 
 export const ReportsView = () => {
   const { activeMenu } = useUnit();
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
   const {
     activeReportTab,
     setActiveReportTab,
@@ -39,6 +42,11 @@ export const ReportsView = () => {
     }
   }, [activeMenu]);
 
+  const salesTitle = isSuperAdmin ? 'Laporan Penjualan & Laba HPP' : 'Laporan Penjualan';
+  const salesSubtitle = isSuperAdmin
+    ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
+    : 'Pantau ringkasan omset penjualan, kuantitas produk & extra topping terjual, serta riwayat transaksi kasir.';
+
   return (
     <div className="reports-page animate-fade-in" style={styles.container}>
       {/* 1. TOP HEADER SECTION */}
@@ -46,7 +54,7 @@ export const ReportsView = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <h1 style={styles.pageTitle}>
-              {activeReportTab === 'sales' ? 'Laporan Penjualan & Laba HPP' : 'Laporan Pengurangan Bahan Baku'}
+              {activeReportTab === 'sales' ? salesTitle : 'Laporan Pengurangan Bahan Baku'}
             </h1>
             <Badge variant="primary" withDot>
               {activeReportTab === 'sales' ? 'Omset & Performa Produk' : 'Audit Pengurangan Stok'}
@@ -54,7 +62,7 @@ export const ReportsView = () => {
           </div>
           <p style={styles.pageSubtitle}>
             {activeReportTab === 'sales'
-              ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
+              ? salesSubtitle
               : 'Audit trail pengurangan bahan baku dari pesanan menu & extra topping kasir secara transparan.'}
           </p>
         </div>

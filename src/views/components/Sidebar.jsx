@@ -339,7 +339,7 @@ export const Sidebar = () => {
                             style={{ flexShrink: 0 }}
                           />
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Penjualan & Laba HPP
+                            {isSuperAdmin ? 'Penjualan & Laba HPP' : 'Laporan Penjualan'}
                           </span>
                         </div>
                       </button>

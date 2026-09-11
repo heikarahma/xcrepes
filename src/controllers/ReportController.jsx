@@ -4,6 +4,7 @@ import { useRawMaterial } from './RawMaterialController';
 import { useProductMenu } from './ProductMenuController';
 import { useTopping } from './ToppingController';
 import { useSettings } from './SettingsController';
+import { useAuth } from './AuthController';
 import {
   getPeriodLabel,
   exportProductPerformanceToExcel,
@@ -27,6 +28,8 @@ export const useReport = () => {
 export const useReportController = useReport;
 
 export const ReportProvider = ({ children }) => {
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
   const { orders = [] } = useOrder();
   const { rawMaterials = [], stockLogs = [] } = useRawMaterial();
   const { productMenus = [] } = useProductMenu();
@@ -622,7 +625,8 @@ export const ReportProvider = ({ children }) => {
           periodLabel,
           activeFilter: activeFilterLabel,
           searchTerm: salesSearchTerm,
-          storeName
+          storeName,
+          showProfitMetrics: isSuperAdmin
         });
       } else {
         const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
@@ -631,7 +635,8 @@ export const ReportProvider = ({ children }) => {
           periodLabel,
           activePaymentFilter: activePaymentLabel,
           searchTerm: salesSearchTerm,
-          storeName
+          storeName,
+          showProfitMetrics: isSuperAdmin
         });
       }
     } else {
@@ -665,7 +670,8 @@ export const ReportProvider = ({ children }) => {
           periodLabel,
           activeFilter: activeFilterLabel,
           searchTerm: salesSearchTerm,
-          storeName
+          storeName,
+          showProfitMetrics: isSuperAdmin
         });
       } else {
         const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
@@ -674,7 +680,8 @@ export const ReportProvider = ({ children }) => {
           periodLabel,
           activePaymentFilter: activePaymentLabel,
           searchTerm: salesSearchTerm,
-          storeName
+          storeName,
+          showProfitMetrics: isSuperAdmin
         });
       }
     } else {

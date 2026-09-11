@@ -152,7 +152,8 @@ export const exportProductPerformanceToExcel = ({
   periodLabel = 'Semua Waktu',
   activeFilter = 'Semua',
   searchTerm = '',
-  storeName = 'XCrepes POS'
+  storeName = 'XCrepes POS',
+  showProfitMetrics = true
 }) => {
   const printDate = new Date().toLocaleString('id-ID');
 
@@ -164,9 +165,9 @@ export const exportProductPerformanceToExcel = ({
   // Pre-calculate totals
   items.forEach(item => {
     const qty = Number(item.qtySold) || 0;
-    const rev = Number(item.grossRevenue ?? item.totalRevenue ?? 0);
-    const hpp = Number(item.totalHpp ?? item.totalHPP ?? 0);
-    const profit = Number(item.netProfit ?? item.grossProfit ?? (rev - hpp));
+    const rev = Number(item.totalCombinedRevenue ?? item.grossRevenue ?? item.totalRevenue ?? 0);
+    const hpp = Number(item.totalCombinedHpp ?? item.totalHpp ?? item.totalHPP ?? 0);
+    const profit = Number(item.totalCombinedNetProfit ?? item.netProfit ?? item.grossProfit ?? (rev - hpp));
 
     totalQty += qty;
     totalOmset += rev;
@@ -176,36 +177,65 @@ export const exportProductPerformanceToExcel = ({
 
   const overallMargin = totalOmset > 0 ? ((totalProfit / totalOmset) * 100).toFixed(1) : 0;
 
+  const headerTitle = showProfitMetrics
+    ? `LAPORAN PERFORMA PENJUALAN PRODUK & EXTRA TOPPING - ${storeName.toUpperCase()}`
+    : `LAPORAN PERFORMA PENJUALAN PRODUK - ${storeName.toUpperCase()}`;
+
+  const kpiSection = showProfitMetrics
+    ? [
+        ['RINGKASAN UTAMA PENJUALAN PRODUK'],
+        ['Total Omset Penjualan', totalOmset],
+        ['Total Estimasi Biaya HPP Bahan', totalHPP],
+        ['Total Keuntungan Laba Bersih', totalProfit],
+        ['Margin Keuntungan Rata-rata', `${overallMargin}%`],
+        ['Total Jumlah Produk & Topping Terjual', totalQty],
+        []
+      ]
+    : [
+        ['RINGKASAN UTAMA PENJUALAN PRODUK'],
+        ['Total Omset Penjualan', totalOmset],
+        ['Total Jumlah Produk & Topping Terjual', totalQty],
+        []
+      ];
+
+  const tableHeaders = showProfitMetrics
+    ? [
+        'No',
+        'Nama Menu / Topping',
+        'Kategori',
+        'Tipe Item',
+        'Qty Terjual',
+        'Harga Satuan (Rp)',
+        'Topping Terpasang (Rincian)',
+        'Omset Menu Dasar (Rp)',
+        'Omset Topping (Rp)',
+        'Total Omset Gabungan (Rp)',
+        'Estimasi HPP/Porsi (Rp)',
+        'Total Estimasi HPP (Rp)',
+        'Laba Bersih (Rp)',
+        'Margin Laba (%)'
+      ]
+    : [
+        'No',
+        'Nama Menu / Topping',
+        'Kategori',
+        'Tipe Item',
+        'Qty Terjual',
+        'Harga Satuan (Rp)',
+        'Topping Terpasang (Rincian)',
+        'Omset Menu Dasar (Rp)',
+        'Omset Topping (Rp)',
+        'Total Omset Gabungan (Rp)'
+      ];
+
   const rows = [
-    [`LAPORAN PERFORMA PENJUALAN PRODUK & EXTRA TOPPING - ${storeName.toUpperCase()}`],
+    [headerTitle],
     [`Periode Waktu : ${periodLabel}`],
     [`Filter Kategori: ${activeFilter}${searchTerm ? ` | Pencarian: "${searchTerm}"` : ''}`],
     [`Waktu Unduh   : ${printDate}`],
     [],
-    // KPI Summary Section in Excel
-    ['RINGKASAN UTAMA PENJUALAN PRODUK'],
-    ['Total Omset Penjualan', totalOmset],
-    ['Total Estimasi Biaya HPP Bahan', totalHPP],
-    ['Total Keuntungan Laba Bersih', totalProfit],
-    ['Margin Keuntungan Rata-rata', `${overallMargin}%`],
-    ['Total Jumlah Produk & Topping Terjual', totalQty],
-    [],
-    [
-      'No',
-      'Nama Menu / Topping',
-      'Kategori',
-      'Tipe Item',
-      'Qty Terjual',
-      'Harga Satuan (Rp)',
-      'Topping Terpasang (Rincian)',
-      'Omset Menu Dasar (Rp)',
-      'Omset Topping (Rp)',
-      'Total Omset Gabungan (Rp)',
-      'Estimasi HPP/Porsi (Rp)',
-      'Total Estimasi HPP (Rp)',
-      'Laba Bersih (Rp)',
-      'Margin Laba (%)'
-    ]
+    ...kpiSection,
+    tableHeaders
   ];
 
   items.forEach((item, idx) => {
@@ -223,57 +253,101 @@ export const exportProductPerformanceToExcel = ({
       ? item.toppingsList.map(t => `${t.name} (${t.qtySold}x)`).join(', ')
       : '-';
 
-    rows.push([
-      idx + 1,
-      item.name || '-',
-      item.categoryName || (item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama'),
-      item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama',
-      qty,
-      unitPrice,
-      toppingsSummaryText,
-      menuBaseRev,
-      topRev,
-      rev,
-      unitHpp,
-      totalHpp,
-      profit,
-      margin
-    ]);
+    if (showProfitMetrics) {
+      rows.push([
+        idx + 1,
+        item.name || '-',
+        item.categoryName || (item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama'),
+        item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama',
+        qty,
+        unitPrice,
+        toppingsSummaryText,
+        menuBaseRev,
+        topRev,
+        rev,
+        unitHpp,
+        totalHpp,
+        profit,
+        margin
+      ]);
+    } else {
+      rows.push([
+        idx + 1,
+        item.name || '-',
+        item.categoryName || (item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama'),
+        item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama',
+        qty,
+        unitPrice,
+        toppingsSummaryText,
+        menuBaseRev,
+        topRev,
+        rev
+      ]);
+    }
   });
 
   // Summary Row
   rows.push([]);
-  rows.push([
-    'TOTAL',
-    `Total ${items.length} Item Terdaftar`,
-    '-',
-    '-',
-    totalQty,
-    '-',
-    '-',
-    '-',
-    '-',
-    totalOmset,
-    '-',
-    totalHPP,
-    totalProfit,
-    Number(overallMargin)
-  ]);
+  if (showProfitMetrics) {
+    rows.push([
+      'TOTAL',
+      `Total ${items.length} Item Terdaftar`,
+      '-',
+      '-',
+      totalQty,
+      '-',
+      '-',
+      '-',
+      '-',
+      totalOmset,
+      '-',
+      totalHPP,
+      totalProfit,
+      Number(overallMargin)
+    ]);
+  } else {
+    rows.push([
+      'TOTAL',
+      `Total ${items.length} Item Terdaftar`,
+      '-',
+      '-',
+      totalQty,
+      '-',
+      '-',
+      '-',
+      '-',
+      totalOmset
+    ]);
+  }
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
-  ws['!cols'] = [
+  ws['!cols'] = showProfitMetrics ? [
     { wch: 6 },  // No
     { wch: 30 }, // Nama
     { wch: 18 }, // Kategori
     { wch: 16 }, // Tipe
     { wch: 12 }, // Qty
     { wch: 18 }, // Harga Satuan
+    { wch: 26 }, // Topping
+    { wch: 18 }, // Omset Menu
+    { wch: 18 }, // Omset Top
     { wch: 20 }, // Total Omset
-    { wch: 22 }, // HPP/Porsi
-    { wch: 22 }, // Total HPP
+    { wch: 20 }, // HPP/Porsi
+    { wch: 20 }, // Total HPP
     { wch: 20 }, // Laba Bersih
     { wch: 16 }  // Margin %
+  ] : [
+    { wch: 6 },  // No
+    { wch: 30 }, // Nama
+    { wch: 18 }, // Kategori
+    { wch: 16 }, // Tipe
+    { wch: 12 }, // Qty
+    { wch: 18 }, // Harga Satuan
+    { wch: 26 }, // Topping
+    { wch: 18 }, // Omset Menu
+    { wch: 18 }, // Omset Top
+    { wch: 20 }  // Total Omset
   ];
 
   const wb = XLSX.utils.book_new();
@@ -288,14 +362,19 @@ export const exportProductPerformanceToPDF = ({
   periodLabel = 'Semua Waktu',
   activeFilter = 'Semua',
   searchTerm = '',
-  storeName = 'XCrepes POS'
+  storeName = 'XCrepes POS',
+  showProfitMetrics = true
 }) => {
   // A4 Landscape for comprehensive width
   const doc = new jsPDF('landscape', 'pt', 'a4');
 
+  const reportTitle = showProfitMetrics
+    ? 'Laporan Penjualan & Laba HPP'
+    : 'Laporan Penjualan Produk';
+
   drawPDFHeader(
     doc,
-    'Laporan Penjualan & Laba HPP',
+    reportTitle,
     'Sub-Laporan: Performa Penjualan Produk & Extra Topping',
     [
       { label: 'Periode', value: periodLabel },
@@ -327,24 +406,36 @@ export const exportProductPerformanceToPDF = ({
       ? `\n+ Topping: ${item.toppingsList.map(t => `${t.name} (${t.qtySold}x)`).join(', ')}`
       : '';
 
-    return [
-      (idx + 1).toString(),
-      `${item.name || '-'}${toppingsSummaryText}`,
-      item.categoryName || (item.type === 'TOPPING' ? 'Topping' : 'Menu'),
-      item.type === 'TOPPING' ? 'Topping' : 'Menu Utama',
-      formatNumber(qty),
-      formatIDR(unitPrice),
-      formatIDR(rev),
-      formatIDR(unitHpp),
-      formatIDR(totalHpp),
-      formatIDR(profit),
-      `${margin}%`
-    ];
+    if (showProfitMetrics) {
+      return [
+        (idx + 1).toString(),
+        `${item.name || '-'}${toppingsSummaryText}`,
+        item.categoryName || (item.type === 'TOPPING' ? 'Topping' : 'Menu'),
+        item.type === 'TOPPING' ? 'Topping' : 'Menu Utama',
+        formatNumber(qty),
+        formatIDR(unitPrice),
+        formatIDR(rev),
+        formatIDR(unitHpp),
+        formatIDR(totalHpp),
+        formatIDR(profit),
+        `${margin}%`
+      ];
+    } else {
+      return [
+        (idx + 1).toString(),
+        `${item.name || '-'}${toppingsSummaryText}`,
+        item.categoryName || (item.type === 'TOPPING' ? 'Topping' : 'Menu'),
+        item.type === 'TOPPING' ? 'Topping' : 'Menu Utama',
+        formatNumber(qty),
+        formatIDR(unitPrice),
+        formatIDR(rev)
+      ];
+    }
   });
 
   const overallMargin = totalOmset > 0 ? ((totalProfit / totalOmset) * 100).toFixed(1) : 0;
 
-  const tableFoot = [
+  const tableFoot = showProfitMetrics ? [
     [
       'TOTAL',
       `Ringkasan (${items.length} Item)`,
@@ -358,23 +449,65 @@ export const exportProductPerformanceToPDF = ({
       formatIDR(totalProfit),
       `${overallMargin}%`
     ]
+  ] : [
+    [
+      'TOTAL',
+      `Ringkasan (${items.length} Item)`,
+      '-',
+      '-',
+      formatNumber(totalQty),
+      '-',
+      formatIDR(totalOmset)
+    ]
   ];
+
+  const headCols = showProfitMetrics ? [[
+    'No',
+    'Nama Menu / Topping',
+    'Kategori',
+    'Tipe',
+    'Terjual',
+    'Harga Jual',
+    'Total Omset',
+    'HPP/Porsi',
+    'Total HPP',
+    'Laba Bersih',
+    'Margin'
+  ]] : [[
+    'No',
+    'Nama Menu / Topping',
+    'Kategori',
+    'Tipe',
+    'Terjual',
+    'Harga Jual',
+    'Total Omset'
+  ]];
+
+  const colStyles = showProfitMetrics ? {
+    0: { halign: 'center', cellWidth: 24 },
+    1: { halign: 'left', fontStyle: 'bold' },
+    2: { halign: 'left', cellWidth: 70 },
+    3: { halign: 'center', cellWidth: 62 },
+    4: { halign: 'right', cellWidth: 44 },
+    5: { halign: 'right', cellWidth: 64 },
+    6: { halign: 'right', cellWidth: 72 },
+    7: { halign: 'right', cellWidth: 64 },
+    8: { halign: 'right', cellWidth: 72 },
+    9: { halign: 'right', cellWidth: 72 },
+    10: { halign: 'right', cellWidth: 46 }
+  } : {
+    0: { halign: 'center', cellWidth: 30 },
+    1: { halign: 'left', fontStyle: 'bold' },
+    2: { halign: 'left', cellWidth: 100 },
+    3: { halign: 'center', cellWidth: 90 },
+    4: { halign: 'right', cellWidth: 70 },
+    5: { halign: 'right', cellWidth: 90 },
+    6: { halign: 'right', cellWidth: 100 }
+  };
 
   autoTable(doc, {
     startY: 78,
-    head: [[
-      'No',
-      'Nama Menu / Topping',
-      'Kategori',
-      'Tipe',
-      'Terjual',
-      'Harga Jual',
-      'Total Omset',
-      'HPP/Porsi',
-      'Total HPP',
-      'Laba Bersih',
-      'Margin'
-    ]],
+    head: headCols,
     body: tableBody,
     foot: tableFoot,
     theme: 'grid',
@@ -399,19 +532,7 @@ export const exportProductPerformanceToPDF = ({
     alternateRowStyles: {
       fillColor: [248, 250, 252]
     },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 24 },
-      1: { halign: 'left', fontStyle: 'bold' },
-      2: { halign: 'left', cellWidth: 70 },
-      3: { halign: 'center', cellWidth: 62 },
-      4: { halign: 'right', cellWidth: 44 },
-      5: { halign: 'right', cellWidth: 64 },
-      6: { halign: 'right', cellWidth: 72 },
-      7: { halign: 'right', cellWidth: 64 },
-      8: { halign: 'right', cellWidth: 72 },
-      9: { halign: 'right', cellWidth: 72 },
-      10: { halign: 'right', cellWidth: 46 }
-    },
+    columnStyles: colStyles,
     margin: { left: 36, right: 36 }
   });
 
@@ -430,7 +551,8 @@ export const exportTransactionHistoryToExcel = ({
   periodLabel = 'Semua Waktu',
   activePaymentFilter = 'Semua',
   searchTerm = '',
-  storeName = 'XCrepes POS'
+  storeName = 'XCrepes POS',
+  showProfitMetrics = true
 }) => {
   const printDate = new Date().toLocaleString('id-ID');
 
@@ -450,34 +572,60 @@ export const exportTransactionHistoryToExcel = ({
 
   const overallMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0;
 
+  const kpiSection = showProfitMetrics
+    ? [
+        ['RINGKASAN AUDIT PENJUALAN KASIR'],
+        ['Total Omset Kasir', totalRevenue],
+        ['Total Estimasi Biaya HPP', totalHPP],
+        ['Total Keuntungan Bersih', totalProfit],
+        ['Rata-rata Margin', `${overallMargin}%`],
+        ['Total Transaksi Selesai', orders.length],
+        []
+      ]
+    : [
+        ['RINGKASAN AUDIT PENJUALAN KASIR'],
+        ['Total Omset Kasir', totalRevenue],
+        ['Total Transaksi Selesai', orders.length],
+        []
+      ];
+
+  const tableHeaders = showProfitMetrics
+    ? [
+        'No',
+        'No. Invoice',
+        'Tanggal & Waktu',
+        'Nama Kasir',
+        'Nama Pelanggan',
+        'Meja / Tipe',
+        'Metode Bayar',
+        'Rincian Pesanan (Menu & Topping)',
+        'Total Item',
+        'Total Omset (Rp)',
+        'Total Estimasi HPP (Rp)',
+        'Estimasi Laba Bersih (Rp)',
+        'Margin (%)'
+      ]
+    : [
+        'No',
+        'No. Invoice',
+        'Tanggal & Waktu',
+        'Nama Kasir',
+        'Nama Pelanggan',
+        'Meja / Tipe',
+        'Metode Bayar',
+        'Rincian Pesanan (Menu & Topping)',
+        'Total Item',
+        'Total Omset (Rp)'
+      ];
+
   const rows = [
     [`LAPORAN RIWAYAT TRANSAKSI PENJUALAN - ${storeName.toUpperCase()}`],
     [`Periode Waktu  : ${periodLabel}`],
     [`Filter Metode  : ${activePaymentFilter}${searchTerm ? ` | Pencarian: "${searchTerm}"` : ''}`],
     [`Waktu Unduh    : ${printDate}`],
     [],
-    ['RINGKASAN AUDIT PENJUALAN KASIR'],
-    ['Total Omset Kasir', totalRevenue],
-    ['Total Estimasi Biaya HPP', totalHPP],
-    ['Total Keuntungan Bersih', totalProfit],
-    ['Rata-rata Margin', `${overallMargin}%`],
-    ['Total Transaksi Selesai', orders.length],
-    [],
-    [
-      'No',
-      'No. Invoice',
-      'Tanggal & Waktu',
-      'Nama Kasir',
-      'Nama Pelanggan',
-      'Meja / Tipe',
-      'Metode Bayar',
-      'Rincian Pesanan (Menu & Topping)',
-      'Total Item',
-      'Total Omset (Rp)',
-      'Total Estimasi HPP (Rp)',
-      'Estimasi Laba Bersih (Rp)',
-      'Margin (%)'
-    ]
+    ...kpiSection,
+    tableHeaders
   ];
 
   orders.forEach((order, idx) => {
@@ -504,44 +652,74 @@ export const exportTransactionHistoryToExcel = ({
       ? 'Kartu' 
       : (order.paymentMethod || 'Lainnya');
 
-    rows.push([
-      idx + 1,
-      order.invoiceNumber || '-',
-      formatDateTime(order.date || order.createdAt),
-      order.cashierName || 'Kasir',
-      order.customerName || 'Pelanggan Umum',
-      order.tableNumber || 'Takeaway',
-      paymentLabel,
-      itemsSummary || '-',
-      Number(order.totalItemsCount) || (order.items || []).reduce((s, it) => s + (Number(it.quantity) || 1), 0),
-      totalAmount,
-      orderHPP,
-      orderProfit,
-      margin
-    ]);
+    if (showProfitMetrics) {
+      rows.push([
+        idx + 1,
+        order.invoiceNumber || '-',
+        formatDateTime(order.date || order.createdAt),
+        order.cashierName || 'Kasir',
+        order.customerName || 'Pelanggan Umum',
+        order.tableNumber || 'Takeaway',
+        paymentLabel,
+        itemsSummary || '-',
+        Number(order.totalItemsCount) || (order.items || []).reduce((s, it) => s + (Number(it.quantity) || 1), 0),
+        totalAmount,
+        orderHPP,
+        orderProfit,
+        margin
+      ]);
+    } else {
+      rows.push([
+        idx + 1,
+        order.invoiceNumber || '-',
+        formatDateTime(order.date || order.createdAt),
+        order.cashierName || 'Kasir',
+        order.customerName || 'Pelanggan Umum',
+        order.tableNumber || 'Takeaway',
+        paymentLabel,
+        itemsSummary || '-',
+        Number(order.totalItemsCount) || (order.items || []).reduce((s, it) => s + (Number(it.quantity) || 1), 0),
+        totalAmount
+      ]);
+    }
   });
 
   // Summary row
   rows.push([]);
-  rows.push([
-    'TOTAL',
-    `Total ${orders.length} Transaksi`,
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    '-',
-    totalRevenue,
-    totalHPP,
-    totalProfit,
-    Number(overallMargin)
-  ]);
+  if (showProfitMetrics) {
+    rows.push([
+      'TOTAL',
+      `Total ${orders.length} Transaksi`,
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      totalRevenue,
+      totalHPP,
+      totalProfit,
+      Number(overallMargin)
+    ]);
+  } else {
+    rows.push([
+      'TOTAL',
+      `Total ${orders.length} Transaksi`,
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      '-',
+      totalRevenue
+    ]);
+  }
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
-  ws['!cols'] = [
+  ws['!cols'] = showProfitMetrics ? [
     { wch: 6 },  // No
     { wch: 18 }, // Invoice
     { wch: 20 }, // Tanggal
@@ -555,6 +733,17 @@ export const exportTransactionHistoryToExcel = ({
     { wch: 20 }, // HPP
     { wch: 20 }, // Laba
     { wch: 14 }  // Margin %
+  ] : [
+    { wch: 6 },  // No
+    { wch: 18 }, // Invoice
+    { wch: 20 }, // Tanggal
+    { wch: 14 }, // Kasir
+    { wch: 20 }, // Pelanggan
+    { wch: 14 }, // Meja
+    { wch: 16 }, // Metode
+    { wch: 45 }, // Rincian
+    { wch: 12 }, // Total Item
+    { wch: 18 }  // Total Omset
   ];
 
   const wb = XLSX.utils.book_new();
@@ -569,14 +758,19 @@ export const exportTransactionHistoryToPDF = ({
   periodLabel = 'Semua Waktu',
   activePaymentFilter = 'Semua',
   searchTerm = '',
-  storeName = 'XCrepes POS'
+  storeName = 'XCrepes POS',
+  showProfitMetrics = true
 }) => {
   // A4 Landscape
   const doc = new jsPDF('landscape', 'pt', 'a4');
 
+  const reportTitle = showProfitMetrics
+    ? 'Laporan Penjualan & Laba HPP'
+    : 'Laporan Riwayat Transaksi Penjualan';
+
   drawPDFHeader(
     doc,
-    'Laporan Penjualan & Laba HPP',
+    reportTitle,
     'Sub-Laporan: Audit Riwayat Transaksi Penjualan Kasir',
     [
       { label: 'Periode', value: periodLabel },
@@ -618,20 +812,32 @@ export const exportTransactionHistoryToPDF = ({
 
     const customerDisplay = `${order.customerName || 'Pelanggan Umum'}${order.tableNumber && order.tableNumber !== 'Takeaway' ? ` (${order.tableNumber})` : ''}`;
 
-    return [
-      (idx + 1).toString(),
-      order.invoiceNumber || '-',
-      formatDateTime(order.date || order.createdAt),
-      customerDisplay,
-      paymentLabel,
-      itemsSummary || '-',
-      formatIDR(totalAmount),
-      formatIDR(orderHPP),
-      formatIDR(orderProfit)
-    ];
+    if (showProfitMetrics) {
+      return [
+        (idx + 1).toString(),
+        order.invoiceNumber || '-',
+        formatDateTime(order.date || order.createdAt),
+        customerDisplay,
+        paymentLabel,
+        itemsSummary || '-',
+        formatIDR(totalAmount),
+        formatIDR(orderHPP),
+        formatIDR(orderProfit)
+      ];
+    } else {
+      return [
+        (idx + 1).toString(),
+        order.invoiceNumber || '-',
+        formatDateTime(order.date || order.createdAt),
+        customerDisplay,
+        paymentLabel,
+        itemsSummary || '-',
+        formatIDR(totalAmount)
+      ];
+    }
   });
 
-  const tableFoot = [
+  const tableFoot = showProfitMetrics ? [
     [
       'TOTAL',
       `Ringkasan (${orders.length} Transaksi)`,
@@ -643,21 +849,61 @@ export const exportTransactionHistoryToPDF = ({
       formatIDR(totalHPP),
       formatIDR(totalProfit)
     ]
+  ] : [
+    [
+      'TOTAL',
+      `Ringkasan (${orders.length} Transaksi)`,
+      '-',
+      '-',
+      '-',
+      '-',
+      formatIDR(totalRevenue)
+    ]
   ];
+
+  const headCols = showProfitMetrics ? [[
+    'No',
+    'No. Invoice',
+    'Waktu Transaksi',
+    'Pelanggan & Meja',
+    'Metode',
+    'Rincian Menu & Topping',
+    'Total Omset',
+    'Estimasi HPP',
+    'Laba Bersih'
+  ]] : [[
+    'No',
+    'No. Invoice',
+    'Waktu Transaksi',
+    'Pelanggan & Meja',
+    'Metode',
+    'Rincian Menu & Topping',
+    'Total Omset'
+  ]];
+
+  const colStyles = showProfitMetrics ? {
+    0: { halign: 'center', cellWidth: 24 },
+    1: { halign: 'left', fontStyle: 'bold', cellWidth: 70 },
+    2: { halign: 'left', cellWidth: 64 },
+    3: { halign: 'left', cellWidth: 70 },
+    4: { halign: 'center', cellWidth: 44 },
+    5: { halign: 'left' },
+    6: { halign: 'right', cellWidth: 64 },
+    7: { halign: 'right', cellWidth: 64 },
+    8: { halign: 'right', cellWidth: 64 }
+  } : {
+    0: { halign: 'center', cellWidth: 28 },
+    1: { halign: 'left', fontStyle: 'bold', cellWidth: 90 },
+    2: { halign: 'left', cellWidth: 80 },
+    3: { halign: 'left', cellWidth: 90 },
+    4: { halign: 'center', cellWidth: 60 },
+    5: { halign: 'left' },
+    6: { halign: 'right', cellWidth: 90 }
+  };
 
   autoTable(doc, {
     startY: 78,
-    head: [[
-      'No',
-      'No. Invoice',
-      'Waktu Transaksi',
-      'Pelanggan & Meja',
-      'Metode',
-      'Rincian Menu & Topping',
-      'Total Omset',
-      'Estimasi HPP',
-      'Laba Bersih'
-    ]],
+    head: headCols,
     body: tableBody,
     foot: tableFoot,
     theme: 'grid',
@@ -682,17 +928,7 @@ export const exportTransactionHistoryToPDF = ({
     alternateRowStyles: {
       fillColor: [248, 250, 252]
     },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 26 },
-      1: { halign: 'left', fontStyle: 'bold', cellWidth: 90 },
-      2: { halign: 'left', cellWidth: 80 },
-      3: { halign: 'left', cellWidth: 85 },
-      4: { halign: 'center', cellWidth: 50 },
-      5: { halign: 'left' },
-      6: { halign: 'right', cellWidth: 78 },
-      7: { halign: 'right', cellWidth: 78 },
-      8: { halign: 'right', cellWidth: 78 }
-    },
+    columnStyles: colStyles,
     margin: { left: 36, right: 36 }
   });
 

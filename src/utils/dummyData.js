@@ -291,7 +291,7 @@ export const DUMMY_CASHIERS = [
     username: 'kasir1',
     password: 'kasir123',
     role: 'kasir',
-    permissions: ['kasir', 'raw-material', 'returns'],
+    permissions: ['kasir', 'raw-material', 'returns', 'reports-sales'],
     isActive: true
   },
   {
@@ -300,7 +300,7 @@ export const DUMMY_CASHIERS = [
     username: 'kasir2',
     password: 'kasir123',
     role: 'kasir',
-    permissions: ['kasir', 'returns'],
+    permissions: ['kasir', 'returns', 'reports-sales'],
     isActive: true
   }
 ];
