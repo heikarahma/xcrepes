@@ -109,42 +109,53 @@ export const CashierFormModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
 
     let res;
-    if (isEdit) {
-      res = updateCashier(cashier.id, {
-        nama: nama.trim(),
-        username: username.trim().toLowerCase(),
-        password: password.trim(),
-        permissions,
-        isActive
-      });
-    } else {
-      res = addCashier({
-        nama: nama.trim(),
-        username: username.trim().toLowerCase(),
-        password: password.trim(),
-        permissions,
-        isActive
-      });
+    try {
+      if (isEdit) {
+        res = await updateCashier(cashier.id, {
+          nama: nama.trim(),
+          username: username.trim().toLowerCase(),
+          password: password.trim(),
+          permissions,
+          isActive
+        });
+      } else {
+        res = await addCashier({
+          nama: nama.trim(),
+          username: username.trim().toLowerCase(),
+          password: password.trim(),
+          permissions,
+          isActive
+        });
+      }
+    } catch (err) {
+      res = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
     }
 
-    setIsSubmitting(false);
-
-    if (res.success) {
+    if (res && res.success) {
       if (isEdit) {
         showToast(`Akun kasir "${nama}" berhasil diperbarui.`, 'success', 'Perubahan Disimpan');
       } else {
         showToast(`Akun kasir "${nama}" berhasil ditambahkan.`, 'success', 'Kasir Ditambahkan');
       }
+      setNama('');
+      setUsername('');
+      setPassword('');
+      setPermissions(['kasir', 'raw-material', 'returns']);
+      setIsActive(true);
+      setShowPassword(false);
+      setErrors({});
       closeFormCashierModal();
     } else {
-      setErrors({ form: res.error || 'Terjadi kesalahan saat menyimpan data.' });
+      setErrors({ form: res?.error || 'Terjadi kesalahan saat menyimpan data.' });
     }
   };
 
@@ -174,16 +185,27 @@ export const CashierFormModal = () => {
     }
   };
 
+  const handleClose = () => {
+    setNama('');
+    setUsername('');
+    setPassword('');
+    setPermissions(['kasir', 'raw-material', 'returns']);
+    setIsActive(true);
+    setShowPassword(false);
+    setErrors({});
+    closeFormCashierModal();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormCashierModal}
+      onClose={handleClose}
       title={isEdit ? 'Ubah Akun Kasir' : 'Tambah Kasir Baru'}
       subtitle={isEdit ? 'Perbarui informasi profil dan hak akses menu kasir.' : 'Buat kredensial kasir dan atur hak akses fitur menu.'}
       size="md"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeFormCashierModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTopping } from '../../../controllers/ToppingController';
+import { useRawMaterial } from '../../../controllers/RawMaterialController';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -10,11 +11,11 @@ import {
   Trash2, 
   Package, 
   Coins, 
-  AlertCircle,
-  Search,
-  ChevronDown,
-  Check,
-  X
+  AlertCircle, 
+  Search, 
+  ChevronDown, 
+  Check, 
+  X 
 } from 'lucide-react';
 
 export const ToppingFormModal = () => {
@@ -23,8 +24,10 @@ export const ToppingFormModal = () => {
     closeFormModal, 
     addTopping, 
     updateTopping, 
-    availableRawMaterials 
+    availableRawMaterials: toppingMaterials 
   } = useTopping();
+  const { rawMaterials = [] } = useRawMaterial();
+  const availableRawMaterials = toppingMaterials || rawMaterials || [];
 
   const { isOpen, mode, item } = formModalState;
 
@@ -79,9 +82,10 @@ export const ToppingFormModal = () => {
 
   // Auto-fill or adjust price based on HPP
   useEffect(() => {
-    if (isOpen && ingredients.length > 0) {
+    const list = Array.isArray(availableRawMaterials) ? availableRawMaterials : [];
+    if (isOpen && ingredients && ingredients.length > 0) {
       const currentCost = ingredients.reduce((total, ing) => {
-        const mat = availableRawMaterials.find(m => m.id === ing.rawMaterialId || m.name === ing.rawMaterialName);
+        const mat = list.find(m => m.id === ing.rawMaterialId || m.name === ing.rawMaterialName);
         const pricePerUnit = mat ? mat.pricePerUnit : 0;
         const qty = Number(ing.quantity) || 0;
         return total + (pricePerUnit * qty);
@@ -95,14 +99,10 @@ export const ToppingFormModal = () => {
 
   // Create default ingredient row
   function createDefaultIngredient() {
-    const firstMaterial = availableRawMaterials && availableRawMaterials.length > 0
-      ? availableRawMaterials[0]
-      : null;
-
     return {
-      rawMaterialId: firstMaterial ? firstMaterial.id : '',
-      rawMaterialName: firstMaterial ? firstMaterial.name : '',
-      unitName: firstMaterial ? firstMaterial.unitName : 'Unit',
+      rawMaterialId: '',
+      rawMaterialName: '',
+      unitName: 'Unit',
       quantity: ''
     };
   }
@@ -111,10 +111,11 @@ export const ToppingFormModal = () => {
 
   // Handle change for an ingredient row
   const handleIngredientChange = (index, field, value) => {
+    const list = Array.isArray(availableRawMaterials) ? availableRawMaterials : [];
     setIngredients(prev => {
       const updated = [...prev];
       if (field === 'rawMaterialId') {
-        const selectedMat = availableRawMaterials.find(m => m.id === value);
+        const selectedMat = list.find(m => m.id === value);
         if (selectedMat) {
           updated[index] = {
             ...updated[index],
@@ -153,8 +154,9 @@ export const ToppingFormModal = () => {
 
   // Helper calculate total estimated recipe cost (HPP)
   const calculateTotalCost = () => {
-    return ingredients.reduce((total, ing) => {
-      const mat = availableRawMaterials.find(m => m.id === ing.rawMaterialId || m.name === ing.rawMaterialName);
+    const list = Array.isArray(availableRawMaterials) ? availableRawMaterials : [];
+    return (ingredients || []).reduce((total, ing) => {
+      const mat = list.find(m => m.id === ing.rawMaterialId || m.name === ing.rawMaterialName);
       const pricePerUnit = mat ? mat.pricePerUnit : 0;
       const qty = Number(ing.quantity) || 0;
       return total + (pricePerUnit * qty);
@@ -203,32 +205,53 @@ export const ToppingFormModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
     let result;
-    if (mode === 'edit' && item) {
-      result = updateTopping(item.id, {
-        name,
-        price,
-        ingredients
-      });
-    } else {
-      result = addTopping({
-        name,
-        price,
-        ingredients
-      });
+    try {
+      if (mode === 'edit' && item) {
+        result = await updateTopping(item.id, {
+          name,
+          price,
+          ingredients
+        });
+      } else {
+        result = await addTopping({
+          name,
+          price,
+          ingredients
+        });
+      }
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
 
-    if (result.success) {
+    if (result && result.success) {
+      setName('');
+      setPrice('');
+      setIngredients([createDefaultIngredient()]);
+      setErrors({});
+      setOpenDropdownIndex(null);
+      setSearchQuery('');
       closeFormModal();
     } else {
-      setErrors(prev => ({ ...prev, form: result.error }));
+      setErrors(prev => ({ ...prev, form: result?.error || 'Gagal menyimpan data.' }));
     }
+  };
+
+  const handleClose = () => {
+    setName('');
+    setPrice('');
+    setIngredients([createDefaultIngredient()]);
+    setErrors({});
+    setOpenDropdownIndex(null);
+    setSearchQuery('');
+    closeFormModal();
   };
 
   const isEdit = mode === 'edit';
@@ -237,13 +260,13 @@ export const ToppingFormModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormModal}
+      onClose={handleClose}
       title={isEdit ? 'Ubah Data Topping' : 'Tambah Topping Baru'}
       subtitle={isEdit ? 'Perbarui nama dan takaran resep bahan baku.' : 'Buat varian topping baru dan racikan takaran bahannya.'}
       size="lg"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeFormModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button
@@ -320,13 +343,14 @@ export const ToppingFormModal = () => {
           {/* Ingredient Rows */}
           <div style={styles.rowsList} ref={dropdownRef}>
             {ingredients.map((ing, index) => {
-              const currentMat = availableRawMaterials.find(m => m.id === ing.rawMaterialId);
+              const list = Array.isArray(availableRawMaterials) ? availableRawMaterials : [];
+              const currentMat = list.find(m => m.id === ing.rawMaterialId);
               const pricePerUnit = currentMat ? currentMat.pricePerUnit : 0;
               const subtotalCost = pricePerUnit * (Number(ing.quantity) || 0);
               
               const isDropdownOpen = openDropdownIndex === index;
-              const filteredMaterials = availableRawMaterials.filter(m => 
-                m.name.toLowerCase().includes((isDropdownOpen ? searchQuery : '').toLowerCase().trim())
+              const filteredMaterials = list.filter(m => 
+                (m.name || '').toLowerCase().includes((isDropdownOpen ? searchQuery : '').toLowerCase().trim())
               );
 
               return (

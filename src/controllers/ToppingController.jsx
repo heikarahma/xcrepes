@@ -334,6 +334,8 @@ export const ToppingProvider = ({ children }) => {
         deleteTopping,
         deleteBatchToppings,
         formModalState,
+        availableRawMaterials: rawMaterials || [],
+        rawMaterials: rawMaterials || [],
         openAddModal,
         openEditModal,
         closeFormModal,

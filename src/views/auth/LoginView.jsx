@@ -35,6 +35,8 @@ export const LoginView = () => {
         setErrorMessage(result.error || 'Login gagal. Periksa username dan kata sandi.');
         setIsLoading(false);
       } else {
+        setUsername('');
+        setPassword('');
         setIsLoading(false);
       }
     }, 350); // micro-delay for smooth transition

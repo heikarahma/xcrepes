@@ -82,21 +82,27 @@ export const SuperAdminProfileModal = () => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
 
-    const res = updateSuperAdminProfile({
-      nama: nama.trim(),
-      username: username.trim().toLowerCase(),
-      password: password.trim()
-    });
-
-    if (!res.success) {
-      setErrors({ form: res.error || 'Gagal memperbarui profil Super Admin' });
+    let res;
+    try {
+      res = await updateSuperAdminProfile({
+        nama: nama.trim(),
+        username: username.trim().toLowerCase(),
+        password: password.trim()
+      });
+    } catch (err) {
+      res = { success: false, error: err.message };
+    } finally {
       setIsSubmitting(false);
+    }
+
+    if (!res || !res.success) {
+      setErrors({ form: res?.error || 'Gagal memperbarui profil Super Admin' });
       return;
     }
 
@@ -105,14 +111,27 @@ export const SuperAdminProfileModal = () => {
       'success',
       'Profil Disimpan'
     );
-    setIsSubmitting(false);
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setErrors({});
+    closeProfileModal();
+  };
+
+  const handleClose = () => {
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setErrors({});
     closeProfileModal();
   };
 
   return (
     <Modal
       isOpen={isProfileModalOpen}
-      onClose={closeProfileModal}
+      onClose={handleClose}
       title="Konfigurasi Profil Super Admin"
       subtitle="Kelola nama akun, username login, dan kata sandi Super Admin"
       size="md"
@@ -120,7 +139,7 @@ export const SuperAdminProfileModal = () => {
         <div className="profile-modal-footer">
           <Button
             variant="secondary"
-            onClick={closeProfileModal}
+            onClick={handleClose}
             disabled={isSubmitting}
           >
             Batal

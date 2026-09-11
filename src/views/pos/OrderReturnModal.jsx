@@ -137,7 +137,7 @@ export const OrderReturnModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validate()) return;
 
@@ -145,32 +145,52 @@ export const OrderReturnModal = () => {
     const currentUserName = currentUser?.nama || currentUser?.name || currentUser?.username || 'Kasir';
 
     setIsSubmitting(true);
-    const result = recordOrderReturn({
-      orderId: selectedOrder.id,
-      reasonCategory: reasonText.trim(),
-      note: '',
-      photo: null,
-      user: currentUserName
-    });
-    setIsSubmitting(false);
+    let result;
+    try {
+      result = await recordOrderReturn({
+        orderId: selectedOrder.id,
+        reasonCategory: reasonText.trim(),
+        note: '',
+        photo: null,
+        user: currentUserName
+      });
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
 
-    if (result.success) {
+    if (result && result.success) {
+      setSelectedOrder(null);
+      setReasonText('');
+      setSearchOrderQuery('');
+      setIsDropdownOpen(false);
+      setErrors({});
       closeOrderReturnModal();
     } else {
-      setErrors({ form: result.error });
+      setErrors({ form: result?.error || 'Gagal memproses retur pesanan.' });
     }
+  };
+
+  const handleClose = () => {
+    setSelectedOrder(null);
+    setReasonText('');
+    setSearchOrderQuery('');
+    setIsDropdownOpen(false);
+    setErrors({});
+    closeOrderReturnModal();
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeOrderReturnModal}
+      onClose={handleClose}
       title="Form Retur Pesanan Gagal Buat"
       subtitle="Catat pesanan crepes yang gagal dimasak, gosong, robek, atau salah racikan."
       size="lg"
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', width: '100%' }}>
-          <Button variant="outline" onClick={closeOrderReturnModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

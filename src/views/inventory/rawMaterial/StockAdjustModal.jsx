@@ -83,25 +83,41 @@ export const StockAdjustModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    const result = adjustStock({
-      rawMaterialId: selectedMaterialId,
-      type: isCashier ? 'IN' : adjustType,
-      amount: Number(amount),
-      note,
-      user: currentUser?.nama || (isCashier ? 'Kasir' : 'Admin')
-    });
-    setIsSubmitting(false);
+    let result;
+    try {
+      result = await adjustStock({
+        rawMaterialId: selectedMaterialId,
+        type: isCashier ? 'IN' : adjustType,
+        amount: Number(amount),
+        note,
+        user: currentUser?.nama || (isCashier ? 'Kasir' : 'Admin')
+      });
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
 
     if (result && result.success) {
+      setAmount('');
+      setNote('');
+      setErrors({});
       closeAdjustModal();
     } else {
       setErrors({ form: result?.error || 'Gagal menyimpan perubahan stok.' });
     }
+  };
+
+  const handleClose = () => {
+    setAmount('');
+    setNote('');
+    setErrors({});
+    closeAdjustModal();
   };
 
   // Quick note chips suggestions
@@ -114,13 +130,13 @@ export const StockAdjustModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeAdjustModal}
+      onClose={handleClose}
       title={isCashier ? "Catat Stok Masuk (Restok)" : "Catat Perubahan Stok"}
       subtitle={isCashier ? "Catat penambahan kuantitas bahan baku dari supplier atau pembelian restok." : "Perbarui kuantitas stok bahan masuk, keluar, atau opname fisik."}
       size="md"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeAdjustModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

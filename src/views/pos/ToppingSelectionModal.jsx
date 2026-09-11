@@ -140,13 +140,27 @@ export const ToppingSelectionModal = () => {
         itemDiscountValue
       });
     }
+    setSelectedToppings([]);
+    setQuantity(1);
+    setNote('');
+    setItemDiscountType('none');
+    setItemDiscountValue(0);
+    closeToppingModal();
+  };
+
+  const handleClose = () => {
+    setSelectedToppings([]);
+    setQuantity(1);
+    setNote('');
+    setItemDiscountType('none');
+    setItemDiscountValue(0);
     closeToppingModal();
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeToppingModal}
+      onClose={handleClose}
       title={cartItem ? `Edit Pesanan: ${menu.name}` : "Pilihan Topping Menu"}
       subtitle={cartItem ? `Sesuaikan porsi, extra topping, dan catatan pesanan` : `Tawarkan topping extra untuk ${menu.name}`}
       size="md"

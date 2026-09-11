@@ -27,7 +27,7 @@ export const UnitFormModal = () => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -39,19 +39,31 @@ export const UnitFormModal = () => {
     setIsSubmitting(true);
 
     let result;
-    if (mode === 'edit' && unit) {
-      result = updateUnit(unit.id, unitName);
-    } else {
-      result = addUnit(unitName);
+    try {
+      if (mode === 'edit' && unit) {
+        result = await updateUnit(unit.id, unitName);
+      } else {
+        result = await addUnit(unitName);
+      }
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
     }
 
-    setIsSubmitting(false);
-
-    if (result.success) {
+    if (result && result.success) {
+      setUnitName('');
+      setError('');
       closeFormModal();
     } else {
-      setError(result.error);
+      setError(result?.error || 'Gagal menyimpan data satuan.');
     }
+  };
+
+  const handleClose = () => {
+    setUnitName('');
+    setError('');
+    closeFormModal();
   };
 
   const isEdit = mode === 'edit';
@@ -59,12 +71,12 @@ export const UnitFormModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormModal}
+      onClose={handleClose}
       title={isEdit ? 'Ubah Satuan Ukur' : 'Tambah Satuan Baru'}
       subtitle={isEdit ? 'Perbarui nama satuan ukur.' : 'Tambahkan satuan ukur untuk produk dan bahan.'}
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeFormModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

@@ -112,26 +112,45 @@ export const WasteRecordModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    const result = recordMaterialWaste({
-      rawMaterialId: selectedMaterialId,
-      amount: Number(amount),
-      reasonCategory: reasonText.trim(),
-      note: '',
-      photo: null,
-      user: currentUserName
-    });
-    setIsSubmitting(false);
+    let result;
+    try {
+      result = await recordMaterialWaste({
+        rawMaterialId: selectedMaterialId,
+        amount: Number(amount),
+        reasonCategory: reasonText.trim(),
+        note: '',
+        photo: null,
+        user: currentUserName
+      });
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
 
-    if (result.success) {
+    if (result && result.success) {
+      setAmount('');
+      setReasonText('');
+      setSearchMaterialQuery('');
+      setErrors({});
       closeWasteModal();
     } else {
-      setErrors({ form: result.error });
+      setErrors({ form: result?.error || 'Gagal mencatat bahan rusak.' });
     }
+  };
+
+  const handleClose = () => {
+    setAmount('');
+    setReasonText('');
+    setSearchMaterialQuery('');
+    setIsDropdownOpen(false);
+    setErrors({});
+    closeWasteModal();
   };
 
   const projectedRemaining = Math.max(0, currentStock - (Number(amount) || 0));
@@ -139,13 +158,13 @@ export const WasteRecordModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeWasteModal}
+      onClose={handleClose}
       title="Catat Bahan Baku Rusak / Expired (Waste)"
       subtitle="Dokumentasikan pengurangan bahan baku karena terbuang, rusak, atau kedaluwarsa."
       size="md"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeWasteModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

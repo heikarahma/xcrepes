@@ -34,12 +34,11 @@ export const RawMaterialFormModal = () => {
           pricePerUnit: String(Number(item.pricePerUnit ?? 0) || 0)
         });
       } else {
-        const defaultUnit = availableUnits.length > 0 ? availableUnits[0].name : '';
         setFormData({
           name: '',
-          unitName: defaultUnit,
-          stock: '0',
-          pricePerUnit: '0'
+          unitName: '',
+          stock: '',
+          pricePerUnit: ''
         });
       }
       setErrors({});
@@ -105,7 +104,7 @@ export const RawMaterialFormModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -115,23 +114,49 @@ export const RawMaterialFormModal = () => {
     const payload = {
       name: formData.name.trim(),
       unitName: formData.unitName,
-      stock: Number(formData.stock),
-      pricePerUnit: Number(formData.pricePerUnit)
+      stock: Number(formData.stock) || 0,
+      pricePerUnit: Number(formData.pricePerUnit) || 0
     };
 
-    if (mode === 'edit' && item) {
-      result = updateRawMaterial(item.id, payload);
-    } else {
-      result = addRawMaterial(payload);
+    try {
+      if (mode === 'edit' && item) {
+        result = await updateRawMaterial(item.id, payload);
+      } else {
+        result = await addRawMaterial(payload);
+      }
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
     }
 
-    setIsSubmitting(false);
-
-    if (result.success) {
+    if (result && result.success) {
+      setFormData({
+        name: '',
+        unitName: '',
+        stock: '',
+        pricePerUnit: ''
+      });
+      setErrors({});
+      setIsUnitDropdownOpen(false);
+      setUnitSearchQuery('');
       closeFormModal();
     } else {
-      setErrors({ form: result.error });
+      setErrors({ form: result?.error || 'Gagal menyimpan bahan baku.' });
     }
+  };
+
+  const handleClose = () => {
+    setFormData({
+      name: '',
+      unitName: '',
+      stock: '',
+      pricePerUnit: ''
+    });
+    setErrors({});
+    setIsUnitDropdownOpen(false);
+    setUnitSearchQuery('');
+    closeFormModal();
   };
 
   const isEdit = mode === 'edit';
@@ -139,13 +164,13 @@ export const RawMaterialFormModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormModal}
+      onClose={handleClose}
       title={isEdit ? 'Ubah Bahan Baku' : 'Tambah Bahan Baku'}
       subtitle={isEdit ? 'Perbarui stok atau harga beli bahan.' : 'Catat stok fisik dan harga beli bahan baku.'}
       size="md"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeFormModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

@@ -27,7 +27,7 @@ export const CategoryFormModal = () => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -39,19 +39,31 @@ export const CategoryFormModal = () => {
     setIsSubmitting(true);
 
     let result;
-    if (mode === 'edit' && category) {
-      result = updateCategory(category.id, categoryName);
-    } else {
-      result = addCategory(categoryName);
+    try {
+      if (mode === 'edit' && category) {
+        result = await updateCategory(category.id, categoryName);
+      } else {
+        result = await addCategory(categoryName);
+      }
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
     }
 
-    setIsSubmitting(false);
-
-    if (result.success) {
+    if (result && result.success) {
+      setCategoryName('');
+      setError('');
       closeFormModal();
     } else {
-      setError(result.error);
+      setError(result?.error || 'Gagal menyimpan data kategori.');
     }
+  };
+
+  const handleClose = () => {
+    setCategoryName('');
+    setError('');
+    closeFormModal();
   };
 
   const isEdit = mode === 'edit';
@@ -59,12 +71,12 @@ export const CategoryFormModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormModal}
+      onClose={handleClose}
       title={isEdit ? 'Ubah Kategori' : 'Tambah Kategori Baru'}
       subtitle={isEdit ? 'Perbarui nama kategori.' : 'Tambahkan kategori menu & produk baru.'}
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
-          <Button variant="outline" onClick={closeFormModal} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Batal
           </Button>
           <Button

@@ -225,7 +225,7 @@ export const ProductMenuFormModal = () => {
     return Object.keys(err).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -245,12 +245,54 @@ export const ProductMenuFormModal = () => {
       promoAmount: Number(promoAmount) || 0
     };
 
-    let result = mode === 'edit' && item ? updateMenu(item.id, payload) : addMenu(payload);
+    let result;
+    try {
+      if (mode === 'edit' && item) {
+        result = await updateMenu(item.id, payload);
+      } else {
+        result = await addMenu(payload);
+      }
+    } catch (err) {
+      result = { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
 
-    setIsSubmitting(false);
+    if (result && result.success) {
+      setName('');
+      setCategoryId('');
+      setImage('');
+      setPrice('');
+      setPromoType('none');
+      setPromoAmount('');
+      setIngredients([]);
+      setToppings([]);
+      setDraftIngredientId('');
+      setDraftQuantity('');
+      setDraftToppingId('');
+      setErrors({});
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      closeFormModal();
+    } else {
+      setErrors(prev => ({ ...prev, form: result?.error || 'Gagal menyimpan menu produk.' }));
+    }
+  };
 
-    if (result.success) closeFormModal();
-    else setErrors(prev => ({ ...prev, form: result.error }));
+  const handleClose = () => {
+    setName('');
+    setCategoryId('');
+    setImage('');
+    setPrice('');
+    setPromoType('none');
+    setPromoAmount('');
+    setIngredients([]);
+    setToppings([]);
+    setDraftIngredientId('');
+    setDraftQuantity('');
+    setDraftToppingId('');
+    setErrors({});
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    closeFormModal();
   };
 
   const isEdit = mode === 'edit';
@@ -264,7 +306,7 @@ export const ProductMenuFormModal = () => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={closeFormModal}
+      onClose={handleClose}
       title={isEdit ? 'Edit Menu' : 'Tambah Menu Baru'}
       size="lg"
     >
@@ -687,11 +729,11 @@ export const ProductMenuFormModal = () => {
             disabled={isSubmitting || !name.trim()}
             style={{ flex: 1, minWidth: '140px', padding: '12px 0', fontSize: '0.938rem', borderRadius: '8px' }}
           >
-            {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+            {isSubmitting ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Tambah Menu')}
           </Button>
           <Button 
             variant="outline" 
-            onClick={closeFormModal} 
+            onClick={handleClose} 
             disabled={isSubmitting}
             style={{ flex: 1, minWidth: '100px', padding: '12px 0', fontSize: '0.938rem', borderRadius: '8px', color: 'var(--blue-600)', borderColor: 'var(--blue-600)' }}
           >
