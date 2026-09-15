@@ -139,7 +139,7 @@ export const OrderProvider = ({ children }) => {
   };
 
   // Add Item to Cart
-  const addToCart = (menu, selectedToppings = [], note = '', customQty = 1) => {
+  const addToCart = ({ menu, selectedToppings = [], quantity: customQty = 1, note = '', itemDiscountType: initDiscType = 'none', itemDiscountValue: initDiscVal = 0 } = {}) => {
     const availability = checkMenuAvailability(menu, rawMaterials);
     if (!availability.isAvailable) {
       showToast(`Menu "${menu.name}" tidak dapat dipesan: ${availability.reason}`, 'error', 'Stok Habis');
@@ -185,7 +185,9 @@ export const OrderProvider = ({ children }) => {
       }
 
       const cartItemId = `CART-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      const initialDiscAmt = calculateItemDiscount(unitPrice, customQty, 'none', 0);
+      const discType = initDiscType || 'none';
+      const discVal = Math.max(0, Number(initDiscVal) || 0);
+      const initialDiscAmt = calculateItemDiscount(unitPrice, customQty, discType, discVal);
       const newCartItem = {
         cartItemId,
         itemKey,
@@ -196,11 +198,12 @@ export const OrderProvider = ({ children }) => {
         basePrice: Number(menu.price),
         toppings: selectedToppings,
         toppingsCost,
+        toppingsTotal: toppingsCost,
         unitPrice,
         quantity: customQty,
         note: note ? note.trim() : '',
-        itemDiscountType: 'none',
-        itemDiscountValue: 0,
+        itemDiscountType: discType,
+        itemDiscountValue: discVal,
         itemDiscountAmount: initialDiscAmt
       };
 
@@ -211,24 +214,28 @@ export const OrderProvider = ({ children }) => {
   };
 
   // Update Cart Item
-  const updateCartItem = (cartItemId, selectedToppings = [], note = '', quantity = null, discountInfo = null) => {
+  const updateCartItem = ({ cartItemId, menu: updatedMenu, selectedToppings = [], quantity = null, note = '', itemDiscountType: newDiscType, itemDiscountValue: newDiscVal, discountInfo } = {}) => {
     setCart(prev => {
       const targetItem = prev.find(item => item.cartItemId === cartItemId);
       if (!targetItem) return prev;
 
-      const matchedMenu = (productMenus || []).find(m => m.id === targetItem.menuId) || {
-        id: targetItem.menuId,
-        name: targetItem.name,
-        price: targetItem.basePrice
-      };
+      const matchedMenu = updatedMenu ||
+        (productMenus || []).find(m => m.id === targetItem.menuId) || {
+          id: targetItem.menuId,
+          name: targetItem.name,
+          price: targetItem.basePrice
+        };
 
       const toppingsCost = selectedToppings.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
       const unitPrice = Number(matchedMenu.price) + toppingsCost;
       const newItemKey = getCartItemKey(targetItem.menuId, selectedToppings);
       const qty = quantity !== null ? Math.max(1, quantity) : targetItem.quantity;
 
-      const dType = discountInfo?.type !== undefined ? discountInfo.type : (targetItem.itemDiscountType || 'none');
-      const dVal = discountInfo?.value !== undefined ? Math.max(0, Number(discountInfo.value) || 0) : (targetItem.itemDiscountValue || 0);
+      // Support both direct discount params and discountInfo object
+      const dType = newDiscType !== undefined ? newDiscType
+        : (discountInfo?.type !== undefined ? discountInfo.type : (targetItem.itemDiscountType || 'none'));
+      const dVal = newDiscVal !== undefined ? Math.max(0, Number(newDiscVal) || 0)
+        : (discountInfo?.value !== undefined ? Math.max(0, Number(discountInfo.value) || 0) : (targetItem.itemDiscountValue || 0));
       const dAmt = calculateItemDiscount(unitPrice, qty, dType, dVal);
 
       const isCollision = prev.some(item => item.cartItemId !== cartItemId && item.itemKey === newItemKey);
@@ -257,6 +264,7 @@ export const OrderProvider = ({ children }) => {
               itemKey: newItemKey,
               toppings: selectedToppings,
               toppingsCost,
+              toppingsTotal: toppingsCost,
               unitPrice,
               quantity: qty,
               note: note ? note.trim() : '',
