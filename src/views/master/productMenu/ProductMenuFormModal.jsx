@@ -52,9 +52,18 @@ export const ProductMenuFormModal = () => {
         setPrice(item.price || '');
         setPromoType(item.promoType || 'none');
         setPromoAmount(item.promoAmount || '');
-        
         setIngredients(item.ingredients && item.ingredients.length > 0 ? item.ingredients.map(ing => ({ ...ing })) : []);
-        setToppings(item.toppings && item.toppings.length > 0 ? item.toppings.map(t => ({ ...t })) : []);
+        setToppings(item.toppings && item.toppings.length > 0 ? item.toppings.map(t => {
+          const master = availableToppings.find(mt => mt.id === (t.toppingId || t.id));
+          return {
+            ...t,
+            id: t.toppingId || t.id,
+            toppingId: t.toppingId || t.id,
+            name: t.toppingName || t.name || master?.name || '',
+            toppingName: t.toppingName || t.name || master?.name || '',
+            price: master ? master.price : (Number(t.price) || 0)
+          };
+        }) : []);
       } else {
         setName('');
         setCategoryId('');
@@ -180,9 +189,11 @@ export const ProductMenuFormModal = () => {
         return; 
       }
       setToppings(prev => [...prev, {
+        id: selectedTop.id,
         toppingId: selectedTop.id,
+        name: selectedTop.name,
         toppingName: selectedTop.name,
-        price: selectedTop.price // save for display
+        price: Number(selectedTop.price) || 0
       }]);
       setDraftToppingId('');
     }
@@ -652,7 +663,7 @@ export const ProductMenuFormModal = () => {
                       {top.toppingName}
                     </div>
                     <div style={{ flex: 1, textAlign: 'right', fontWeight: 600, color: 'var(--blue-600)', fontSize: '0.875rem' }}>
-                      +{formatIDR(top.price || 0)}
+                      +{formatIDR(top.price || availableToppings.find(at => at.id === (top.toppingId || top.id))?.price || 0)}
                     </div>
                     <div style={{ width: '32px', display: 'flex', justifyContent: 'flex-end' }}>
                       <button type="button" onClick={() => handleRemoveTopping(index)} style={styles.removeIconCircle} title="Hapus topping">

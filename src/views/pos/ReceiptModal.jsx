@@ -292,12 +292,14 @@ export const ReceiptModal = () => {
                   {item.toppings && item.toppings.length > 0 ? (
                     <div style={styles.itemToppingList}>
                       {item.toppings.map((top, tIdx) => {
-                        const topTotal = (Number(top.price) || 0) * (item.quantity || 1);
+                        const topQty = Number(top.quantity) || 1;
+                        const topPrice = Number(top.price) || 0;
+                        const topTotal = topPrice * topQty * (item.quantity || 1);
                         return (
                           <div key={tIdx} style={styles.toppingRow}>
                             <span>
-                              + {top.name}
-                              {item.quantity > 1 ? ` (${item.quantity}x @${formatIDR(top.price)})` : ''}
+                              + {top.name} {topQty > 1 ? `(${topQty}x)` : ''}
+                              {item.quantity > 1 ? ` (${item.quantity}x @${formatIDR(topPrice * topQty)})` : (topQty > 1 ? ` (@${formatIDR(topPrice)})` : '')}
                             </span>
                             <span>{formatIDR(topTotal)}</span>
                           </div>

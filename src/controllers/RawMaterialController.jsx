@@ -427,9 +427,10 @@ export const RawMaterialProvider = ({ children }) => {
         item.toppings.forEach(t => {
           const matchedTopping = toppings.find(top => top.id === (t.id || t.toppingId));
           const toppingIngredients = (matchedTopping && matchedTopping.ingredients) || [];
+          const toppingQty = Number(t.quantity) || 1;
 
           toppingIngredients.forEach(ting => {
-            const requiredQty = (Number(ting.quantity) || 0) * itemQty;
+            const requiredQty = (Number(ting.quantity) || 0) * toppingQty * itemQty;
             if (requiredQty > 0 && ting.rawMaterialId) {
               deductionsToApply.push({
                 rawMaterialId: ting.rawMaterialId,
@@ -617,39 +618,60 @@ export const RawMaterialProvider = ({ children }) => {
   const filteredRawMaterials = useMemo(() => {
     let result = [...rawMaterials];
 
+    // Khusus untuk Kasir: hanya tampilkan bahan baku yang stok menipis atau stok habis
+    if (isCashier) {
+      result = result.filter(r => {
+        const s = Number(r.stock ?? r.currentStock ?? 0);
+        const min = Number(r.minStock ?? r.min_stock) || 10;
+        return s <= min;
+      });
+    }
+
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim();
       result = result.filter(r => 
         r.name.toLowerCase().includes(q) || 
         r.id.toLowerCase().includes(q) ||
-        r.unitName.toLowerCase().includes(q)
+        (r.unitName || r.unit_name || '').toLowerCase().includes(q)
       );
     }
 
     if (stockStatusFilter !== 'all') {
       if (stockStatusFilter === 'empty') {
-        result = result.filter(r => (Number(r.stock) || 0) <= 0);
+        result = result.filter(r => (Number(r.stock ?? r.currentStock) || 0) <= 0);
       } else if (stockStatusFilter === 'low') {
-        result = result.filter(r => (Number(r.stock) || 0) > 0 && (Number(r.stock) || 0) <= (Number(r.minStock) || 10));
-      } else if (stockStatusFilter === 'safe') {
-        result = result.filter(r => (Number(r.stock) || 0) > (Number(r.minStock) || 10));
+        result = result.filter(r => {
+          const s = Number(r.stock ?? r.currentStock) || 0;
+          const min = Number(r.minStock ?? r.min_stock) || 10;
+          return s > 0 && s <= min;
+        });
+      } else if (stockStatusFilter === 'safe' && !isCashier) {
+        result = result.filter(r => {
+          const s = Number(r.stock ?? r.currentStock) || 0;
+          const min = Number(r.minStock ?? r.min_stock) || 10;
+          return s > min;
+        });
       }
     }
 
     result.sort((a, b) => {
       if (sortBy === 'name-asc') return a.name.localeCompare(b.name, 'id');
       if (sortBy === 'name-desc') return b.name.localeCompare(a.name, 'id');
-      if (sortBy === 'stock-asc') return a.stock - b.stock;
-      if (sortBy === 'stock-desc') return b.stock - a.stock;
-      if (sortBy === 'price-desc') return (b.pricePerUnit || 0) - (a.pricePerUnit || 0);
-      if (sortBy === 'price-asc') return (a.pricePerUnit || 0) - (b.pricePerUnit || 0);
-      if (sortBy === 'date-asc') return new Date(a.createdAt) - new Date(b.createdAt);
-      if (sortBy === 'date-desc') return new Date(b.createdAt) - new Date(a.createdAt);
+      const stockA = Number(a.stock ?? a.currentStock ?? 0);
+      const stockB = Number(b.stock ?? b.currentStock ?? 0);
+      if (sortBy === 'stock-asc') return stockA - stockB;
+      if (sortBy === 'stock-desc') return stockB - stockA;
+      const priceA = Number(a.pricePerUnit || a.price_per_unit || 0);
+      const priceB = Number(b.pricePerUnit || b.price_per_unit || 0);
+      if (sortBy === 'price-desc') return priceB - priceA;
+      if (sortBy === 'price-asc') return priceA - priceB;
+      if (sortBy === 'date-asc') return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      if (sortBy === 'date-desc') return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       return 0;
     });
 
     return result;
-  }, [rawMaterials, searchTerm, sortBy, stockStatusFilter]);
+  }, [rawMaterials, searchTerm, sortBy, stockStatusFilter, isCashier]);
 
   // Paginated Raw Materials
   const paginatedRawMaterials = useMemo(() => {

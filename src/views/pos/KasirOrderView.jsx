@@ -417,10 +417,11 @@ export const KasirOrderView = () => {
                           title="Klik untuk ubah extra topping"
                         >
                           {item.toppings.map((top, idx) => {
-                            const toppingLineTotal = (Number(top.price) || 0) * (item.quantity || 1);
+                            const topQty = Number(top.quantity) || 1;
+                            const topUnitPrice = Number(top.price) || 0;
                             return (
                               <span key={idx} style={styles.cartToppingPill}>
-                                + {top.name} ({item.quantity > 1 ? `${item.quantity}x @${formatIDR(top.price)} = ` : ''}{formatIDR(toppingLineTotal)})
+                                + {top.name} {topQty > 1 ? `(${topQty}x) ` : ''}({formatIDR(topUnitPrice)})
                               </span>
                             );
                           })}

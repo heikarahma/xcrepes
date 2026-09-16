@@ -51,6 +51,10 @@ export const OrderProvider = ({ children }) => {
         const itemDiscountAmount = calculateItemDiscount(item.unitPrice, item.quantity, itemDiscountType, itemDiscountValue);
         return {
           ...item,
+          toppings: Array.isArray(item.toppings) ? item.toppings.map(t => ({
+            ...t,
+            quantity: Math.max(1, Number(t.quantity) || 1)
+          })) : [],
           itemDiscountType,
           itemDiscountValue,
           itemDiscountAmount
@@ -128,14 +132,14 @@ export const OrderProvider = ({ children }) => {
     };
   }, [fetchOrders]);
 
-  // Helper to generate unique key matching menu + sorted toppings
+  // Helper to generate unique key matching menu + sorted toppings (including topping quantities)
   const getCartItemKey = (menuId, toppings = []) => {
-    const toppingIds = toppings
-      .map(t => t.id || t.toppingId)
+    const toppingDescriptors = (Array.isArray(toppings) ? toppings : [])
+      .map(t => `${t.id || t.toppingId}_x${t.quantity || 1}`)
       .filter(Boolean)
       .sort()
       .join('-');
-    return `${menuId}__${toppingIds}`;
+    return `${menuId}__${toppingDescriptors}`;
   };
 
   // Add Item to Cart
@@ -156,9 +160,13 @@ export const OrderProvider = ({ children }) => {
       }
     }
 
-    const toppingsCost = selectedToppings.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+    const sanitizedToppings = (Array.isArray(selectedToppings) ? selectedToppings : []).map(t => ({
+      ...t,
+      quantity: Math.max(1, Number(t.quantity) || 1)
+    }));
+    const toppingsCost = sanitizedToppings.reduce((sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 0);
     const unitPrice = Number(menu.price) + toppingsCost;
-    const itemKey = getCartItemKey(menu.id, selectedToppings);
+    const itemKey = getCartItemKey(menu.id, sanitizedToppings);
 
     setCart(prev => {
       const existingIndex = prev.findIndex(item => item.itemKey === itemKey);
@@ -196,7 +204,7 @@ export const OrderProvider = ({ children }) => {
         image: menu.image,
         categoryName: menu.categoryName,
         basePrice: Number(menu.price),
-        toppings: selectedToppings,
+        toppings: sanitizedToppings,
         toppingsCost,
         toppingsTotal: toppingsCost,
         unitPrice,
@@ -226,9 +234,13 @@ export const OrderProvider = ({ children }) => {
           price: targetItem.basePrice
         };
 
-      const toppingsCost = selectedToppings.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+      const sanitizedToppings = (Array.isArray(selectedToppings) ? selectedToppings : []).map(t => ({
+        ...t,
+        quantity: Math.max(1, Number(t.quantity) || 1)
+      }));
+      const toppingsCost = sanitizedToppings.reduce((sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 0);
       const unitPrice = Number(matchedMenu.price) + toppingsCost;
-      const newItemKey = getCartItemKey(targetItem.menuId, selectedToppings);
+      const newItemKey = getCartItemKey(targetItem.menuId, sanitizedToppings);
       const qty = quantity !== null ? Math.max(1, quantity) : targetItem.quantity;
 
       // Support both direct discount params and discountInfo object
@@ -262,7 +274,7 @@ export const OrderProvider = ({ children }) => {
             return {
               ...item,
               itemKey: newItemKey,
-              toppings: selectedToppings,
+              toppings: sanitizedToppings,
               toppingsCost,
               toppingsTotal: toppingsCost,
               unitPrice,

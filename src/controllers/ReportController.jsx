@@ -407,14 +407,15 @@ export const ReportProvider = ({ children }) => {
               };
             }
             const tEntry = menuEntry.toppingsMap[topId];
-            tEntry.qtySold += qty;
-            const tRev = tEntry.price * qty;
-            const tHpp = tEntry.unitHpp * qty;
+            const tQty = (Number(t.quantity) || 1) * qty;
+            tEntry.qtySold += tQty;
+            const tRev = tEntry.price * tQty;
+            const tHpp = tEntry.unitHpp * tQty;
             tEntry.grossRevenue += tRev;
             tEntry.totalHpp += tHpp;
             tEntry.netProfit = tEntry.grossRevenue - tEntry.totalHpp;
 
-            menuEntry.totalToppingQty += qty;
+            menuEntry.totalToppingQty += tQty;
             menuEntry.totalToppingRevenue += tRev;
             menuEntry.totalToppingHpp += tHpp;
             totalToppingRevenue += tRev;

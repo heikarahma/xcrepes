@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRawMaterial } from '../../../controllers/RawMaterialController';
+import { useAuth } from '../../../controllers/AuthController';
 import { Button } from '../../components/Button';
 import { Pagination } from '../../components/Pagination';
 import { EmptyState } from '../../components/EmptyState';
@@ -26,6 +27,9 @@ import {
 } from 'lucide-react';
 
 export const StockHistoryListView = () => {
+  const { currentUser } = useAuth();
+  const isCashier = currentUser?.role === 'kasir';
+
   const {
     stockLogs,
     filteredStockLogs,
@@ -178,73 +182,75 @@ export const StockHistoryListView = () => {
       <div className="blue-card" style={{ padding: 0, marginTop: '16px' }}>
         {/* Toolbar */}
         <div className="stock-history-toolbar" style={styles.toolbar}>
-          {/* Left: Filter Buttons */}
-          <div className="stock-history-filter-tabs" style={styles.typeFilterTabs}>
-            <button
-              className={`type-tab-btn ${logTypeFilter === 'ALL' ? 'active' : ''}`}
-              onClick={() => setLogTypeFilter('ALL')}
-              style={{
-                ...styles.typeTabBtn,
-                ...(logTypeFilter === 'ALL' ? styles.typeTabBtnActive : {})
-              }}
-            >
-              Semua ({stockLogs.length})
-            </button>
-            <button
-              className={`type-tab-btn ${logTypeFilter === 'IN' ? 'active' : ''}`}
-              onClick={() => setLogTypeFilter('IN')}
-              style={{
-                ...styles.typeTabBtn,
-                ...(logTypeFilter === 'IN' ? styles.typeTabBtnActiveIn : {})
-              }}
-            >
-              <ArrowDownLeft size={13} style={{ marginRight: '4px' }} />
-              Masuk ({stockLogStats.totalIn})
-            </button>
-            <button
-              className={`type-tab-btn ${logTypeFilter === 'OUT' ? 'active' : ''}`}
-              onClick={() => setLogTypeFilter('OUT')}
-              style={{
-                ...styles.typeTabBtn,
-                ...(logTypeFilter === 'OUT' ? styles.typeTabBtnActiveOut : {})
-              }}
-            >
-              <ArrowUpRight size={13} style={{ marginRight: '4px' }} />
-              Keluar ({stockLogStats.totalOut})
-            </button>
-            <button
-              className={`type-tab-btn ${logTypeFilter === 'WASTE' ? 'active' : ''}`}
-              onClick={() => setLogTypeFilter('WASTE')}
-              style={{
-                ...styles.typeTabBtn,
-                ...(logTypeFilter === 'WASTE' ? styles.typeTabBtnActiveWaste : {})
-              }}
-            >
-              <AlertTriangle size={13} style={{ marginRight: '4px' }} />
-              Bahan Rusak / Waste ({stockLogStats.wasteCount || 0})
-            </button>
-            <button
-              className={`type-tab-btn ${logTypeFilter === 'ADJUST' ? 'active' : ''}`}
-              onClick={() => setLogTypeFilter('ADJUST')}
-              style={{
-                ...styles.typeTabBtn,
-                ...(logTypeFilter === 'ADJUST' ? styles.typeTabBtnActiveAdjust : {})
-              }}
-            >
-              <RefreshCw size={12} style={{ marginRight: '4px' }} />
-              Penyesuaian ({stockLogStats.totalAdjust})
-            </button>
-          </div>
+          {/* Left: Filter Buttons (Hanya untuk Admin/Owner) */}
+          {!isCashier && (
+            <div className="stock-history-filter-tabs" style={styles.typeFilterTabs}>
+              <button
+                className={`type-tab-btn ${logTypeFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setLogTypeFilter('ALL')}
+                style={{
+                  ...styles.typeTabBtn,
+                  ...(logTypeFilter === 'ALL' ? styles.typeTabBtnActive : {})
+                }}
+              >
+                Semua ({stockLogs.length})
+              </button>
+              <button
+                className={`type-tab-btn ${logTypeFilter === 'IN' ? 'active' : ''}`}
+                onClick={() => setLogTypeFilter('IN')}
+                style={{
+                  ...styles.typeTabBtn,
+                  ...(logTypeFilter === 'IN' ? styles.typeTabBtnActiveIn : {})
+                }}
+              >
+                <ArrowDownLeft size={13} style={{ marginRight: '4px' }} />
+                Masuk ({stockLogStats.totalIn})
+              </button>
+              <button
+                className={`type-tab-btn ${logTypeFilter === 'OUT' ? 'active' : ''}`}
+                onClick={() => setLogTypeFilter('OUT')}
+                style={{
+                  ...styles.typeTabBtn,
+                  ...(logTypeFilter === 'OUT' ? styles.typeTabBtnActiveOut : {})
+                }}
+              >
+                <ArrowUpRight size={13} style={{ marginRight: '4px' }} />
+                Keluar ({stockLogStats.totalOut})
+              </button>
+              <button
+                className={`type-tab-btn ${logTypeFilter === 'WASTE' ? 'active' : ''}`}
+                onClick={() => setLogTypeFilter('WASTE')}
+                style={{
+                  ...styles.typeTabBtn,
+                  ...(logTypeFilter === 'WASTE' ? styles.typeTabBtnActiveWaste : {})
+                }}
+              >
+                <AlertTriangle size={13} style={{ marginRight: '4px' }} />
+                Bahan Rusak / Waste ({stockLogStats.wasteCount || 0})
+              </button>
+              <button
+                className={`type-tab-btn ${logTypeFilter === 'ADJUST' ? 'active' : ''}`}
+                onClick={() => setLogTypeFilter('ADJUST')}
+                style={{
+                  ...styles.typeTabBtn,
+                  ...(logTypeFilter === 'ADJUST' ? styles.typeTabBtnActiveAdjust : {})
+                }}
+              >
+                <RefreshCw size={12} style={{ marginRight: '4px' }} />
+                Penyesuaian ({stockLogStats.totalAdjust})
+              </button>
+            </div>
+          )}
 
           {/* Right: Search Input */}
-          <div style={styles.rightToolbar}>
-            <div className="stock-history-search-wrap" style={styles.searchWrapper}>
+          <div style={{ ...styles.rightToolbar, justifyContent: isCashier ? 'flex-start' : 'flex-end', minWidth: isCashier ? 'auto' : '240px' }}>
+            <div className="stock-history-search-wrap" style={{ ...styles.searchWrapper, maxWidth: isCashier ? '380px' : '320px' }}>
               <Search size={16} color="var(--neutral-400)" style={styles.filterIcon} />
               <input
                 type="text"
                 className="blue-input"
                 style={styles.filterInput}
-                placeholder="Cari riwayat, alasan, petugas..."
+                placeholder={isCashier ? "Cari riwayat perubahan stok, petugas..." : "Cari riwayat, alasan, petugas..."}
                 value={logSearchTerm}
                 onChange={(e) => setLogSearchTerm(e.target.value)}
               />
@@ -273,7 +279,7 @@ export const StockHistoryListView = () => {
 
         {isLoading ? (
           <div style={{ padding: '16px' }}>
-            <TableSkeleton rows={6} cols={9} />
+            <TableSkeleton rows={6} cols={isCashier ? 6 : 9} />
           </div>
         ) : (
           <>
@@ -287,16 +293,16 @@ export const StockHistoryListView = () => {
                 <th>Nama Bahan Baku</th>
                 <th style={{ width: '150px' }}>Jenis</th>
                 <th style={{ width: '120px', textAlign: 'right' }}>Perubahan</th>
-                <th style={{ width: '160px', textAlign: 'center' }}>Alur Stok</th>
-                <th>Alasan & Catatan</th>
-                <th style={{ width: '80px', textAlign: 'center' }}>Foto</th>
+                {!isCashier && <th style={{ width: '160px', textAlign: 'center' }}>Alur Stok</th>}
+                {!isCashier && <th>Alasan & Catatan</th>}
+                {!isCashier && <th style={{ width: '80px', textAlign: 'center' }}>Foto</th>}
                 <th style={{ width: '90px', textAlign: 'center' }}>Oleh</th>
               </tr>
             </thead>
             <tbody>
               {paginatedStockLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ padding: 0 }}>
+                  <td colSpan={isCashier ? 6 : 9} style={{ padding: 0 }}>
                     <EmptyState
                       icon={History}
                       title={logSearchTerm ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
@@ -372,58 +378,64 @@ export const StockHistoryListView = () => {
                       </td>
 
                       {/* Alur Stok (Sebelum ➔ Sesudah) */}
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={styles.flowBox}>
-                          <span style={{ color: 'var(--neutral-600)', fontWeight: 500 }}>
-                            {log.previousStock} {log.unitName}
-                          </span>
-                          <span style={{ color: 'var(--neutral-400)' }}>➔</span>
-                          <span style={{ color: isWaste ? '#dc2626' : 'var(--neutral-900)', fontWeight: 700 }}>
-                            {log.currentStock} {log.unitName}
-                          </span>
-                        </div>
-                      </td>
+                      {!isCashier && (
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={styles.flowBox}>
+                            <span style={{ color: 'var(--neutral-600)', fontWeight: 500 }}>
+                              {log.previousStock} {log.unitName}
+                            </span>
+                            <span style={{ color: 'var(--neutral-400)' }}>➔</span>
+                            <span style={{ color: isWaste ? '#dc2626' : 'var(--neutral-900)', fontWeight: 700 }}>
+                              {log.currentStock} {log.unitName}
+                            </span>
+                          </div>
+                        </td>
+                      )}
 
                       {/* Keterangan & Alasan */}
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          {log.reason && (
-                            <span style={styles.reasonTag}>
-                              {log.reason}
+                      {!isCashier && (
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            {log.reason && (
+                              <span style={styles.reasonTag}>
+                                {log.reason}
+                              </span>
+                            )}
+                            <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)' }}>
+                              {log.note || '-'}
                             </span>
-                          )}
-                          <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)' }}>
-                            {log.note || '-'}
-                          </span>
-                        </div>
-                      </td>
+                          </div>
+                        </td>
+                      )}
 
                       {/* Bukti Foto */}
-                      <td style={{ textAlign: 'center' }}>
-                        {log.photo ? (
-                          <div
-                            onClick={() => openPhotoPreviewModal(log.photo, `Bukti Foto: ${log.rawMaterialName}`, {
-                              rawMaterialName: log.rawMaterialName,
-                              amount: log.amount,
-                              unitName: log.unitName,
-                              reason: log.reason,
-                              note: log.note,
-                              user: log.user,
-                              orderInvoice: log.referenceInvoice,
-                              createdAt: formatDateTime(log.createdAt)
-                            })}
-                            style={styles.thumbnailWrap}
-                            title="Klik untuk melihat foto ukuran penuh"
-                          >
-                            <img src={log.photo} alt="Bukti" style={styles.thumbnailImg} />
-                            <div style={styles.thumbnailOverlay}>
-                              <ZoomIn size={12} color="#ffffff" />
+                      {!isCashier && (
+                        <td style={{ textAlign: 'center' }}>
+                          {log.photo ? (
+                            <div
+                              onClick={() => openPhotoPreviewModal(log.photo, `Bukti Foto: ${log.rawMaterialName}`, {
+                                rawMaterialName: log.rawMaterialName,
+                                amount: log.amount,
+                                unitName: log.unitName,
+                                reason: log.reason,
+                                note: log.note,
+                                user: log.user,
+                                orderInvoice: log.referenceInvoice,
+                                createdAt: formatDateTime(log.createdAt)
+                              })}
+                              style={styles.thumbnailWrap}
+                              title="Klik untuk melihat foto ukuran penuh"
+                            >
+                              <img src={log.photo} alt="Bukti" style={styles.thumbnailImg} />
+                              <div style={styles.thumbnailOverlay}>
+                                <ZoomIn size={12} color="#ffffff" />
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>-</span>
-                        )}
-                      </td>
+                          ) : (
+                            <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>-</span>
+                          )}
+                        </td>
+                      )}
 
                       {/* Oleh / User */}
                       <td style={{ textAlign: 'center' }}>
@@ -497,15 +509,17 @@ export const StockHistoryListView = () => {
                     {/* Middle Row: Type Badge + Alur Stok */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                       <div>{renderTypeBadge(log.type)}</div>
-                      <div style={styles.mobileFlowBox}>
-                        <span>{log.previousStock}</span>
-                        <span>➔</span>
-                        <strong style={{ color: isWaste ? '#dc2626' : undefined }}>{log.currentStock} {log.unitName}</strong>
-                      </div>
+                      {!isCashier && (
+                        <div style={styles.mobileFlowBox}>
+                          <span>{log.previousStock}</span>
+                          <span>➔</span>
+                          <strong style={{ color: isWaste ? '#dc2626' : undefined }}>{log.currentStock} {log.unitName}</strong>
+                        </div>
+                      )}
                     </div>
 
                     {/* Alasan & Catatan */}
-                    {(log.reason || log.note) && (
+                    {!isCashier && (log.reason || log.note) && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '4px' }}>
                         {log.reason && (
                           <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626' }}>
@@ -529,7 +543,7 @@ export const StockHistoryListView = () => {
                         <span>{log.user || 'Admin'}</span>
                       </div>
 
-                      {log.photo && (
+                      {!isCashier && log.photo && (
                         <button
                           type="button"
                           onClick={() => openPhotoPreviewModal(log.photo, `Bukti Foto: ${log.rawMaterialName}`, {

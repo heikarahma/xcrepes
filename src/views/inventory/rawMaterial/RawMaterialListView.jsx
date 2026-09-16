@@ -88,7 +88,9 @@ export const RawMaterialListView = () => {
             </Badge>
           </div>
           <p className="raw-material-subtitle" style={styles.pageSubtitle}>
-            Pantau sisa stok fisik, harga beli bahan baku dapur, dan riwayat mutasi stok.
+            {isCashier
+              ? 'Pantau sisa stok bahan baku yang menipis atau habis untuk kesiapan operasional kasir.'
+              : 'Pantau sisa stok fisik, harga beli bahan baku dapur, dan riwayat mutasi stok.'}
           </p>
         </div>
 
@@ -135,7 +137,13 @@ export const RawMaterialListView = () => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="raw-material-stats-grid" style={styles.statsGrid}>
+      <div 
+        className={`raw-material-stats-grid ${isCashier ? 'is-cashier' : ''}`} 
+        style={{
+          ...styles.statsGrid,
+          gridTemplateColumns: isCashier ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'
+        }}
+      >
         {/* Card 1: Total Master Bahan */}
         <div 
           style={{
@@ -159,24 +167,26 @@ export const RawMaterialListView = () => {
           </div>
         </div>
 
-        {/* Card 2: Total Nilai Aset Stok */}
-        <div 
-          style={styles.statCard}
-          title="Estimasi total modal seluruh stok bahan saat ini"
-        >
-          <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Total Nilai Aset Stok</span>
-            <div style={{ ...styles.statIconWrapper, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
-              <Coins size={18} />
+        {/* Card 2: Total Nilai Aset Stok (Di-take out khusus untuk Kasir) */}
+        {!isCashier && (
+          <div 
+            style={styles.statCard}
+            title="Estimasi total modal seluruh stok bahan saat ini"
+          >
+            <div style={styles.statHeader}>
+              <span style={styles.statTitle}>Total Nilai Aset Stok</span>
+              <div style={{ ...styles.statIconWrapper, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
+                <Coins size={18} />
+              </div>
+            </div>
+            <div style={{ ...styles.statValue, color: 'var(--blue-600)' }}>
+              {formatIDR(summary.totalInventoryValue)}
+            </div>
+            <div style={styles.statFooter}>
+              Akumulasi modal fisik bahan
             </div>
           </div>
-          <div style={{ ...styles.statValue, color: 'var(--blue-600)' }}>
-            {formatIDR(summary.totalInventoryValue)}
-          </div>
-          <div style={styles.statFooter}>
-            Akumulasi modal fisik bahan
-          </div>
-        </div>
+        )}
 
         {/* Card 3: Stok Menipis (Kritis) */}
         <div 
@@ -255,11 +265,11 @@ export const RawMaterialListView = () => {
       {/* TAB CONTENT 1: DAFTAR BAHAN BAKU */}
       {activeTab === 'inventory' && (
         <div className="blue-card raw-material-card-wrapper" style={{ padding: 0 }}>
-          {/* Toolbar (Search, Sort, Batch Delete) */}
+          {/* Toolbar (Search, Dropdown Filter, Sort, Batch Delete) - Seragam dengan Menu Produk */}
           <div className="raw-material-toolbar" style={styles.toolbar}>
-            <div className="raw-material-toolbar-inputs" style={styles.leftToolbar}>
-              {/* Search Input */}
-              <div className="raw-material-search-box" style={styles.searchWrapper}>
+            <div className="raw-material-toolbar-inner">
+              {/* 1. Search Input */}
+              <div className="raw-material-search-wrapper" style={styles.searchWrapper}>
                 <Search size={16} color="var(--neutral-400)" style={styles.filterIcon} />
                 <input
                   type="text"
@@ -280,61 +290,79 @@ export const RawMaterialListView = () => {
                 )}
               </div>
 
-              {/* Sort Dropdown dengan Panah Bawah Rapi */}
-              <div className="raw-material-sort-box" style={styles.sortWrapper}>
-                <ArrowUpDown size={15} color="var(--neutral-400)" style={styles.filterIcon} />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="blue-input"
-                  style={styles.filterSelect}
-                >
-                  <option value="date-desc">Terbaru</option>
-                  <option value="date-asc">Terlama</option>
-                  <option value="name-asc">Nama (A - Z)</option>
-                  <option value="name-desc">Nama (Z - A)</option>
-                  <option value="stock-desc">Stok Terbanyak</option>
-                  <option value="stock-asc">Stok Paling Sedikit</option>
-                  <option value="price-desc">Harga Termahal</option>
-                  <option value="price-asc">Harga Termurah</option>
-                </select>
-                <ChevronDown size={14} color="var(--neutral-400)" style={styles.filterChevron} />
+              {/* 2. Status Filter Dropdown (seragam dengan Category Filter di Menu Produk) */}
+              <div className="raw-material-status-wrapper">
+                <div style={styles.relativeField}>
+                  <Boxes size={15} color="var(--neutral-400)" style={styles.filterIcon} />
+                  <select
+                    value={stockStatusFilter}
+                    onChange={(e) => setStockStatusFilter(e.target.value)}
+                    className="blue-input raw-material-select"
+                    style={{ ...styles.filterSelect, fontWeight: 600, color: 'var(--neutral-700)' }}
+                  >
+                    <option value="all">
+                      {isCashier 
+                        ? `Semua Bahan Kritis (${summary.lowCount + summary.emptyCount})` 
+                        : `Semua Status Bahan (${totalAllRawMaterials})`}
+                    </option>
+                    {!isCashier && (
+                      <option value="safe">Stok Aman ({summary.safeCount})</option>
+                    )}
+                    <option value="low">Stok Menipis ({summary.lowCount})</option>
+                    <option value="empty">Stok Habis ({summary.emptyCount})</option>
+                  </select>
+                  <ChevronDown size={14} color="var(--neutral-400)" style={styles.filterChevron} />
+                </div>
               </div>
 
-              {/* Active Filter Badge */}
-              {stockStatusFilter !== 'all' && (
-                <div style={styles.activeFilterBadge}>
-                  <span style={{ fontSize: '0.75rem', color: '#1e3a8a', fontWeight: 600 }}>
-                    Filter: <strong>{stockStatusFilter === 'low' ? 'Stok Menipis' : 'Stok Habis'}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setStockStatusFilter('all')}
-                    style={styles.activeFilterRemoveBtn}
-                    title="Hapus filter status"
+              {/* 3. Sort Filter Dropdown */}
+              <div className="raw-material-sort-wrapper">
+                <div style={styles.relativeField}>
+                  <ArrowUpDown size={15} color="var(--neutral-400)" style={styles.filterIcon} />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="blue-input raw-material-select"
+                    style={{ ...styles.filterSelect, fontWeight: 600, color: 'var(--neutral-700)' }}
                   >
-                    <X size={13} />
-                  </button>
+                    <optgroup label="Urutkan Waktu & Nama">
+                      <option value="date-desc">Terbaru</option>
+                      <option value="date-asc">Terlama</option>
+                      <option value="name-asc">Nama (A - Z)</option>
+                      <option value="name-desc">Nama (Z - A)</option>
+                    </optgroup>
+                    <optgroup label="Urutkan Sisa Stok">
+                      <option value="stock-desc">Stok Terbanyak</option>
+                      <option value="stock-asc">Stok Paling Sedikit</option>
+                    </optgroup>
+                    {!isCashier && (
+                      <optgroup label="Urutkan Harga Beli">
+                        <option value="price-desc">Harga Termahal</option>
+                        <option value="price-asc">Harga Termurah</option>
+                      </optgroup>
+                    )}
+                  </select>
+                  <ChevronDown size={14} color="var(--neutral-400)" style={styles.filterChevron} />
+                </div>
+              </div>
+
+              {/* 4. Batch Actions Button (Super Admin) */}
+              {!isCashier && isSomeSelected && (
+                <div className="raw-material-batch-bar" style={styles.batchBar}>
+                  <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)', fontWeight: 700 }}>
+                    {selectedIds.length} data terpilih
+                  </span>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={openBatchDeleteModal}
+                  >
+                    Hapus Terpilih
+                  </Button>
                 </div>
               )}
             </div>
-
-            {/* Batch Actions Button */}
-            {!isCashier && isSomeSelected && (
-              <div className="raw-material-batch-bar" style={styles.batchBar}>
-                <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)', fontWeight: 700 }}>
-                  {selectedIds.length} data terpilih
-                </span>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                  onClick={openBatchDeleteModal}
-                >
-                  Hapus Terpilih
-                </Button>
-              </div>
-            )}
           </div>
           {error && (
             <div style={{ padding: '0 16px' }}>
@@ -371,8 +399,10 @@ export const RawMaterialListView = () => {
                   )}
                   <th style={{ width: '70px', textAlign: 'center' }}>No</th>
                   <th>Nama Bahan Baku</th>
-                  <th style={{ width: '170px', textAlign: 'right' }}>Sisa Stok</th>
-                  <th style={{ width: '180px', textAlign: 'right' }}>Harga Beli / Satuan</th>
+                  <th style={{ width: isCashier ? '220px' : '170px', textAlign: 'right' }}>Sisa Stok</th>
+                  {!isCashier && (
+                    <th style={{ width: '180px', textAlign: 'right' }}>Harga Beli / Satuan</th>
+                  )}
                   {!isCashier && (
                     <th style={{ width: '150px', textAlign: 'right' }}>Aksi</th>
                   )}
@@ -381,14 +411,22 @@ export const RawMaterialListView = () => {
               <tbody>
                 {paginatedRawMaterials.length === 0 ? (
                   <tr>
-                    <td colSpan={isCashier ? "4" : "6"} style={{ padding: 0 }}>
+                    <td colSpan={isCashier ? "3" : "6"} style={{ padding: 0 }}>
                       <EmptyState
                         icon={Package}
-                        title={searchTerm ? 'Bahan Baku Tidak Ditemukan' : 'Belum Ada Bahan Baku'}
+                        title={
+                          searchTerm 
+                            ? 'Bahan Baku Tidak Ditemukan' 
+                            : isCashier 
+                              ? 'Semua Stok Bahan Aman' 
+                              : 'Belum Ada Bahan Baku'
+                        }
                         description={
                           searchTerm
                             ? `Tidak ditemukan bahan baku dengan kata kunci "${searchTerm}".`
-                            : 'Belum ada data bahan baku dalam sistem.'
+                            : isCashier
+                              ? 'Saat ini tidak ada bahan baku yang berstatus menipis atau habis. Semua stok dapur aman.'
+                              : 'Belum ada data bahan baku dalam sistem.'
                         }
                         actionLabel={searchTerm ? 'Reset Pencarian' : (!isCashier ? 'Tambah Bahan' : undefined)}
                         onAction={searchTerm ? () => setSearchTerm('') : (!isCashier ? openAddModal : undefined)}
@@ -400,7 +438,7 @@ export const RawMaterialListView = () => {
                     const isSelected = selectedIds.includes(item.id);
                     const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
                     const stockVal = Number(item.stock ?? item.currentStock ?? 0);
-                    const minStockVal = Number(item.minStock) || 10;
+                    const minStockVal = Number(item.minStock ?? item.min_stock) || 10;
                     const isLowStock = stockVal <= minStockVal && stockVal > 0;
                     const isEmpty = stockVal <= 0;
 
@@ -440,12 +478,14 @@ export const RawMaterialListView = () => {
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             {isEmpty ? (
-                              <span title="Stok habis!" style={{ display: 'inline-flex' }}>
-                                <AlertCircle size={14} color="#dc2626" />
+                              <span title="Stok habis!" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px', fontSize: '0.688rem', fontWeight: 700 }}>
+                                <AlertCircle size={12} color="#dc2626" />
+                                Habis
                               </span>
                             ) : isLowStock ? (
-                              <span title="Stok menipis!" style={{ display: 'inline-flex' }}>
-                                <AlertCircle size={14} color="var(--amber-500)" />
+                              <span title="Stok menipis!" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', backgroundColor: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px', fontSize: '0.688rem', fontWeight: 700 }}>
+                                <AlertCircle size={12} color="var(--amber-500)" />
+                                Menipis
                               </span>
                             ) : null}
                             <span style={{ 
@@ -456,18 +496,20 @@ export const RawMaterialListView = () => {
                               {new Intl.NumberFormat('id-ID').format(stockVal)}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 500 }}>
-                              {item.unitName}
+                              {item.unitName || item.unit_name}
                             </span>
                           </div>
                         </td>
 
                         {/* Harga per Unit Satuan */}
-                        <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--neutral-800)' }}>
-                          <span>{formatIDR(item.pricePerUnit)}</span>
-                          <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)', display: 'block' }}>
-                            per {item.unitName}
-                          </span>
-                        </td>
+                        {!isCashier && (
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--neutral-800)' }}>
+                            <span>{formatIDR(item.pricePerUnit || item.price_per_unit)}</span>
+                            <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)', display: 'block' }}>
+                              per {item.unitName || item.unit_name}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Actions (Super Admin only) */}
                         {!isCashier && (
@@ -503,11 +545,19 @@ export const RawMaterialListView = () => {
             {paginatedRawMaterials.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title={searchTerm ? 'Bahan Tidak Ditemukan' : 'Belum Ada Bahan Baku'}
+                title={
+                  searchTerm 
+                    ? 'Bahan Tidak Ditemukan' 
+                    : isCashier 
+                      ? 'Semua Stok Bahan Aman' 
+                      : 'Belum Ada Bahan Baku'
+                }
                 description={
                   searchTerm
                     ? `Tidak ada hasil untuk "${searchTerm}".`
-                    : 'Belum ada data bahan baku.'
+                    : isCashier
+                      ? 'Saat ini tidak ada bahan baku yang berstatus menipis atau habis. Semua stok dapur aman.'
+                      : 'Belum ada data bahan baku.'
                 }
                 actionLabel={searchTerm ? 'Reset Pencarian' : (!isCashier ? 'Tambah Bahan' : undefined)}
                 onAction={searchTerm ? () => setSearchTerm('') : (!isCashier ? openAddModal : undefined)}
@@ -519,7 +569,7 @@ export const RawMaterialListView = () => {
                   const isSelected = selectedIds.includes(item.id);
                   const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
                   const stockVal = Number(item.stock ?? item.currentStock ?? 0);
-                  const minStockVal = Number(item.minStock) || 10;
+                  const minStockVal = Number(item.minStock ?? item.min_stock) || 10;
                   const isLowStock = stockVal <= minStockVal && stockVal > 0;
                   const isEmpty = stockVal <= 0;
 
@@ -575,7 +625,10 @@ export const RawMaterialListView = () => {
                       </div>
 
                       {/* Middle Row: Detail Stats Box */}
-                      <div className="mobile-detail-grid" style={styles.mobileDetailGrid}>
+                      <div className="mobile-detail-grid" style={{
+                        ...styles.mobileDetailGrid,
+                        ...(isCashier ? { gridTemplateColumns: '1fr' } : {})
+                      }}>
                         <div style={styles.mobileDetailBox}>
                           <span style={styles.mobileDetailLabel}>Sisa Stok</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -584,7 +637,7 @@ export const RawMaterialListView = () => {
                               fontSize: '1rem',
                               color: isEmpty ? '#dc2626' : isLowStock ? '#d97706' : 'var(--neutral-900)' 
                             }}>
-                              {new Intl.NumberFormat('id-ID').format(stockVal)} {item.unitName}
+                              {new Intl.NumberFormat('id-ID').format(stockVal)} {item.unitName || item.unit_name}
                             </span>
                             {isEmpty ? (
                               <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px' }}>
@@ -598,12 +651,14 @@ export const RawMaterialListView = () => {
                           </div>
                         </div>
 
-                        <div style={styles.mobileDetailBox}>
-                          <span style={styles.mobileDetailLabel}>Harga Beli Satuan</span>
-                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-800)' }}>
-                            {formatIDR(item.pricePerUnit)} <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)', fontWeight: 500 }}>/{item.unitName}</span>
-                          </span>
-                        </div>
+                        {!isCashier && (
+                          <div style={styles.mobileDetailBox}>
+                            <span style={styles.mobileDetailLabel}>Harga Beli Satuan</span>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-800)' }}>
+                              {formatIDR(item.pricePerUnit || item.price_per_unit)} <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)', fontWeight: 500 }}>/{item.unitName || item.unit_name}</span>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -640,7 +695,7 @@ export const RawMaterialListView = () => {
           display: flex;
           align-items: center;
           gap: 4px;
-          margin-bottom: 16px;
+          margin-bottom: 0;
           background-color: var(--neutral-100);
           border: 1px solid var(--border-color);
           border-radius: 12px;
@@ -711,80 +766,227 @@ export const RawMaterialListView = () => {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 14px;
-          margin-bottom: 20px;
+          width: 100%;
         }
 
+        .raw-material-stats-grid.is-cashier {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .raw-material-card-wrapper {
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: var(--shadow-sm);
+        }
+
+        .raw-material-toolbar {
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--border-color);
+          background-color: var(--bg-surface);
+        }
+
+        .raw-material-toolbar-inner {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          width: 100%;
+        }
+
+        .raw-material-search-wrapper {
+          flex: 1;
+          min-width: 200px;
+        }
+
+        .raw-material-search-wrapper input {
+          height: 42px !important;
+          min-height: 42px !important;
+          max-height: 42px !important;
+          padding: 0 36px 0 38px !important;
+          font-size: 0.813rem !important;
+          line-height: 42px !important;
+          border-radius: 8px !important;
+          box-sizing: border-box !important;
+        }
+
+        .raw-material-status-wrapper {
+          width: auto;
+          min-width: 180px;
+        }
+
+        .raw-material-status-wrapper select {
+          height: 42px !important;
+          min-height: 42px !important;
+          max-height: 42px !important;
+          padding: 0 32px 0 38px !important;
+          font-size: 0.813rem !important;
+          border-radius: 8px !important;
+          box-sizing: border-box !important;
+        }
+
+        .raw-material-sort-wrapper {
+          width: auto;
+          min-width: 170px;
+        }
+
+        .raw-material-sort-wrapper select {
+          height: 42px !important;
+          min-height: 42px !important;
+          max-height: 42px !important;
+          padding: 0 32px 0 38px !important;
+          font-size: 0.813rem !important;
+          border-radius: 8px !important;
+          box-sizing: border-box !important;
+        }
+
+        .blue-table tbody tr:hover {
+          background-color: var(--neutral-50);
+        }
+
+        /* Tablet & Mobile (<= 1024px) */
         @media (max-width: 1024px) {
-          .raw-material-stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10px !important;
-            margin-bottom: 16px !important;
-          }
           .raw-material-list-page {
             padding: 0 !important;
+            margin: 0 !important;
           }
+
           .raw-material-header-section {
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 12px !important;
-            margin-bottom: 14px !important;
+            margin-bottom: 4px !important;
           }
+
           .raw-material-title {
             font-size: 1.25rem !important;
           }
+
           .raw-material-subtitle {
             font-size: 0.781rem !important;
           }
+
           .raw-material-header-actions {
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
             width: 100% !important;
           }
+
           .raw-material-add-btn {
             width: 100% !important;
             min-height: 42px !important;
           }
+
           .raw-material-sub-actions {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
             width: 100% !important;
           }
+
           .raw-material-adjust-btn,
           .raw-material-waste-btn {
             width: 100% !important;
-            min-height: 38px !important;
+            min-height: 40px !important;
             font-size: 0.813rem !important;
             padding: 0 8px !important;
             justify-content: center !important;
             white-space: nowrap !important;
           }
+
+          .raw-material-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+
+          .raw-material-stats-grid.is-cashier {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+
+          .raw-material-stats-grid.is-cashier > div:last-child {
+            grid-column: span 2;
+          }
+
+          .raw-material-card-wrapper {
+            border-radius: 12px !important;
+            overflow: hidden !important;
+            margin: 8px 0 20px 0 !important;
+            box-shadow: var(--shadow-sm) !important;
+          }
+
           .raw-material-toolbar {
             padding: 12px 14px !important;
+          }
+
+          .raw-material-toolbar-inner {
+            display: flex !important;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 10px !important;
-          }
-          .raw-material-toolbar-inputs {
-            display: flex !important;
-            flex-direction: column !important;
             width: 100% !important;
-            gap: 10px !important;
-            margin: 0 !important;
           }
-          .raw-material-search-box,
-          .raw-material-sort-box {
+
+          .raw-material-search-wrapper {
             width: 100% !important;
-            max-width: 100% !important;
             min-width: 100% !important;
-            margin: 0 !important;
+            flex: none !important;
           }
+
+          .raw-material-search-wrapper input {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 36px 0 38px !important;
+            font-size: 13.5px !important;
+            line-height: 42px !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .raw-material-status-wrapper {
+            width: 100% !important;
+            min-width: 100% !important;
+          }
+
+          .raw-material-status-wrapper select {
+            width: 100% !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 32px 0 38px !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+            text-overflow: ellipsis !important;
+            background-color: var(--bg-surface) !important;
+            box-sizing: border-box !important;
+          }
+
+          .raw-material-sort-wrapper {
+            width: 100% !important;
+            min-width: 100% !important;
+          }
+
+          .raw-material-sort-wrapper select {
+            width: 100% !important;
+            min-width: 0 !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            padding: 0 32px 0 38px !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+            text-overflow: ellipsis !important;
+            background-color: var(--bg-surface) !important;
+            box-sizing: border-box !important;
+          }
+
           .raw-material-batch-bar {
             width: 100% !important;
             justify-content: space-between !important;
             margin-top: 4px !important;
           }
+
           .desktop-table-wrapper {
             display: none !important;
           }
@@ -798,9 +1000,14 @@ export const RawMaterialListView = () => {
         }
 
         @media (max-width: 640px) {
-          .raw-material-stats-grid {
+          .raw-material-stats-grid,
+          .raw-material-stats-grid.is-cashier {
             grid-template-columns: 1fr !important;
             gap: 8px !important;
+          }
+
+          .raw-material-stats-grid.is-cashier > div:last-child {
+            grid-column: span 1 !important;
           }
         }
 
@@ -835,9 +1042,9 @@ const styles = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '14px',
-    marginBottom: '4px'
+    marginBottom: 0,
+    width: '100%'
   },
   statCard: {
     backgroundColor: '#ffffff',
@@ -920,7 +1127,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: '18px',
+    marginBottom: 0,
     flexWrap: 'wrap',
     gap: '16px'
   },
@@ -939,41 +1146,38 @@ const styles = {
   tabContainer: {
     display: 'flex',
     alignItems: 'center',
-    marginBottom: '16px'
+    marginBottom: 0
   },
   toolbar: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: '16px 20px',
     borderBottom: '1px solid var(--border-color)',
-    flexWrap: 'wrap',
-    gap: '12px',
     backgroundColor: 'var(--bg-surface)'
-  },
-  leftToolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flex: 1,
-    flexWrap: 'wrap'
   },
   searchWrapper: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    minWidth: '240px',
-    maxWidth: '380px',
-    flex: 1,
+    width: '100%'
+  },
+  relativeField: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
     width: '100%'
   },
   sortWrapper: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    minWidth: '180px',
-    maxWidth: '240px',
-    width: '100%'
+    minWidth: '180px'
+  },
+  statusWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: '180px'
   },
   filterIcon: {
     position: 'absolute',
@@ -988,12 +1192,13 @@ const styles = {
     paddingLeft: '38px',
     paddingRight: '36px',
     height: '42px',
+    fontSize: '0.813rem',
     boxSizing: 'border-box'
   },
   filterSelect: {
     width: '100%',
     paddingLeft: '38px',
-    paddingRight: '36px',
+    paddingRight: '30px',
     height: '42px',
     fontSize: '0.813rem',
     boxSizing: 'border-box',
@@ -1023,7 +1228,9 @@ const styles = {
     cursor: 'pointer',
     width: '24px',
     height: '24px',
-    zIndex: 2
+    zIndex: 2,
+    border: 'none',
+    background: 'none'
   },
   batchBar: {
     display: 'flex',

@@ -358,7 +358,7 @@ export const OrderReturnModal = () => {
                                   <strong style={{ color: 'var(--neutral-900)' }}>{it.quantity}x</strong> {it.name}
                                   {it.toppings && it.toppings.length > 0 && (
                                     <span style={{ fontSize: '0.688rem', color: 'var(--orange-600)', marginLeft: '3px' }}>
-                                      (+{it.toppings.map(t => t.name).join(', ')})
+                                      (+{it.toppings.map(t => `${t.name}${t.quantity > 1 ? ` (${t.quantity}x)` : ''}`).join(', ')})
                                     </span>
                                   )}
                                   {idx < (order.items.length - 1) && <span style={{ color: 'var(--neutral-300)', margin: '0 4px' }}>•</span>}
@@ -410,7 +410,7 @@ export const OrderReturnModal = () => {
                     </span>
                     {item.toppings && item.toppings.length > 0 && (
                       <div style={{ fontSize: '0.719rem', color: 'var(--orange-600)', marginTop: '1px' }}>
-                        Topping: + {item.toppings.map(t => t.name).join(', ')}
+                        Topping: + {item.toppings.map(t => `${t.name}${t.quantity > 1 ? ` (${t.quantity}x)` : ''}`).join(', ')}
                       </div>
                     )}
                   </div>

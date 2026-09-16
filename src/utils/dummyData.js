@@ -97,6 +97,10 @@ export const DUMMY_PRODUCT_MENUS = [
     price: 18000,
     promo_type: null,
     promo_amount: 0,
+    toppings: [
+      { toppingId: 'TOP-001', toppingName: 'Keju Cheddar Parut Ekstra', price: 4000 },
+      { toppingId: 'TOP-002', toppingName: 'Nutella Spread Ekstra', price: 6000 }
+    ],
     ingredients: [
       { materialId: 'RAW-001', materialName: 'Tepung Premix Crepes', amount: 60, unitName: 'gram' },
       { materialId: 'RAW-002', materialName: 'Susu Segar UHT Full Cream', amount: 40, unitName: 'ml' },
@@ -115,6 +119,11 @@ export const DUMMY_PRODUCT_MENUS = [
     price: 24000,
     promo_type: null,
     promo_amount: 0,
+    toppings: [
+      { toppingId: 'TOP-001', toppingName: 'Keju Cheddar Parut Ekstra', price: 4000 },
+      { toppingId: 'TOP-003', toppingName: 'Oreo Biscuit Crumb Ekstra', price: 3500 },
+      { toppingId: 'TOP-004', toppingName: 'Pisang Segar Ekstra', price: 3000 }
+    ],
     ingredients: [
       { materialId: 'RAW-001', materialName: 'Tepung Premix Crepes', amount: 60, unitName: 'gram' },
       { materialId: 'RAW-002', materialName: 'Susu Segar UHT Full Cream', amount: 40, unitName: 'ml' },
@@ -190,6 +199,11 @@ export const DUMMY_PRODUCT_MENUS = [
     price: 24000,
     promo_type: null,
     promo_amount: 0,
+    toppings: [
+      { toppingId: 'TOP-001', toppingName: 'Keju Cheddar Parut Ekstra', price: 4000 },
+      { toppingId: 'TOP-005', toppingName: 'Smoked Beef Slice Ekstra', price: 5000 },
+      { toppingId: 'TOP-006', toppingName: 'Sosis Sapi Frankfurter Ekstra', price: 4500 }
+    ],
     ingredients: [
       { materialId: 'RAW-001', materialName: 'Tepung Premix Crepes', amount: 60, unitName: 'gram' },
       { materialId: 'RAW-002', materialName: 'Susu Segar UHT Full Cream', amount: 40, unitName: 'ml' },

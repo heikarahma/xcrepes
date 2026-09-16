@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useOrder } from '../../controllers/OrderController';
 import { useTopping } from '../../controllers/ToppingController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
+import { useUnit } from '../../controllers/UnitController';
 import { calculateItemDiscount, QUICK_PERCENT_PRESETS, QUICK_NOMINAL_PRESETS, checkMenuAvailability, checkToppingAvailability } from '../../models';
 import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
@@ -21,13 +22,15 @@ import {
   X,
   Ban,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 
 export const ToppingSelectionModal = () => {
   const { toppingModalState, closeToppingModal, addToCart, updateCartItem } = useOrder();
   const { toppings: masterToppings } = useTopping();
   const { rawMaterials = [] } = useRawMaterial();
+  const { showToast } = useUnit ? useUnit() : { showToast: () => {} };
 
   const { isOpen, menu, cartItem } = toppingModalState;
 
@@ -54,11 +57,17 @@ export const ToppingSelectionModal = () => {
   useEffect(() => {
     if (isOpen && menu) {
       if (cartItem) {
-        // Filter out toppings that are out of stock
-        const validExistingToppings = (Array.isArray(cartItem.toppings) ? cartItem.toppings : []).filter(t => {
-          const avail = checkToppingAvailability(t, rawMaterials, masterToppings);
-          return avail.isAvailable;
-        });
+        // Filter out toppings that are out of stock and ensure quantity >= 1
+        const validExistingToppings = (Array.isArray(cartItem.toppings) ? cartItem.toppings : [])
+          .filter(t => {
+            const avail = checkToppingAvailability(t, rawMaterials, masterToppings);
+            return avail.isAvailable;
+          })
+          .map(t => ({
+            ...t,
+            id: t.id || t.toppingId,
+            quantity: Math.max(1, Number(t.quantity) || 1)
+          }));
         setSelectedToppings(validExistingToppings);
         setQuantity(Math.min(maxAllowedPortions, Math.max(1, Number(cartItem.quantity) || 1)));
         setNote(cartItem.note || '');
@@ -72,29 +81,47 @@ export const ToppingSelectionModal = () => {
         setItemDiscountValue(0);
       }
     }
-  }, [isOpen, menu, cartItem, rawMaterials]);
+  }, [isOpen, menu, cartItem, rawMaterials, masterToppings, maxAllowedPortions]);
 
   if (!isOpen || !menu) return null;
 
   // Resolve available toppings:
-  // If menu has specific configured toppings, use those and cross-reference price from masterToppings
-  // If menu has none configured, show all available master toppings so cashier can offer any available topping
-  const menuConfiguredToppings = (menu.toppings && menu.toppings.length > 0)
+  // ONLY show toppings that were configured on this product menu during creation/editing.
+  // If menu has none configured, do NOT fallback to all master toppings.
+  const menuConfiguredToppings = (menu.toppings && Array.isArray(menu.toppings) && menu.toppings.length > 0)
     ? menu.toppings.map(t => {
-        const master = masterToppings.find(mt => mt.id === (t.toppingId || t.id));
+        const toppingId = t.toppingId || t.id;
+        const master = masterToppings.find(mt => mt.id === toppingId);
         return {
-          id: t.toppingId || t.id,
-          name: t.toppingName || t.name,
-          price: master ? master.price : (t.price || 0),
+          id: toppingId,
+          toppingId: toppingId,
+          name: t.toppingName || t.name || master?.name || 'Topping',
+          price: master ? master.price : (Number(t.price) || 0),
           ingredients: master ? master.ingredients : t.ingredients
         };
       })
-    : masterToppings.map(t => ({
-        id: t.id,
-        name: t.name,
-        price: t.price || 0,
-        ingredients: t.ingredients
-      }));
+    : [];
+
+  // If editing an existing cart item and it already has custom toppings, keep them accessible
+  const displayToppings = (() => {
+    const list = [...menuConfiguredToppings];
+    if (cartItem && Array.isArray(cartItem.toppings)) {
+      cartItem.toppings.forEach(ct => {
+        const ctId = ct.id || ct.toppingId;
+        if (ctId && !list.some(item => item.id === ctId)) {
+          const master = masterToppings.find(mt => mt.id === ctId);
+          list.push({
+            id: ctId,
+            toppingId: ctId,
+            name: ct.name || ct.toppingName || master?.name || 'Topping',
+            price: master ? master.price : (Number(ct.price) || 0),
+            ingredients: master ? master.ingredients : ct.ingredients
+          });
+        }
+      });
+    }
+    return list;
+  })();
 
   const handleToggleTopping = (topping) => {
     const topAvail = checkToppingAvailability(topping, rawMaterials, masterToppings);
@@ -107,12 +134,53 @@ export const ToppingSelectionModal = () => {
       if (isSelected) {
         return prev.filter(t => t.id !== topping.id);
       } else {
-        return [...prev, topping];
+        return [...prev, { ...topping, quantity: 1 }];
       }
     });
   };
 
-  const toppingsTotal = selectedToppings.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+  const handleUpdateToppingQty = (toppingId, delta, e) => {
+    if (e) e.stopPropagation();
+
+    setSelectedToppings(prev => {
+      const existing = prev.find(t => t.id === toppingId);
+      if (!existing) {
+        if (delta > 0) {
+          const topping = displayToppings.find(t => t.id === toppingId);
+          if (!topping) return prev;
+          const topAvail = checkToppingAvailability(topping, rawMaterials, masterToppings);
+          if (!topAvail.isAvailable) return prev;
+          return [...prev, { ...topping, quantity: 1 }];
+        }
+        return prev;
+      }
+
+      const newQty = (existing.quantity || 1) + delta;
+      if (newQty <= 0) {
+        return prev.filter(t => t.id !== toppingId);
+      }
+
+      // Check available stock if delta > 0
+      const topAvail = checkToppingAvailability(existing, rawMaterials, masterToppings);
+      if (delta > 0 && topAvail.maxPortions < 9999) {
+        if (newQty * quantity > topAvail.maxPortions) {
+          if (typeof showToast === 'function') {
+            showToast(`Stok bahan baku topping ini hanya mencukupi untuk ${topAvail.maxPortions} porsi.`, 'warning', 'Batas Stok Topping');
+          }
+          return prev;
+        }
+      }
+
+      return prev.map(t => t.id === toppingId ? { ...t, quantity: newQty } : t);
+    });
+  };
+
+  const toppingsTotal = selectedToppings.reduce(
+    (sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 
+    0
+  );
+  const totalToppingCount = selectedToppings.reduce((sum, t) => sum + (Number(t.quantity) || 1), 0);
+
   const basePrice = Number(menu.price ?? menu.basePrice) || 0;
   const unitPrice = basePrice + toppingsTotal;
   const grossTotalPrice = unitPrice * quantity;
@@ -204,18 +272,25 @@ export const ToppingSelectionModal = () => {
               <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> PILIH EXTRA TOPPING:
             </label>
             <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-              {selectedToppings.length} dipilih
+              {selectedToppings.length > 0 
+                ? `${selectedToppings.length} jenis (${totalToppingCount}x)` 
+                : '0 dipilih'}
             </span>
           </div>
 
-          {menuConfiguredToppings.length === 0 ? (
+          {displayToppings.length === 0 ? (
             <div style={styles.emptyToppingsAlert}>
-              Tidak ada data master topping yang tersedia.
+              <AlertCircle size={16} color="var(--neutral-400)" style={{ flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: 'var(--neutral-600)', fontSize: '0.813rem' }}>
+                Tidak ada pilihan extra topping
+              </span>
             </div>
           ) : (
             <div style={styles.toppingList}>
-              {menuConfiguredToppings.map(topping => {
-                const isSelected = selectedToppings.some(t => t.id === topping.id);
+              {displayToppings.map(topping => {
+                const selectedItem = selectedToppings.find(t => t.id === topping.id);
+                const isSelected = !!selectedItem;
+                const toppingQty = selectedItem?.quantity || 1;
                 const toppingAvailability = checkToppingAvailability(topping, rawMaterials, masterToppings);
                 const isToppingOutOfStock = !toppingAvailability.isAvailable;
 
@@ -256,15 +331,19 @@ export const ToppingSelectionModal = () => {
                         }}>
                           {topping.name}
                         </span>
-                        {isToppingOutOfStock && (
+                        {isToppingOutOfStock ? (
                           <span style={{ fontSize: '0.688rem', color: '#dc2626', fontWeight: 600 }}>
                             Stok Bahan Habis ({toppingAvailability.emptyIngredients.map(e => e.rawMaterialName).join(', ')})
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.719rem', color: isSelected ? 'var(--blue-700)' : 'var(--neutral-500)' }}>
+                            @{formatIDR(topping.price)} / porsi
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                       {isToppingOutOfStock ? (
                         <span style={{
                           fontSize: '0.719rem',
@@ -277,25 +356,110 @@ export const ToppingSelectionModal = () => {
                         }}>
                           Habis (0)
                         </span>
+                      ) : isSelected ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {/* Topping Qty Stepper */}
+                          <div 
+                            onClick={(e) => e.stopPropagation()} 
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              backgroundColor: '#ffffff',
+                              border: '1.5px solid var(--blue-500)',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              boxShadow: '0 1px 3px rgba(37, 99, 235, 0.12)'
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => handleUpdateToppingQty(topping.id, -1, e)}
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: 'none',
+                                background: 'transparent',
+                                color: toppingQty === 1 ? '#dc2626' : 'var(--blue-700)',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                              title={toppingQty > 1 ? "Kurangi qty topping" : "Hapus topping"}
+                            >
+                              {toppingQty > 1 ? <Minus size={13} strokeWidth={2.5} /> : <Trash2 size={12} />}
+                            </button>
+                            <span style={{
+                              minWidth: '22px',
+                              textAlign: 'center',
+                              fontSize: '0.813rem',
+                              fontWeight: 800,
+                              color: 'var(--blue-700)',
+                              userSelect: 'none'
+                            }}>
+                              {toppingQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleUpdateToppingQty(topping.id, 1, e)}
+                              style={{
+                                width: '26px',
+                                height: '26px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--blue-700)',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                              title="Tambah qty topping"
+                            >
+                              <Plus size={13} strokeWidth={2.5} />
+                            </button>
+                          </div>
+
+                          {/* Topping Subtotal */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: '65px' }}>
+                            <span style={{
+                              fontSize: '0.813rem',
+                              fontWeight: 800,
+                              color: 'var(--blue-700)'
+                            }}>
+                              +{formatIDR((Number(topping.price) || 0) * toppingQty)}
+                            </span>
+                            {quantity > 1 && (
+                              <span style={{ fontSize: '0.688rem', color: 'var(--blue-600)', fontWeight: 600 }}>
+                                (x{quantity} = +{formatIDR((Number(topping.price) || 0) * toppingQty * quantity)})
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       ) : (
-                        <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
                             fontSize: '0.813rem',
                             fontWeight: 700,
-                            color: isSelected ? 'var(--blue-700)' : 'var(--neutral-600)'
+                            color: 'var(--neutral-600)'
                           }}>
-                            +{formatIDR((Number(topping.price) || 0) * quantity)}
+                            +{formatIDR(topping.price)}
                           </span>
-                          {quantity > 1 && (
-                            <span style={{
-                              fontSize: '0.688rem',
-                              color: isSelected ? 'var(--blue-600)' : 'var(--neutral-400)',
-                              fontWeight: 500
-                            }}>
-                              ({quantity}x @{formatIDR(topping.price)})
-                            </span>
-                          )}
-                        </>
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            backgroundColor: 'var(--neutral-100)',
+                            border: '1px solid var(--neutral-300)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--neutral-600)'
+                          }}>
+                            <Plus size={13} />
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -526,7 +690,7 @@ export const ToppingSelectionModal = () => {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
             {selectedToppings.length > 0 && (
               <span style={{ fontSize: '0.688rem', color: 'var(--blue-700)', fontWeight: 700, backgroundColor: 'var(--blue-50)', padding: '3px 6px', borderRadius: '4px' }}>
-                +{formatIDR(toppingsTotal * quantity)} Topping
+                +{formatIDR(toppingsTotal * quantity)} ({totalToppingCount * quantity}x Topping)
               </span>
             )}
             {itemDiscountAmount > 0 && (
@@ -548,7 +712,7 @@ export const ToppingSelectionModal = () => {
           >
             {cartItem
               ? `Simpan Perubahan (${formatIDR(netTotalPrice)})`
-              : (selectedToppings.length > 0 ? `Tambah (+${selectedToppings.length} Topping)` : 'Tambah ke Pesanan')}
+              : (selectedToppings.length > 0 ? `Tambah (+${totalToppingCount} Topping) (${formatIDR(netTotalPrice)})` : `Tambah ke Pesanan (${formatIDR(netTotalPrice)})`)}
           </Button>
         </div>
 
@@ -700,12 +864,14 @@ const styles = {
     flexShrink: 0
   },
   emptyToppingsAlert: {
-    padding: '14px',
-    textAlign: 'center',
-    backgroundColor: 'var(--neutral-50)',
+    padding: '12px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    backgroundColor: '#f8fafc',
+    border: '1px dashed #cbd5e1',
     borderRadius: '8px',
-    color: 'var(--neutral-500)',
-    fontSize: '0.813rem'
+    color: 'var(--neutral-600)'
   },
   stepperContainer: {
     display: 'flex',
