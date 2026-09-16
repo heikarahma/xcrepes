@@ -45,7 +45,7 @@ export const CashierFormModal = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [permissions, setPermissions] = useState(['kasir', 'raw-material', 'returns']);
+  const [permissions, setPermissions] = useState(['kasir', 'raw-material', 'stock-opname', 'returns']);
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,13 +56,13 @@ export const CashierFormModal = () => {
         setNama(cashier.nama || '');
         setUsername(cashier.username || '');
         setPassword(cashier.password || '');
-        setPermissions(Array.isArray(cashier.permissions) ? cashier.permissions : ['kasir', 'raw-material', 'returns']);
+        setPermissions(Array.isArray(cashier.permissions) ? cashier.permissions : ['kasir', 'raw-material', 'stock-opname', 'returns']);
         setIsActive(cashier.isActive !== false);
       } else {
         setNama('');
         setUsername('');
         setPassword('');
-        setPermissions(['kasir', 'raw-material', 'returns']);
+        setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
         setIsActive(true);
       }
       setShowPassword(false);
@@ -150,7 +150,7 @@ export const CashierFormModal = () => {
       setNama('');
       setUsername('');
       setPassword('');
-      setPermissions(['kasir', 'raw-material', 'returns']);
+      setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
       setIsActive(true);
       setShowPassword(false);
       setErrors({});

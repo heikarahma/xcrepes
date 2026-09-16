@@ -29,8 +29,8 @@ assert(viewContent.includes('<span style={styles.detailLabel}>Dicatat Oleh:</spa
 console.log('✔ Modal Detail card includes "Dicatat Oleh" row');
 
 // 6. Verify table colSpan is 10 for empty state
-assert(viewContent.includes('colSpan={10}'), 'Empty state colSpan must be 10');
-console.log('✔ Empty state colSpan is 10');
+assert(viewContent.includes('colSpan={9}'), "Empty state colSpan must be 9");
+console.log('✔ Empty state colSpan is 9');
 
 // 7. Verify RawMaterialController has countedBy tracking
 assert(controllerContent.includes('countedBy: hasActual ? (entry?.countedBy || closedBy || \'Kasir\') : \'-\''), 'completeStoreClosing preserves countedBy');

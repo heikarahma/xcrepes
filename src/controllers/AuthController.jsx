@@ -26,7 +26,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(AUTH_USER_STORAGE_KEY);
       if (!saved) return null;
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.role === 'kasir') {
+        const perms = Array.isArray(parsed.permissions) ? parsed.permissions : [];
+        if (!perms.includes('stock-opname')) {
+          parsed.permissions = [...perms, 'stock-opname'];
+        }
+      }
+      return parsed;
     } catch (e) {
       console.error('Gagal membaca sesi user dari localStorage', e);
       return null;
@@ -165,7 +172,7 @@ export const AuthProvider = ({ children }) => {
       nama: matchedCashier.nama,
       username: matchedCashier.username,
       role: 'kasir',
-      permissions: matchedCashier.permissions || [],
+      permissions: Array.from(new Set([...(matchedCashier.permissions || []), 'stock-opname'])),
       loggedInAt: new Date().toISOString()
     };
 
@@ -192,9 +199,9 @@ export const AuthProvider = ({ children }) => {
       return perms.includes('reports-sales') || perms.includes('reports-materials');
     }
 
+    // Fitur Stock Opname selalu dapat diakses oleh Kasir (tutup toko fisik harian kasir)
     if (featureKey === 'stock-opname') {
-      const perms = currentUser.permissions || [];
-      return perms.includes('stock-opname') || perms.includes('raw-material');
+      return true;
     }
 
     const perms = currentUser.permissions || [];
