@@ -25,7 +25,8 @@ import {
   Sliders,
   CheckCheck,
   XCircle,
-  RotateCcw
+  RotateCcw,
+  ClipboardCheck
 } from 'lucide-react';
 
 export const CashierFormModal = () => {
@@ -177,6 +178,7 @@ export const CashierFormModal = () => {
       case 'topping': return <Sparkles size={18} color="var(--blue-500)" />;
       case 'product-menu': return <Cookie size={18} color="var(--blue-500)" />;
       case 'raw-material': return <Package size={18} color="var(--blue-500)" />;
+      case 'stock-opname': return <ClipboardCheck size={18} color="var(--blue-500)" />;
       case 'returns': return <RotateCcw size={18} color="var(--blue-500)" />;
       case 'reports-sales': return <TrendingUp size={18} color="var(--blue-500)" />;
       case 'reports-materials': return <Package size={18} color="var(--blue-500)" />;
@@ -189,7 +191,7 @@ export const CashierFormModal = () => {
     setNama('');
     setUsername('');
     setPassword('');
-    setPermissions(['kasir', 'raw-material', 'returns']);
+    setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
     setIsActive(true);
     setShowPassword(false);
     setErrors({});

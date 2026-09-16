@@ -62,6 +62,13 @@ export const NAV_FEATURES = [
     description: 'Akses pantau stok bahan baku dan pencatatan stok masuk (restok) bagi kasir'
   },
   {
+    key: 'stock-opname',
+    label: 'Stock Opname',
+    group: 'INVENTORI & STOK',
+    iconName: 'ClipboardCheck',
+    description: 'Akses rekonsiliasi stok fisik vs sistem, cetak formulir, dan ekspor laporan'
+  },
+  {
     key: 'returns',
     label: 'Retur & Kerusakan (Waste)',
     group: 'RETUR & KERUSAKAN',

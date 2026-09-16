@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   User,
   KeyRound,
-  RotateCcw
+  RotateCcw,
+  ClipboardCheck
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -38,7 +39,7 @@ export const Sidebar = () => {
   } = useUnit();
 
   const { totalAllCategories } = useCategory();
-  const { totalAllRawMaterials, stockLogs = [] } = useRawMaterial();
+  const { totalAllRawMaterials, stockLogs = [], opnameSummary } = useRawMaterial();
   const { totalAllToppings } = useTopping();
   const { totalAllMenus } = useProductMenu();
   const { orders = [] } = useOrder();
@@ -49,7 +50,7 @@ export const Sidebar = () => {
   const isSuperAdmin = currentUser?.role === 'superadmin';
   const hasSales = hasPermission('kasir');
   const hasMasterData = hasPermission('unit') || hasPermission('category') || hasPermission('topping') || hasPermission('product-menu');
-  const hasInventory = hasPermission('raw-material');
+  const hasInventory = hasPermission('raw-material') || hasPermission('stock-opname');
   const hasReturns = hasPermission('returns');
   const hasReports = hasPermission('reports');
   const hasSettingsGroup = hasPermission('settings') || isSuperAdmin;
@@ -247,6 +248,27 @@ export const Sidebar = () => {
                     <span style={activeMenu === 'raw-material' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
                       {totalAllRawMaterials}
                     </span>
+                  </button>
+                )}
+
+                {hasPermission('stock-opname') && (
+                  <button
+                    className={`sidebar-nav-btn ${activeMenu === 'stock-opname' ? 'is-active' : ''}`}
+                    style={{
+                      ...styles.navButton,
+                      ...(activeMenu === 'stock-opname' ? styles.navButtonActive : {})
+                    }}
+                    onClick={() => handleSelectMenu('stock-opname')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <ClipboardCheck size={18} color={activeMenu === 'stock-opname' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
+                      <span>Stock Opname</span>
+                    </div>
+                    {totalAllRawMaterials > 0 && (
+                      <span style={activeMenu === 'stock-opname' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                        {opnameSummary?.countedCount > 0 ? `${opnameSummary.countedCount}/${totalAllRawMaterials}` : totalAllRawMaterials}
+                      </span>
+                    )}
                   </button>
                 )}
               </div>

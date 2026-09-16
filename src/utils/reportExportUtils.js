@@ -1214,3 +1214,244 @@ export const exportMaterialUsageToPDF = ({
   const filename = `Laporan_Pengurangan_Bahan_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 };
+
+/**
+ * Export Stock Opname to Excel Spreadsheet
+ */
+export const exportStockOpnameToExcel = ({
+  items = [],
+  summary = {},
+  storeName = 'XCrepes POS',
+  conductedBy = 'Admin',
+  isCashier = false
+}) => {
+  const currentDateStr = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const rows = [
+    [storeName.toUpperCase()],
+    ['LAPORAN STOCK OPNAME FISIK BAHAN BAKU'],
+    [`Tanggal Pelaksanaan : ${currentDateStr} WIB`],
+    [`Petugas Pemeriksa    : ${conductedBy}`],
+    [`Total Bahan Dihitung : ${summary.totalCounted || 0} dari ${items.length} Bahan`],
+    [`Ringkasan Hasil      : Sesuai (${summary.matchCount || 0}), Kurang/Defisit (${summary.deficitCount || 0}), Lebih/Surplus (${summary.surplusCount || 0})`],
+    []
+  ];
+
+  const headerRow = [
+    'No',
+    'Kode Bahan',
+    'Nama Bahan Baku',
+    'Kategori',
+    'Satuan',
+    'Stok Sistem',
+    'Stok Fisik (Aktual)',
+    'Selisih (Fisik - Sistem)',
+    'Status'
+  ];
+
+  if (!isCashier) {
+    headerRow.push('Harga Beli Satuan (Rp)', 'Estimasi Nilai Selisih (Rp)');
+  }
+  headerRow.push('Catatan / Keterangan');
+
+  rows.push(headerRow);
+
+  items.forEach((item, idx) => {
+    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
+    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
+    const actStock = hasActual ? Number(item.actualStock) : '-';
+    const diff = hasActual ? (Number(item.actualStock) - sysStock) : '-';
+    
+    let statusLabel = 'Belum Dihitung';
+    if (hasActual) {
+      if (diff === 0) statusLabel = 'Sesuai (Match)';
+      else if (diff > 0) statusLabel = 'Lebih (Surplus)';
+      else statusLabel = 'Kurang (Defisit)';
+    }
+
+    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
+    const diffValue = hasActual ? (diff * price) : 0;
+
+    const row = [
+      idx + 1,
+      item.id,
+      item.name || item.rawMaterialName,
+      item.categoryName || '-',
+      item.unitName || 'Unit',
+      sysStock,
+      actStock,
+      hasActual ? (diff > 0 ? `+${diff}` : diff) : '-',
+      statusLabel
+    ];
+
+    if (!isCashier) {
+      row.push(price, hasActual ? diffValue : '-');
+    }
+    row.push(item.adminNote || item.note || '-');
+
+    rows.push(row);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws['!cols'] = [
+    { wch: 6 },
+    { wch: 14 },
+    { wch: 28 },
+    { wch: 18 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 24 },
+    { wch: 18 }
+  ];
+  if (!isCashier) {
+    ws['!cols'].push({ wch: 20 }, { wch: 24 });
+  }
+  ws['!cols'].push({ wch: 30 });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock Opname');
+
+  const filename = `Laporan_Stock_Opname_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+/**
+ * Export Stock Opname to PDF Document (Landscape A4)
+ */
+export const exportStockOpnameToPDF = ({
+  items = [],
+  summary = {},
+  storeName = 'XCrepes POS',
+  conductedBy = 'Admin',
+  isCashier = false
+}) => {
+  const doc = new jsPDF('landscape', 'pt', 'a4');
+
+  const currentDateStr = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  drawPDFHeader(
+    doc,
+    'Laporan Hasil Stock Opname Fisik Bahan Baku',
+    'Rekapitulasi Hasil Audit Perbandingan Stok Sistem vs Fisik Aktual',
+    [
+      { label: 'Waktu Opname', value: `${currentDateStr} WIB` },
+      { label: 'Petugas', value: conductedBy },
+      { label: 'Total Bahan', value: `${summary.totalCounted || 0} / ${items.length} Dihitung` },
+      { label: 'Ringkasan', value: `Sesuai: ${summary.matchCount || 0} | Kurang: ${summary.deficitCount || 0} | Lebih: ${summary.surplusCount || 0}` }
+    ],
+    storeName
+  );
+
+  const headRow = [
+    'No',
+    'Nama Bahan Baku',
+    'Kategori',
+    'Satuan',
+    'Stok Sistem',
+    'Stok Fisik',
+    'Selisih',
+    'Status'
+  ];
+
+  if (!isCashier) {
+    headRow.push('Nilai Selisih');
+  }
+  headRow.push('Catatan');
+
+  const tableBody = items.map((item, idx) => {
+    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
+    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
+    const actStock = hasActual ? Number(item.actualStock) : null;
+    const diff = hasActual ? (actStock - sysStock) : null;
+
+    let statusLabel = 'Belum Dihitung';
+    if (hasActual) {
+      if (diff === 0) statusLabel = 'Cocok (0)';
+      else if (diff > 0) statusLabel = `Lebih (+${diff})`;
+      else statusLabel = `Kurang (${diff})`;
+    }
+
+    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
+    const diffVal = hasActual ? (diff * price) : 0;
+
+    const row = [
+      (idx + 1).toString(),
+      item.name || item.rawMaterialName,
+      item.categoryName || '-',
+      item.unitName || 'Unit',
+      formatNumber(sysStock),
+      hasActual ? formatNumber(actStock) : '-',
+      hasActual ? (diff > 0 ? `+${formatNumber(diff)}` : formatNumber(diff)) : '-',
+      statusLabel
+    ];
+
+    if (!isCashier) {
+      row.push(hasActual ? (diffVal === 0 ? 'Rp 0' : formatIDR(diffVal)) : '-');
+    }
+    row.push(item.adminNote || item.note || '-');
+
+    return row;
+  });
+
+  const columnStyles = {
+    0: { halign: 'center', cellWidth: 26 },
+    1: { halign: 'left', fontStyle: 'bold', cellWidth: 140 },
+    2: { halign: 'left', cellWidth: 90 },
+    3: { halign: 'center', cellWidth: 50 },
+    4: { halign: 'right', cellWidth: 65 },
+    5: { halign: 'right', fontStyle: 'bold', cellWidth: 65 },
+    6: { halign: 'right', fontStyle: 'bold', cellWidth: 65 },
+    7: { halign: 'center', cellWidth: 80 }
+  };
+
+  if (!isCashier) {
+    columnStyles[8] = { halign: 'right', fontStyle: 'bold', cellWidth: 85 };
+    columnStyles[9] = { halign: 'left', cellWidth: 110 };
+  } else {
+    columnStyles[8] = { halign: 'left', cellWidth: 150 };
+  }
+
+  autoTable(doc, {
+    startY: 78,
+    head: [headRow],
+    body: tableBody,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 5,
+      textColor: [30, 41, 59],
+      valign: 'middle'
+    },
+    headStyles: {
+      fillColor: [0, 96, 174],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252]
+    },
+    columnStyles,
+    margin: { left: 36, right: 36 }
+  });
+
+  setupPDFFooter(doc, storeName);
+
+  const filename = `Laporan_Stock_Opname_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(filename);
+};
+

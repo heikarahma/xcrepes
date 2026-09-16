@@ -192,6 +192,11 @@ export const AuthProvider = ({ children }) => {
       return perms.includes('reports-sales') || perms.includes('reports-materials');
     }
 
+    if (featureKey === 'stock-opname') {
+      const perms = currentUser.permissions || [];
+      return perms.includes('stock-opname') || perms.includes('raw-material');
+    }
+
     const perms = currentUser.permissions || [];
     return perms.includes(featureKey);
   };

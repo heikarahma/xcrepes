@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   KeyRound,
   LogOut,
-  RotateCcw
+  RotateCcw,
+  ClipboardCheck
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -71,6 +72,8 @@ export const Navbar = () => {
         return { group: 'Master Data', title: 'Data Topping', icon: Sparkles };
       case 'raw-material':
         return { group: 'Inventori & Stok', title: 'Stok Bahan Baku', icon: Package };
+      case 'stock-opname':
+        return { group: 'Inventori & Stok', title: 'Stock Opname Bahan Baku', icon: ClipboardCheck };
       case 'returns':
         return { group: 'Retur & Kerusakan', title: 'Pusat Retur & Waste', icon: RotateCcw };
       case 'reports':

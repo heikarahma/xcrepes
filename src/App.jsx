@@ -48,6 +48,7 @@ import { ProductMenuDeleteModal } from './views/master/productMenu/ProductMenuDe
 
 // Views [V] - Inventori & Stok
 import { RawMaterialListView } from './views/inventory/rawMaterial/RawMaterialListView';
+import { StockOpnameView } from './views/inventory/rawMaterial/StockOpnameView';
 import { RawMaterialFormModal } from './views/inventory/rawMaterial/RawMaterialFormModal';
 import { RawMaterialDeleteModal } from './views/inventory/rawMaterial/RawMaterialDeleteModal';
 import { StockAdjustModal } from './views/inventory/rawMaterial/StockAdjustModal';
@@ -93,7 +94,7 @@ function MainLayout() {
 
       // Jika menu yang aktif saat ini tidak diizinkan, arahkan ke menu pertama yang diizinkan
       if (!isAllowed) {
-        const candidateMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'returns', 'reports-sales', 'reports-materials', 'settings', 'unit'];
+        const candidateMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'reports-sales', 'reports-materials', 'settings', 'unit'];
         const firstPermitted = candidateMenus.find(m => hasPermission(m));
         if (firstPermitted) {
           setActiveMenu(firstPermitted);
@@ -114,6 +115,8 @@ function MainLayout() {
         return <ToppingListView />;
       case 'raw-material':
         return <RawMaterialListView />;
+      case 'stock-opname':
+        return <StockOpnameView />;
       case 'returns':
         return <ReturnsManagementView />;
       case 'settings':
