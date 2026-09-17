@@ -34,3 +34,5 @@ dist-ssr
 # Temporary files
 *.tmp
 *.bak
+scratch/
+

@@ -1,0 +1,19 @@
+-- MENU PRODUK BAGIAN 10 (3 produk)
+
+INSERT INTO public.product_menus ("id", "name", "category_id", "category_name", "image", "price", "promo_type", "promo_amount", "ingredients", "toppings", "created_at", "updated_at")
+VALUES
+('MENU-037', 'Banana split', 'CAT-004', 'Dessert', '', 24000, 'none', 0, '[{"quantity":"1","unitName":"Pcs","rawMaterialId":"RAW-013","rawMaterialName":"pisang"},{"quantity":"240","unitName":"Gram","rawMaterialId":"RAW-019","rawMaterialName":"Ice Cream"},{"quantity":"3","unitName":"Pcs","rawMaterialId":"RAW-030","rawMaterialName":"Cherry"},{"quantity":"1","unitName":"Pcs","rawMaterialId":"RAW-029","rawMaterialName":"Sendok Plastik"}]'::jsonb, '[]'::jsonb, '2026-09-16T05:52:43.687+00:00', '2026-09-16T05:52:43.687+00:00'),
+('MENU-023', 'Tuna Salad Cheese', 'CAT-002', 'Crepes Asin', '', 25500, 'none', 0, '[{"quantity":"88","unitName":"Gram","rawMaterialId":"RAW-001","rawMaterialName":"Adonan"},{"quantity":"1","unitName":"Gram","rawMaterialId":"RAW-035","rawMaterialName":"Tuna"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-037","rawMaterialName":"Saus Tomat"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-038","rawMaterialName":"Saos Sambal"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-039","rawMaterialName":"Mayonaise"},{"quantity":"5","unitName":"Gram","rawMaterialId":"RAW-036","rawMaterialName":"Lettuce"},{"quantity":"1","unitName":"Pcs","rawMaterialId":"RAW-040","rawMaterialName":"Cheese Slice"}]'::jsonb, '[{"id":"TOP-021","name":"Dus Crepes","price":2000,"toppingId":"TOP-021","toppingName":"Dus Crepes"},{"id":"TOP-019","name":"Cheese Slice","price":5000,"toppingId":"TOP-019","toppingName":"Cheese Slice"},{"id":"TOP-018","name":"Sausage","price":8000,"toppingId":"TOP-018","toppingName":"Sausage"},{"id":"TOP-017","name":"Smoke Beef","price":8000,"toppingId":"TOP-017","toppingName":"Smoke Beef"},{"id":"TOP-016","name":"Beef Burger","price":8000,"toppingId":"TOP-016","toppingName":"Beef Burger"},{"id":"TOP-015","name":"Tuna","price":8000,"toppingId":"TOP-015","toppingName":"Tuna"}]'::jsonb, '2026-09-14T09:20:17.945+00:00', '2026-09-16T07:59:51.894+00:00'),
+('MENU-022', 'Tuna Salad', 'CAT-002', 'Crepes Asin', '', 22500, 'none', 0, '[{"quantity":"88","unitName":"Gram","rawMaterialId":"RAW-001","rawMaterialName":"Adonan"},{"quantity":"1","unitName":"Gram","rawMaterialId":"RAW-035","rawMaterialName":"Tuna"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-037","rawMaterialName":"Saus Tomat"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-038","rawMaterialName":"Saos Sambal"},{"quantity":"2","unitName":"Gram","rawMaterialId":"RAW-039","rawMaterialName":"Mayonaise"},{"quantity":"5","unitName":"Gram","rawMaterialId":"RAW-036","rawMaterialName":"Lettuce"}]'::jsonb, '[{"id":"TOP-021","name":"Dus Crepes","price":2000,"toppingId":"TOP-021","toppingName":"Dus Crepes"},{"id":"TOP-019","name":"Cheese Slice","price":5000,"toppingId":"TOP-019","toppingName":"Cheese Slice"},{"id":"TOP-018","name":"Sausage","price":8000,"toppingId":"TOP-018","toppingName":"Sausage"},{"id":"TOP-017","name":"Smoke Beef","price":8000,"toppingId":"TOP-017","toppingName":"Smoke Beef"},{"id":"TOP-016","name":"Beef Burger","price":8000,"toppingId":"TOP-016","toppingName":"Beef Burger"},{"id":"TOP-015","name":"Tuna","price":8000,"toppingId":"TOP-015","toppingName":"Tuna"}]'::jsonb, '2026-09-14T09:12:22.165+00:00', '2026-09-16T08:02:32.135+00:00')
+ON CONFLICT (id) DO UPDATE SET
+  "name" = EXCLUDED."name",
+  "category_id" = EXCLUDED."category_id",
+  "category_name" = EXCLUDED."category_name",
+  "image" = EXCLUDED."image",
+  "price" = EXCLUDED."price",
+  "promo_type" = EXCLUDED."promo_type",
+  "promo_amount" = EXCLUDED."promo_amount",
+  "ingredients" = EXCLUDED."ingredients",
+  "toppings" = EXCLUDED."toppings",
+  "created_at" = EXCLUDED."created_at",
+  "updated_at" = EXCLUDED."updated_at";
