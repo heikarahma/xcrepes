@@ -11,6 +11,7 @@ import {
   exportProductPerformanceToPDF,
   exportTransactionHistoryToExcel,
   exportTransactionHistoryToPDF,
+  exportCompleteSalesReportToExcel,
   exportMaterialUsageToExcel,
   exportMaterialUsageToPDF
 } from '../utils/reportExportUtils';
@@ -30,6 +31,7 @@ export const useReportController = useReport;
 export const ReportProvider = ({ children }) => {
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isCashier = currentUser?.role === 'kasir';
   const { orders = [] } = useOrder();
   const { rawMaterials = [], stockLogs = [] } = useRawMaterial();
   const { productMenus = [] } = useProductMenu();
@@ -125,32 +127,16 @@ export const ReportProvider = ({ children }) => {
     }, 0);
   };
 
-  // 1. FILTERED ORDERS by Date Range & Payment Method
+  // 1. FILTERED ORDERS by Date Range
   const filteredOrders = useMemo(() => {
     const { start, end } = getDateBounds(dateRangePreset);
 
     return orders.filter(order => {
       const orderDate = new Date(order.date || order.createdAt || Date.now());
       if (orderDate < start || orderDate > end) return false;
-
-      if (salesPaymentFilter !== 'ALL' && order.paymentMethod !== salesPaymentFilter) {
-        return false;
-      }
-
-      if (salesSearchTerm.trim()) {
-        const q = salesSearchTerm.toLowerCase().trim();
-        const matchesInv = (order.invoiceNumber || '').toLowerCase().includes(q);
-        const matchesCustomer = (order.customerName || '').toLowerCase().includes(q);
-        const matchesItem = (order.items || []).some(it => 
-          (it.name || '').toLowerCase().includes(q) ||
-          (it.toppings || []).some(t => (t.name || '').toLowerCase().includes(q))
-        );
-        if (!matchesInv && !matchesCustomer && !matchesItem) return false;
-      }
-
       return true;
     });
-  }, [orders, dateRangePreset, customStartDate, customEndDate, salesPaymentFilter, salesSearchTerm]);
+  }, [orders, dateRangePreset, customStartDate, customEndDate]);
 
   // 2. DETAILED ENRICHED ORDERS (with individual HPP calculation)
   const enrichedOrders = useMemo(() => {
@@ -212,13 +198,14 @@ export const ReportProvider = ({ children }) => {
 
   // 3. SALES KPI SUMMARY
   const salesSummary = useMemo(() => {
-    const totalTransactions = enrichedOrders.length;
+    const activeOrders = enrichedOrders.filter(o => o.status !== 'cancelled' && o.status !== 'returned');
+    const totalTransactions = activeOrders.length;
     let totalGrossRevenue = 0;
     let totalEstimatedHPP = 0;
     let totalMenuQtySold = 0;
     let totalToppingQtySold = 0;
 
-    enrichedOrders.forEach(order => {
+    activeOrders.forEach(order => {
       totalGrossRevenue += order.grossRevenue;
       totalEstimatedHPP += order.orderTotalHPP;
 
@@ -252,6 +239,7 @@ export const ReportProvider = ({ children }) => {
     const toppingMap = {};
 
     enrichedOrders.forEach(order => {
+      if (order.status === 'cancelled' || order.status === 'returned') return;
       (order.items || []).forEach(item => {
         const qty = Number(item.quantity) || 1;
         const menuKey = item.menuId || item.name;
@@ -356,6 +344,7 @@ export const ReportProvider = ({ children }) => {
     let totalToppingRevenue = 0;
 
     enrichedOrders.forEach(order => {
+      if (order.status === 'cancelled' || order.status === 'returned') return;
       (order.items || []).forEach(item => {
         const qty = Number(item.quantity) || 1;
         const menuKey = item.menuId || item.name;
@@ -616,30 +605,22 @@ export const ReportProvider = ({ children }) => {
 
   // Excel export handler
   const handleExportExcel = () => {
+    if (isCashier && activeReportTab === 'sales') return;
+
     if (activeReportTab === 'sales') {
-      if (activeSalesSection === 'products') {
-        const isCombined = salesItemTypeFilter === 'COMBINED';
-        const itemsToExport = isCombined ? menuSalesWithToppings.list : productPerformanceList;
-        const activeFilterLabel = isCombined ? 'Ringkasan Menu & Topping' : salesItemTypeFilter === 'MENU' ? 'Menu Utama' : salesItemTypeFilter === 'TOPPING' ? 'Extra Topping' : 'Semua Item';
-        exportProductPerformanceToExcel({
-          items: itemsToExport,
-          periodLabel,
-          activeFilter: activeFilterLabel,
-          searchTerm: salesSearchTerm,
-          storeName,
-          showProfitMetrics: isSuperAdmin
-        });
-      } else {
-        const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
-        exportTransactionHistoryToExcel({
-          orders: enrichedOrders,
-          periodLabel,
-          activePaymentFilter: activePaymentLabel,
-          searchTerm: salesSearchTerm,
-          storeName,
-          showProfitMetrics: isSuperAdmin
-        });
-      }
+      const isCombined = salesItemTypeFilter === 'COMBINED';
+      const itemsToExport = isCombined ? menuSalesWithToppings.list : productPerformanceList;
+      const activeFilterLabel = isCombined ? 'Ringkasan Menu & Topping' : salesItemTypeFilter === 'MENU' ? 'Menu Utama' : salesItemTypeFilter === 'TOPPING' ? 'Extra Topping' : 'Semua Item';
+      const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
+      exportCompleteSalesReportToExcel({
+        items: itemsToExport,
+        orders: enrichedOrders,
+        periodLabel,
+        activeFilter: activeFilterLabel,
+        activePaymentFilter: activePaymentLabel,
+        storeName,
+        showProfitMetrics: isSuperAdmin
+      });
     } else {
       const selectedMat = rawMaterials.find(m => m.id === materialIdFilter);
       const activeMatLabel = selectedMat ? `${selectedMat.name} (${selectedMat.unitName})` : 'Semua Bahan Baku';
@@ -661,6 +642,8 @@ export const ReportProvider = ({ children }) => {
 
   // PDF export handler
   const handleExportPDF = () => {
+    if (isCashier && activeReportTab === 'sales') return;
+
     if (activeReportTab === 'sales') {
       if (activeSalesSection === 'products') {
         const isCombined = salesItemTypeFilter === 'COMBINED';

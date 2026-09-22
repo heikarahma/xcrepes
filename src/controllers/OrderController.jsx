@@ -26,7 +26,7 @@ export const useOrder = () => {
 export const useOrderController = useOrder;
 
 export const OrderProvider = ({ children }) => {
-  const { rawMaterials = [], deductMaterialsForOrder, recordOrderReturnLog } = useRawMaterial();
+  const { rawMaterials = [], deductMaterialsForOrder, restoreMaterialsForOrder, recordOrderReturnLog } = useRawMaterial();
   const { productMenus } = useProductMenu();
   const { toppings } = useTopping();
   const { showToast } = useUnit();
@@ -87,6 +87,12 @@ export const OrderProvider = ({ children }) => {
 
   // Order Return Modal State
   const [orderReturnModalState, setOrderReturnModalState] = useState({
+    isOpen: false,
+    order: null
+  });
+
+  // Order Cancel Modal State (Super Admin)
+  const [orderCancelModalState, setOrderCancelModalState] = useState({
     isOpen: false,
     order: null
   });
@@ -612,6 +618,84 @@ export const OrderProvider = ({ children }) => {
     setOrderReturnModalState({ isOpen: false, order: null });
   };
 
+  // Cancel Order (Super Admin Void Action)
+  const openOrderCancelModal = (order) => {
+    setOrderCancelModalState({ isOpen: true, order });
+  };
+
+  const closeOrderCancelModal = () => {
+    setOrderCancelModalState({ isOpen: false, order: null });
+  };
+
+  const cancelOrder = async ({ orderId, reason, note = '', restoreStock = true, user }) => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) {
+      showToast('Data transaksi tidak ditemukan.', 'error', 'Error');
+      return { success: false, error: 'Order not found' };
+    }
+
+    setIsSubmitting(true);
+    try {
+      const cancelReasonText = reason || 'Pembatalan oleh Admin';
+      const actor = user || currentUser?.nama || currentUser?.name || currentUser?.username || 'Super Admin';
+
+      const { error: cancelErr } = await ordersService.cancelOrder(targetOrder.id, {
+        reason: cancelReasonText,
+        note,
+        user: actor
+      });
+
+      if (cancelErr) {
+        showToast(`Gagal membatalkan transaksi: ${cancelErr.message}`, 'error', 'Error Database');
+        return { success: false, error: cancelErr.message };
+      }
+
+      const cancelTimestamp = new Date().toISOString();
+
+      setOrders(prev => prev.map(o => {
+        if (o.id === targetOrder.id) {
+          return {
+            ...o,
+            status: 'cancelled',
+            cancelReason: cancelReasonText,
+            cancelNote: note.trim() || '',
+            cancelBy: actor,
+            cancelledAt: cancelTimestamp
+          };
+        }
+        return o;
+      }));
+
+      // If restoreStock is true, restore raw materials back to inventory
+      if (restoreStock && typeof restoreMaterialsForOrder === 'function') {
+        try {
+          await restoreMaterialsForOrder(
+            targetOrder,
+            productMenus,
+            toppings,
+            note ? `${cancelReasonText} (${note})` : cancelReasonText,
+            actor
+          );
+        } catch (e) {
+          console.error('Failed to restore raw materials for cancelled order:', e);
+        }
+      }
+
+      showToast(
+        `Transaksi #${targetOrder.invoiceNumber} berhasil dibatalkan${restoreStock ? ' & stok bahan baku telah dikembalikan' : ''}.`,
+        'info',
+        'Transaksi Dibatalkan'
+      );
+      closeOrderCancelModal();
+      return { success: true };
+    } catch (err) {
+      showToast(err.message, 'error', 'Error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <OrderContext.Provider
       value={{
@@ -663,6 +747,10 @@ export const OrderProvider = ({ children }) => {
         orderReturnModalState,
         openOrderReturnModal,
         closeOrderReturnModal,
+        orderCancelModalState,
+        openOrderCancelModal,
+        closeOrderCancelModal,
+        cancelOrder,
         completeOrder,
         recordOrderReturn
       }}

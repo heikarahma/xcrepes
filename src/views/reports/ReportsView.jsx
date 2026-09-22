@@ -20,9 +20,12 @@ export const ReportsView = () => {
   const { activeMenu } = useUnit();
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isCashier = currentUser?.role === 'kasir';
   const {
     activeReportTab,
     setActiveReportTab,
+    activeSalesSection,
+    setActiveSalesSection,
     dateRangePreset,
     setDateRangePreset,
     customStartDate,
@@ -33,19 +36,32 @@ export const ReportsView = () => {
     handleExportPDF
   } = useReport();
 
-  // Sync active report tab when sidebar menu changes
+  // Sync active report tab and section when sidebar menu changes
   useEffect(() => {
-    if (activeMenu === 'reports-sales') {
+    if (activeMenu === 'reports-sales' || activeMenu === 'reports-sales-summary') {
       setActiveReportTab('sales');
+      setActiveSalesSection('products');
+    } else if (activeMenu === 'reports-sales-transactions') {
+      setActiveReportTab('sales');
+      setActiveSalesSection('transactions');
     } else if (activeMenu === 'reports-materials') {
       setActiveReportTab('materials');
     }
-  }, [activeMenu]);
+  }, [activeMenu, setActiveReportTab, setActiveSalesSection]);
 
-  const salesTitle = isSuperAdmin ? 'Laporan Penjualan & Laba HPP' : 'Laporan Penjualan';
-  const salesSubtitle = isSuperAdmin
-    ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
-    : 'Pantau ringkasan omset penjualan, kuantitas produk & extra topping terjual, serta riwayat transaksi kasir.';
+  const salesTitle = activeSalesSection === 'transactions'
+    ? 'Riwayat Transaksi Penjualan'
+    : (isSuperAdmin ? 'Summary Penjualan Menu & Laba HPP' : 'Summary Penjualan Menu & Topping');
+
+  const salesSubtitle = activeSalesSection === 'transactions'
+    ? 'Daftar lengkap seluruh transaksi pesanan kasir, nomor invoice, kasir yang bertugas, dan status pembayaran.'
+    : (isSuperAdmin
+      ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
+      : 'Pantau ringkasan omset penjualan porsi menu dan extra topping yang terjual.');
+
+  const badgeText = activeReportTab === 'materials'
+    ? 'Audit Pengurangan Stok'
+    : (activeSalesSection === 'transactions' ? 'Riwayat Transaksi Kasir' : 'Omset & Performa Menu');
 
   return (
     <div className="reports-page animate-fade-in" style={styles.container}>
@@ -57,7 +73,7 @@ export const ReportsView = () => {
               {activeReportTab === 'sales' ? salesTitle : 'Laporan Pengurangan Bahan Baku'}
             </h1>
             <Badge variant="primary" withDot>
-              {activeReportTab === 'sales' ? 'Omset & Performa Produk' : 'Audit Pengurangan Stok'}
+              {badgeText}
             </Badge>
           </div>
           <p style={styles.pageSubtitle}>
@@ -114,27 +130,29 @@ export const ReportsView = () => {
           )}
         </div>
 
-        {/* Export Buttons */}
-        <div className="reports-export-actions" style={styles.exportActions}>
-          <button
-            onClick={handleExportExcel}
-            className="reports-export-btn export-excel"
-            style={styles.exportBtnExcel}
-            title="Unduh laporan aktif dalam format Microsoft Excel (.xlsx)"
-          >
-            <FileSpreadsheet size={16} />
-            <span>Unduh Excel</span>
-          </button>
-          <button
-            onClick={handleExportPDF}
-            className="reports-export-btn export-pdf"
-            style={styles.exportBtnPdf}
-            title="Unduh laporan aktif dalam format dokumen PDF (.pdf)"
-          >
-            <FileText size={16} />
-            <span>Unduh PDF</span>
-          </button>
-        </div>
+        {/* Export Buttons - Di-take out khusus untuk Kasir pada Laporan Penjualan */}
+        {!(isCashier && activeReportTab === 'sales') && (
+          <div className="reports-export-actions" style={styles.exportActions}>
+            <button
+              onClick={handleExportExcel}
+              className="reports-export-btn export-excel"
+              style={styles.exportBtnExcel}
+              title="Unduh laporan aktif dalam format Microsoft Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={16} />
+              <span>Unduh Excel</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="reports-export-btn export-pdf"
+              style={styles.exportBtnPdf}
+              title="Unduh laporan aktif dalam format dokumen PDF (.pdf)"
+            >
+              <FileText size={16} />
+              <span>Unduh PDF</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 3. ACTIVE REPORT CONTENT */}

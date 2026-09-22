@@ -49,7 +49,7 @@ export const UnitProvider = ({ children }) => {
   const [activeMenu, setActiveMenu] = useState(() => {
     try {
       const saved = localStorage.getItem('pos_active_nav_menu');
-      const validMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'unit', 'settings', 'reports', 'reports-sales', 'reports-materials', 'cashier-management'];
+      const validMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'unit', 'settings', 'reports', 'reports-sales', 'reports-sales-summary', 'reports-sales-transactions', 'reports-materials', 'cashier-management'];
       return validMenus.includes(saved) ? saved : 'kasir';
     } catch {
       return 'kasir';

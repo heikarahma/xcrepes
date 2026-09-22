@@ -601,6 +601,125 @@ export const RawMaterialProvider = ({ children }) => {
     }
   };
 
+  // C.6 Restore Materials for Cancelled Order
+  const restoreMaterialsForOrder = async (orderData, menus = [], toppings = [], note = '', user = 'Super Admin') => {
+    if (!orderData || !Array.isArray(orderData.items) || orderData.items.length === 0) {
+      return { success: false, restoredCount: 0 };
+    }
+
+    const restorationsToApply = [];
+
+    orderData.items.forEach(item => {
+      const itemQty = Number(item.quantity) || 1;
+      const matchedMenu = menus.find(m => m.id === item.menuId);
+      const menuIngredients = (matchedMenu && matchedMenu.ingredients) || (item.ingredients) || [];
+
+      menuIngredients.forEach(ing => {
+        const requiredQty = (Number(ing.quantity) || 0) * itemQty;
+        if (requiredQty > 0 && ing.rawMaterialId) {
+          restorationsToApply.push({
+            rawMaterialId: ing.rawMaterialId,
+            amount: requiredQty,
+            item,
+            isTopping: false,
+            toppingName: null
+          });
+        }
+      });
+
+      if (Array.isArray(item.toppings)) {
+        item.toppings.forEach(t => {
+          const matchedTopping = toppings.find(top => top.id === (t.id || t.toppingId));
+          const toppingIngredients = (matchedTopping && matchedTopping.ingredients) || [];
+          const toppingQty = Number(t.quantity) || 1;
+
+          toppingIngredients.forEach(ting => {
+            const requiredQty = (Number(ting.quantity) || 0) * toppingQty * itemQty;
+            if (requiredQty > 0 && ting.rawMaterialId) {
+              restorationsToApply.push({
+                rawMaterialId: ting.rawMaterialId,
+                amount: requiredQty,
+                item,
+                isTopping: true,
+                toppingName: t.name || matchedTopping?.name || 'Extra Topping'
+              });
+            }
+          });
+        });
+      }
+    });
+
+    if (restorationsToApply.length === 0) {
+      return { success: true, restoredCount: 0 };
+    }
+
+    const newLogs = [];
+    const stockUpdates = [];
+    let updatedMaterials = [...rawMaterials];
+
+    restorationsToApply.forEach(res => {
+      const matIndex = updatedMaterials.findIndex(m => m.id === res.rawMaterialId);
+      if (matIndex !== -1) {
+        const mat = updatedMaterials[matIndex];
+        const prevStock = Number(mat.stock ?? mat.currentStock ?? 0) || 0;
+        const restoreAmt = Math.round(Number(res.amount) * 1000) / 1000;
+        const newStock = Math.round((prevStock + restoreAmt) * 1000) / 1000;
+
+        updatedMaterials[matIndex] = {
+          ...mat,
+          stock: newStock,
+          currentStock: newStock,
+          updatedAt: new Date().toISOString()
+        };
+
+        const existingStockUpdate = stockUpdates.find(s => s.id === mat.id);
+        if (existingStockUpdate) {
+          existingStockUpdate.stock = newStock;
+        } else {
+          stockUpdates.push({ id: mat.id, stock: newStock });
+        }
+
+        newLogs.push({
+          id: `LOG-CAN-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          rawMaterialId: mat.id,
+          rawMaterialName: mat.name,
+          unitName: mat.unitName,
+          type: 'IN',
+          amount: restoreAmt,
+          previousStock: prevStock,
+          currentStock: newStock,
+          reason: 'Pembatalan Transaksi',
+          note: note 
+            ? `Pengembalian stok pembatalan invoice #${orderData.invoiceNumber} (${res.item.name}): ${note}`
+            : `Pengembalian stok pembatalan invoice #${orderData.invoiceNumber} (${res.item.name})`,
+          referenceInvoice: orderData.invoiceNumber,
+          orderId: orderData.id,
+          customerName: orderData.customerName || 'Pelanggan Umum',
+          sourceMenu: res.item.name,
+          sourceType: res.isTopping ? 'TOPPING' : 'MENU',
+          toppingName: res.isTopping ? res.toppingName : null,
+          user: user || 'Super Admin',
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    try {
+      await Promise.all([
+        rawMaterialsService.updateStocksBatch(stockUpdates),
+        stockLogsService.createStockLogsBatch(newLogs)
+      ]);
+
+      setRawMaterials(updatedMaterials);
+      setStockLogs(prev => [...newLogs, ...prev]);
+
+      return { success: true, restoredCount: newLogs.length };
+    } catch (err) {
+      console.error('Failed to restore order stock:', err);
+      return { success: false, restoredCount: 0, error: err.message };
+    }
+  };
+
   // D. Delete Raw Material
   const deleteRawMaterial = async (id) => {
     if (isCashier) {
@@ -1450,6 +1569,7 @@ export const RawMaterialProvider = ({ children }) => {
         adjustStock,
         recordMaterialWaste,
         deductMaterialsForOrder,
+        restoreMaterialsForOrder,
         recordOrderReturnLog,
         formModalState,
         openAddModal,

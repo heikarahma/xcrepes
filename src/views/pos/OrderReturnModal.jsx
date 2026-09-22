@@ -26,8 +26,15 @@ export const OrderReturnModal = () => {
     orders = []
   } = useOrder();
   const { currentUser } = useAuth();
+  const isCashier = currentUser?.role === 'kasir';
 
   const { isOpen, order: initialOrder } = orderReturnModalState;
+
+  useEffect(() => {
+    if (isOpen && isCashier) {
+      closeOrderReturnModal();
+    }
+  }, [isOpen, isCashier, closeOrderReturnModal]);
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [reasonText, setReasonText] = useState('');
@@ -183,7 +190,7 @@ export const OrderReturnModal = () => {
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={isOpen && !isCashier}
       onClose={handleClose}
       title="Form Retur Pesanan Gagal Buat"
       subtitle="Catat pesanan crepes yang gagal dimasak, gosong, robek, atau salah racikan."

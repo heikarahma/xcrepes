@@ -9,10 +9,11 @@ export const Badge = ({
   variant = 'primary',
   withDot = true,
   className = '',
-  icon: Icon
+  icon: Icon,
+  ...props
 }) => {
   return (
-    <span className={`blue-badge badge-${variant} ${className}`.trim()}>
+    <span className={`blue-badge badge-${variant} ${className}`.trim()} {...props}>
       {withDot && <span className="badge-dot" />}
       {Icon && <Icon size={12} />}
       <span>{children}</span>

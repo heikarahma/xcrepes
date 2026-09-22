@@ -199,6 +199,11 @@ export const AuthProvider = ({ children }) => {
       return perms.includes('reports-sales') || perms.includes('reports-materials');
     }
 
+    if (featureKey === 'reports-sales-summary' || featureKey === 'reports-sales-transactions') {
+      const perms = currentUser.permissions || [];
+      return perms.includes('reports-sales') || perms.includes(featureKey);
+    }
+
     // Fitur Stock Opname selalu dapat diakses oleh Kasir (tutup toko fisik harian kasir)
     if (featureKey === 'stock-opname') {
       return true;

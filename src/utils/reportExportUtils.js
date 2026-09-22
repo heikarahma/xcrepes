@@ -147,7 +147,7 @@ const setupPDFFooter = (doc, storeName = 'XCrepes POS') => {
    1. EXPORT: PERFORMA PRODUK & EXTRA TOPPING
    ========================================================================= */
 
-export const exportProductPerformanceToExcel = ({
+export const buildProductPerformanceWorksheet = ({
   items = [],
   periodLabel = 'Semua Waktu',
   activeFilter = 'Semua',
@@ -350,10 +350,15 @@ export const exportProductPerformanceToExcel = ({
     { wch: 20 }  // Total Omset
   ];
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Performa Produk');
+  return ws;
+};
 
-  const filename = `Laporan_Performa_Produk_${new Date().toISOString().slice(0, 10)}.xlsx`;
+export const exportProductPerformanceToExcel = (params) => {
+  const ws = buildProductPerformanceWorksheet(params || {});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary Menu & Topping');
+
+  const filename = `Laporan_Summary_Menu_Topping_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
 
@@ -546,7 +551,7 @@ export const exportProductPerformanceToPDF = ({
    2. EXPORT: RIWAYAT TRANSAKSI PENJUALAN
    ========================================================================= */
 
-export const exportTransactionHistoryToExcel = ({
+export const buildTransactionHistoryWorksheet = ({
   orders = [],
   periodLabel = 'Semua Waktu',
   activePaymentFilter = 'Semua',
@@ -652,10 +657,14 @@ export const exportTransactionHistoryToExcel = ({
       ? 'Kartu' 
       : (order.paymentMethod || 'Lainnya');
 
+    const invoiceDisplay = order.invoiceNumber 
+      ? `${order.invoiceNumber}${order.status === 'cancelled' ? ' [DIBATALKAN]' : order.status === 'returned' ? ' [DIRETUR]' : ''}`
+      : '-';
+
     if (showProfitMetrics) {
       rows.push([
         idx + 1,
-        order.invoiceNumber || '-',
+        invoiceDisplay,
         formatDateTime(order.date || order.createdAt),
         order.cashierName || 'Kasir',
         order.customerName || 'Pelanggan Umum',
@@ -671,7 +680,7 @@ export const exportTransactionHistoryToExcel = ({
     } else {
       rows.push([
         idx + 1,
-        order.invoiceNumber || '-',
+        invoiceDisplay,
         formatDateTime(order.date || order.createdAt),
         order.cashierName || 'Kasir',
         order.customerName || 'Pelanggan Umum',
@@ -746,10 +755,50 @@ export const exportTransactionHistoryToExcel = ({
     { wch: 18 }  // Total Omset
   ];
 
+  return ws;
+};
+
+export const exportTransactionHistoryToExcel = (params) => {
+  const ws = buildTransactionHistoryWorksheet(params || {});
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Transaksi');
 
   const filename = `Laporan_Transaksi_Penjualan_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+export const exportCompleteSalesReportToExcel = ({
+  items = [],
+  orders = [],
+  periodLabel = 'Semua Waktu',
+  activeFilter = 'Ringkasan Menu & Topping',
+  activePaymentFilter = 'Semua Pembayaran',
+  storeName = 'XCrepes POS',
+  showProfitMetrics = true
+}) => {
+  const wsProducts = buildProductPerformanceWorksheet({
+    items,
+    periodLabel,
+    activeFilter,
+    searchTerm: '',
+    storeName,
+    showProfitMetrics
+  });
+
+  const wsTransactions = buildTransactionHistoryWorksheet({
+    orders,
+    periodLabel,
+    activePaymentFilter,
+    searchTerm: '',
+    storeName,
+    showProfitMetrics
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsProducts, 'Summary Menu & Topping');
+  XLSX.utils.book_append_sheet(wb, wsTransactions, 'Riwayat Transaksi');
+
+  const filename = `Laporan_Penjualan_Lengkap_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
 
@@ -812,10 +861,14 @@ export const exportTransactionHistoryToPDF = ({
 
     const customerDisplay = `${order.customerName || 'Pelanggan Umum'}${order.tableNumber && order.tableNumber !== 'Takeaway' ? ` (${order.tableNumber})` : ''}`;
 
+    const invoiceDisplay = order.invoiceNumber 
+      ? `${order.invoiceNumber}${order.status === 'cancelled' ? ' [DIBATALKAN]' : order.status === 'returned' ? ' [DIRETUR]' : ''}`
+      : '-';
+
     if (showProfitMetrics) {
       return [
         (idx + 1).toString(),
-        order.invoiceNumber || '-',
+        invoiceDisplay,
         formatDateTime(order.date || order.createdAt),
         customerDisplay,
         paymentLabel,
@@ -827,7 +880,7 @@ export const exportTransactionHistoryToPDF = ({
     } else {
       return [
         (idx + 1).toString(),
-        order.invoiceNumber || '-',
+        invoiceDisplay,
         formatDateTime(order.date || order.createdAt),
         customerDisplay,
         paymentLabel,

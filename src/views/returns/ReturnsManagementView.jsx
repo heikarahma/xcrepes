@@ -42,8 +42,17 @@ export const ReturnsManagementView = () => {
   const { currentUser, hasPermission } = useAuth();
   const { showToast } = useUnit();
 
-  // Active Tab: 'orders' | 'materials' | 'audit'
-  const [activeTab, setActiveTab] = useState('orders');
+  const isCashier = currentUser?.role === 'kasir';
+
+  // Active Tab: 'orders' | 'materials' | 'audit' (Kasir default ke 'materials')
+  const [activeTab, setActiveTab] = useState(isCashier ? 'materials' : 'orders');
+
+  // Pastikan jika kasir, tidak berada di tab 'orders'
+  React.useEffect(() => {
+    if (isCashier && activeTab === 'orders') {
+      setActiveTab('materials');
+    }
+  }, [isCashier, activeTab]);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,7 +143,9 @@ export const ReturnsManagementView = () => {
       return sum + ((log.amount || 0) * unitPrice);
     }, 0);
 
-    const totalAccumulatedLoss = totalWastedHPP + totalMaterialWasteCost;
+    const totalAccumulatedLoss = isCashier
+      ? totalMaterialWasteCost
+      : (totalWastedHPP + totalMaterialWasteCost);
 
     return {
       totalReturnedCount,
@@ -144,10 +155,11 @@ export const ReturnsManagementView = () => {
       totalMaterialWasteCost,
       totalAccumulatedLoss
     };
-  }, [returnedOrders, wasteLogs, rawMaterials]);
+  }, [returnedOrders, wasteLogs, rawMaterials, isCashier]);
 
   // 3. Filtered Lists
   const filteredReturnedOrders = useMemo(() => {
+    if (isCashier) return [];
     return returnedOrders.filter(o => {
       const matchesSearch = searchQuery === '' || 
         (o.invoiceNumber && o.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -162,27 +174,27 @@ export const ReturnsManagementView = () => {
 
       return matchesSearch && matchesReason && matchesDate;
     });
-  }, [returnedOrders, searchQuery, reasonFilter, dateFilter]);
+  }, [returnedOrders, searchQuery, reasonFilter, dateFilter, isCashier]);
 
   const filteredWasteLogs = useMemo(() => {
     return wasteLogs.filter(log => {
       const matchesSearch = searchQuery === '' ||
         (log.rawMaterialName && log.rawMaterialName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (log.reason && log.reason.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (!isCashier && log.reason && log.reason.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (log.note && log.note.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (log.user && log.user.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesReason = reasonFilter === 'ALL' || log.reason === reasonFilter;
+      const matchesReason = isCashier || reasonFilter === 'ALL' || log.reason === reasonFilter;
       const matchesDate = matchesDateFilter(log.createdAt);
 
       return matchesSearch && matchesReason && matchesDate;
     });
-  }, [wasteLogs, searchQuery, reasonFilter, dateFilter]);
+  }, [wasteLogs, searchQuery, reasonFilter, dateFilter, isCashier]);
 
   // 4. Combined Audit Timeline
   const combinedAuditLogs = useMemo(() => {
     const list = [
-      ...returnedOrders.map(o => ({
+      ...(!isCashier ? returnedOrders.map(o => ({
         id: `ret_order_${o.id}`,
         category: 'ORDER_RETURN',
         timestamp: o.returnedAt || o.date,
@@ -194,7 +206,7 @@ export const ReturnsManagementView = () => {
         photo: o.returnPhoto,
         impactValue: o.orderTotalHPP || 0,
         originalData: o
-      })),
+      })) : []),
       ...wasteLogs.map(w => {
         const mat = rawMaterials.find(m => m.id === w.rawMaterialId || m.name === w.rawMaterialName);
         const unitPrice = mat ? (mat.pricePerUnit || 0) : 0;
@@ -221,17 +233,17 @@ export const ReturnsManagementView = () => {
         const matchesSearch = searchQuery === '' ||
           item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (!isCashier && item.reason.toLowerCase().includes(searchQuery.toLowerCase())) ||
           (item.note && item.note.toLowerCase().includes(searchQuery.toLowerCase())) ||
           item.user.toLowerCase().includes(searchQuery.toLowerCase());
 
-        const matchesReason = reasonFilter === 'ALL' || item.reason === reasonFilter;
+        const matchesReason = isCashier || reasonFilter === 'ALL' || item.reason === reasonFilter;
         const matchesDate = matchesDateFilter(item.timestamp);
 
         return matchesSearch && matchesReason && matchesDate;
       })
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }, [returnedOrders, wasteLogs, rawMaterials, searchQuery, reasonFilter, dateFilter]);
+  }, [returnedOrders, wasteLogs, rawMaterials, searchQuery, reasonFilter, dateFilter, isCashier]);
 
   return (
     <div className="returns-view-container" style={styles.container}>
@@ -243,9 +255,13 @@ export const ReturnsManagementView = () => {
             <span style={styles.breadcrumbSeparator}>/</span>
             <span style={styles.breadcrumbCurrent}>Pusat Manajemen Retur & Kerusakan</span>
           </div>
-          <h1 style={{ ...styles.pageTitle, marginTop: '4px' }}>Pusat Retur & Kerusakan (Waste)</h1>
+          <h1 style={{ ...styles.pageTitle, marginTop: '4px' }}>
+            {isCashier ? "Pusat Kerusakan Bahan (Waste)" : "Pusat Retur & Kerusakan (Waste)"}
+          </h1>
           <p style={styles.pageSubtitle}>
-            Pantau, catat, dan audit seluruh insiden pembatalan / gagal masak pesanan crepes serta pencatatan bahan baku rusak, kedaluwarsa, atau tumpah.
+            {isCashier
+              ? "Pantau dan catat seluruh insiden bahan baku yang rusak, kedaluwarsa, tumpah, atau cacat kemasan."
+              : "Pantau, catat, dan audit seluruh insiden pembatalan / gagal masak pesanan crepes serta pencatatan bahan baku rusak, kedaluwarsa, atau tumpah."}
           </p>
         </div>
 
@@ -261,34 +277,39 @@ export const ReturnsManagementView = () => {
             <span>Catat Bahan Rusak / Expired</span>
           </button>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            style={styles.btnPrimary}
-            onClick={() => openOrderReturnModal()}
-            title="Catat pesanan crepes yang gagal dibuat atau dikomplain"
-          >
-            <span>Catat Retur Pesanan</span>
-          </button>
+          {/* Tombol Catat Retur Pesanan - Di-take out khusus untuk Kasir */}
+          {!isCashier && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={styles.btnPrimary}
+              onClick={() => openOrderReturnModal()}
+              title="Catat pesanan crepes yang gagal dibuat atau dikomplain"
+            >
+              <span>Catat Retur Pesanan</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* 2. STATS KPI SUMMARY CARDS */}
       <div className="stats-grid" style={styles.statsGrid}>
-        {/* Card 1: Retur Pesanan Gagal */}
-        <div style={styles.statCard}>
-          <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Pesanan Gagal / Diretur</span>
-            <div style={{ ...styles.statIconWrapper, backgroundColor: '#fef2f2', color: '#dc2626' }}>
-              <RotateCcw size={20} />
+        {/* Card 1: Retur Pesanan Gagal (Informasi retur pesanan dapur - Di-take out khusus untuk Kasir) */}
+        {!isCashier && (
+          <div style={styles.statCard}>
+            <div style={styles.statHeader}>
+              <span style={styles.statTitle}>Pesanan Gagal / Diretur</span>
+              <div style={{ ...styles.statIconWrapper, backgroundColor: '#fef2f2', color: '#dc2626' }}>
+                <RotateCcw size={20} />
+              </div>
+            </div>
+            <div style={styles.statValue}>{stats.totalReturnedCount} <span style={styles.statUnit}>Pesanan</span></div>
+            <div style={styles.statFooter}>
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>{formatIDR(stats.totalCancelledSales)}</span>
+              <span style={styles.statFooterSub}>omset tagihan dibatalkan</span>
             </div>
           </div>
-          <div style={styles.statValue}>{stats.totalReturnedCount} <span style={styles.statUnit}>Pesanan</span></div>
-          <div style={styles.statFooter}>
-            <span style={{ color: '#dc2626', fontWeight: 600 }}>{formatIDR(stats.totalCancelledSales)}</span>
-            <span style={styles.statFooterSub}>omset tagihan dibatalkan</span>
-          </div>
-        </div>
+        )}
 
         {/* Card 2: Bahan Baku Rusak / Expired */}
         <div style={styles.statCard}>
@@ -305,17 +326,21 @@ export const ReturnsManagementView = () => {
           </div>
         </div>
 
-        {/* Card 3: Total Kerugian HPP & Bahan */}
+        {/* Card 3: Total Kerugian */}
         <div style={styles.statCard}>
           <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Total Akumulasi Kerugian (HPP)</span>
+            <span style={styles.statTitle}>
+              {isCashier ? 'Total Kerugian Bahan Baku' : 'Total Akumulasi Kerugian (HPP)'}
+            </span>
             <div style={{ ...styles.statIconWrapper, backgroundColor: '#fee2e2', color: '#b91c1c' }}>
               <TrendingDown size={20} />
             </div>
           </div>
           <div style={{ ...styles.statValue, color: '#b91c1c' }}>{formatIDR(stats.totalAccumulatedLoss)}</div>
           <div style={styles.statFooter}>
-            <span style={styles.statFooterSub}>Biaya bahan terpakai & bahan terbuang</span>
+            <span style={styles.statFooterSub}>
+              {isCashier ? 'Estimasi nilai bahan terbuang / rusak' : 'Biaya bahan terpakai & bahan terbuang'}
+            </span>
           </div>
         </div>
       </div>
@@ -325,20 +350,23 @@ export const ReturnsManagementView = () => {
         <div className="tab-and-filter-row" style={styles.tabAndFilterRow}>
           {/* Tabs */}
           <div className="tab-buttons-wrapper" style={styles.tabButtonsWrapper}>
-            <button
-              className={`returns-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
-              style={{
-                ...styles.tabBtn,
-                ...(activeTab === 'orders' ? styles.tabBtnActive : {})
-              }}
-              onClick={() => setActiveTab('orders')}
-            >
-              <ShoppingBag size={15} />
-              <span>Retur Pesanan Dapur</span>
-              <span style={activeTab === 'orders' ? styles.tabCounterActive : styles.tabCounterInactive}>
-                {stats.totalReturnedCount}
-              </span>
-            </button>
+            {/* Tab 1: Retur Pesanan Dapur (Di-take out khusus untuk Kasir) */}
+            {!isCashier && (
+              <button
+                className={`returns-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                style={{
+                  ...styles.tabBtn,
+                  ...(activeTab === 'orders' ? styles.tabBtnActive : {})
+                }}
+                onClick={() => setActiveTab('orders')}
+              >
+                <ShoppingBag size={15} />
+                <span>Retur Pesanan Dapur</span>
+                <span style={activeTab === 'orders' ? styles.tabCounterActive : styles.tabCounterInactive}>
+                  {stats.totalReturnedCount}
+                </span>
+              </button>
+            )}
 
             <button
               className={`returns-tab-btn ${activeTab === 'materials' ? 'active' : ''}`}
@@ -382,8 +410,8 @@ export const ReturnsManagementView = () => {
                   activeTab === 'orders' 
                     ? "Cari invoice, pelanggan, menu, kasir..." 
                     : activeTab === 'materials' 
-                    ? "Cari bahan baku, alasan, pencatat..." 
-                    : "Cari semua log audit..."
+                    ? (isCashier ? "Cari bahan baku, pencatat..." : "Cari bahan baku, alasan, pencatat...") 
+                    : (isCashier ? "Cari log audit insiden..." : "Cari semua log audit...")
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -415,37 +443,39 @@ export const ReturnsManagementView = () => {
               </select>
             </div>
 
-            {/* Reason Category Filter */}
-            <div className="select-wrapper" style={styles.selectWrapper}>
-              <Filter size={14} color="var(--neutral-500)" />
-              <select
-                value={reasonFilter}
-                onChange={(e) => setReasonFilter(e.target.value)}
-                style={styles.selectInput}
-              >
-                <option value="ALL">Semua Alasan</option>
-                {activeTab === 'orders' && ORDER_RETURN_REASONS.map((r, i) => (
-                  <option key={i} value={r}>{r}</option>
-                ))}
-                {activeTab === 'materials' && MATERIAL_WASTE_REASONS.map((r, i) => (
-                  <option key={i} value={r}>{r}</option>
-                ))}
-                {activeTab === 'audit' && [
-                  ...ORDER_RETURN_REASONS,
-                  ...MATERIAL_WASTE_REASONS
-                ].filter((val, idx, self) => self.indexOf(val) === idx).map((r, i) => (
-                  <option key={i} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+            {/* Reason Category Filter (Filter Alasan - Di-take out khusus untuk Kasir) */}
+            {!isCashier && (
+              <div className="select-wrapper" style={styles.selectWrapper}>
+                <Filter size={14} color="var(--neutral-500)" />
+                <select
+                  value={reasonFilter}
+                  onChange={(e) => setReasonFilter(e.target.value)}
+                  style={styles.selectInput}
+                >
+                  <option value="ALL">Semua Alasan</option>
+                  {activeTab === 'orders' && ORDER_RETURN_REASONS.map((r, i) => (
+                    <option key={i} value={r}>{r}</option>
+                  ))}
+                  {activeTab === 'materials' && MATERIAL_WASTE_REASONS.map((r, i) => (
+                    <option key={i} value={r}>{r}</option>
+                  ))}
+                  {activeTab === 'audit' && [
+                    ...ORDER_RETURN_REASONS,
+                    ...MATERIAL_WASTE_REASONS
+                  ].filter((val, idx, self) => self.indexOf(val) === idx).map((r, i) => (
+                    <option key={i} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* 4. MAIN TAB CONTENT */}
       <div style={styles.contentContainer}>
-        {/* TAB 1: RETUR PESANAN DAPUR */}
-        {activeTab === 'orders' && (
+        {/* TAB 1: RETUR PESANAN DAPUR (Di-take out khusus untuk Kasir) */}
+        {!isCashier && activeTab === 'orders' && (
           <div style={styles.tableCard}>
             {filteredReturnedOrders.length === 0 ? (
               <EmptyState

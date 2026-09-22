@@ -14,6 +14,7 @@ import {
   Sparkles, 
   ShoppingBag, 
   Cookie, 
+  Receipt,
   Sliders, 
   BarChart3,
   TrendingUp,
@@ -78,7 +79,10 @@ export const Navbar = () => {
         return { group: 'Retur & Kerusakan', title: 'Pusat Retur & Waste', icon: RotateCcw };
       case 'reports':
       case 'reports-sales':
-        return { group: 'Laporan & Analitik', title: 'Laporan Penjualan & Laba HPP', icon: TrendingUp };
+      case 'reports-sales-summary':
+        return { group: 'Laporan & Analitik', title: 'Summary Penjualan Menu & Topping', icon: Cookie };
+      case 'reports-sales-transactions':
+        return { group: 'Laporan & Analitik', title: 'Riwayat Transaksi Penjualan', icon: Receipt };
       case 'reports-materials':
         return { group: 'Laporan & Analitik', title: 'Laporan Pengurangan Bahan Baku', icon: Package };
       case 'settings':
@@ -111,7 +115,7 @@ export const Navbar = () => {
 
   return (
     <header className="app-navbar" style={styles.header}>
-      {/* Left Section: Mobile Hamburger + App Brand Page Title with Logo (< 768px only) */}
+      {/* Left Section: Mobile Hamburger + App Brand Page Title (< 1024px only) */}
       <div className="navbar-mobile-brand" style={styles.leftSection}>
         <button
           className="mobile-menu-btn"
@@ -119,19 +123,19 @@ export const Navbar = () => {
           aria-label="Buka navigasi menu"
           style={styles.hamburgerBtn}
         >
-          <Menu size={22} color="var(--neutral-700)" />
+          <Menu size={20} color="var(--neutral-700)" />
         </button>
 
         {/* Page Title: Sesuai dengan NAMA APLIKASI (SIDEBAR) & Subtitle Navigasi */}
-        <div style={styles.pageTitleWrapper}>
-          <div style={styles.titleInfoColumn}>
-            <span style={styles.pageTitleText} title={appDisplayName}>
+        <div style={styles.pageTitleWrapper} className="navbar-page-title-wrapper">
+          <div style={styles.titleInfoColumn} className="navbar-title-column">
+            <span style={styles.pageTitleText} className="navbar-brand-title" title={appDisplayName}>
               {appDisplayName}
             </span>
-            <div style={styles.breadcrumbSub}>
-              <span>{moduleInfo.group}</span>
-              <ChevronRight size={11} color="var(--neutral-400)" />
-              <span style={{ color: 'var(--blue-600)', fontWeight: 600 }}>{moduleInfo.title}</span>
+            <div style={styles.breadcrumbSub} className="navbar-breadcrumb-sub">
+              <span className="navbar-breadcrumb-group">{moduleInfo.group}</span>
+              <ChevronRight size={11} color="var(--neutral-400)" className="navbar-breadcrumb-sep" style={{ flexShrink: 0 }} />
+              <span className="navbar-breadcrumb-title" title={moduleInfo.title}>{moduleInfo.title}</span>
             </div>
           </div>
         </div>
@@ -335,6 +339,24 @@ export const Navbar = () => {
           }
         }
 
+        /* Breadcrumb default styles */
+        .navbar-breadcrumb-group {
+          color: var(--neutral-500);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex-shrink: 1;
+        }
+
+        .navbar-breadcrumb-title {
+          color: var(--blue-600);
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex-shrink: 0;
+        }
+
         /* Layar 1025px ke atas: Sembunyikan hamburger & brand di navbar */
         @media (min-width: 1025px) {
           .navbar-mobile-brand {
@@ -358,8 +380,11 @@ export const Navbar = () => {
           }
         }
 
-        /* Layar 768px ke bawah (Mobile): Tampilkan HANYA icon avatarnya saja */
+        /* Layar 768px ke bawah (Mobile/Tablet kecil): */
         @media (max-width: 768px) {
+          .app-navbar {
+            padding: 0 12px !important;
+          }
           .navbar-user-info {
             display: none !important;
           }
@@ -379,6 +404,7 @@ export const Navbar = () => {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
             cursor: pointer !important;
             flex-shrink: 0 !important;
+            margin: 0 !important;
           }
           .navbar-user-chip-clickable.role-superadmin {
             border: 1.5px solid var(--blue-200) !important;
@@ -418,10 +444,34 @@ export const Navbar = () => {
           }
         }
 
+        /* Layar 640px ke bawah (Mobile Phone): Sembunyikan kategori group agar judul modul tampil bersih tanpa tumpang tindih */
+        @media (max-width: 640px) {
+          .app-navbar {
+            padding: 0 10px !important;
+          }
+          .navbar-breadcrumb-group,
+          .navbar-breadcrumb-sep {
+            display: none !important;
+          }
+          .navbar-breadcrumb-title {
+            font-size: 0.72rem !important;
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+          .navbar-right-section {
+            margin-left: 8px !important;
+          }
+        }
+
         .navbar-right-section {
           margin-left: auto !important;
           display: flex !important;
           align-items: center !important;
+          flex-shrink: 0 !important;
         }
       `}</style>
     </header>
@@ -440,17 +490,22 @@ const styles = {
     position: 'sticky',
     top: 0,
     zIndex: 90,
-    boxShadow: 'var(--shadow-xs)'
+    boxShadow: 'var(--shadow-xs)',
+    width: '100%',
+    boxSizing: 'border-box'
   },
   leftSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '14px',
-    minWidth: 0
+    gap: '10px',
+    minWidth: 0,
+    flex: '1 1 auto',
+    overflow: 'hidden'
   },
   hamburgerBtn: {
-    width: '38px',
-    height: '38px',
+    width: '36px',
+    height: '36px',
+    minWidth: '36px',
     borderRadius: 'var(--radius-md)',
     backgroundColor: 'var(--neutral-100)',
     display: 'flex',
@@ -464,8 +519,10 @@ const styles = {
   pageTitleWrapper: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
-    minWidth: 0
+    gap: '8px',
+    minWidth: 0,
+    flex: '1 1 auto',
+    overflow: 'hidden'
   },
   logoBadge: {
     width: '34px',
@@ -501,17 +558,20 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    minWidth: 0
+    minWidth: 0,
+    flex: '1 1 auto',
+    overflow: 'hidden'
   },
   pageTitleText: {
     fontWeight: 700,
-    fontSize: '1rem', // 16px
+    fontSize: '0.938rem', // 15px
     color: 'var(--neutral-900)',
     letterSpacing: '-0.01em',
     lineHeight: 1.2,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
-    textOverflow: 'ellipsis'
+    textOverflow: 'ellipsis',
+    display: 'block'
   },
   breadcrumbSub: {
     display: 'flex',
@@ -521,12 +581,15 @@ const styles = {
     color: 'var(--neutral-500)',
     lineHeight: 1.2,
     marginTop: '2px',
-    whiteSpace: 'nowrap'
+    whiteSpace: 'nowrap',
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
   },
   rightSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
     flexShrink: 0,
     marginLeft: 'auto'
   },

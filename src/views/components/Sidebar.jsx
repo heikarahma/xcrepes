@@ -19,6 +19,7 @@ import {
   Sliders,
   BarChart3,
   TrendingUp,
+  Receipt,
   ChevronDown,
   Users,
   LogOut,
@@ -44,7 +45,7 @@ export const Sidebar = () => {
   const { totalAllMenus } = useProductMenu();
   const { orders = [] } = useOrder();
   const { settings } = useSettings();
-  const { activeReportTab, setActiveReportTab } = useReport();
+  const { activeReportTab, setActiveReportTab, activeSalesSection, setActiveSalesSection } = useReport();
   const { currentUser, hasPermission, logout, cashiers, openProfileModal } = useAuth();
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
@@ -59,7 +60,11 @@ export const Sidebar = () => {
   const wasteLogsCount = stockLogs.filter(l => l.type === 'WASTE').length;
   const totalAllReturns = returnedOrdersCount + wasteLogsCount;
 
-  const isReportsActive = activeMenu === 'reports' || activeMenu === 'reports-sales' || activeMenu === 'reports-materials';
+  const isReportsActive = activeMenu === 'reports' || 
+                          activeMenu === 'reports-sales' || 
+                          activeMenu === 'reports-sales-summary' || 
+                          activeMenu === 'reports-sales-transactions' || 
+                          activeMenu === 'reports-materials';
   const [isReportsSubmenuOpen, setIsReportsSubmenuOpen] = useState(true);
 
   const handleSelectMenu = (menuKey) => {
@@ -317,9 +322,10 @@ export const Sidebar = () => {
                   }}
                   onClick={() => {
                     if (!isReportsActive) {
-                      const targetSub = hasPermission('reports-sales') ? 'reports-sales' : 'reports-materials';
+                      const targetSub = hasPermission('reports-sales') ? 'reports-sales-summary' : 'reports-materials';
                       handleSelectMenu(targetSub);
                       setActiveReportTab(hasPermission('reports-sales') ? 'sales' : 'materials');
+                      setActiveSalesSection('products');
                     }
                     setIsReportsSubmenuOpen(prev => !prev);
                   }}
@@ -338,30 +344,58 @@ export const Sidebar = () => {
                   />
                 </button>
 
-                {/* Sub-menu: Laporan Penjualan & Laba HPP, Laporan Pengurangan Bahan Baku */}
+                {/* Sub-menu: 1. Summary Menu & Topping, 2. Riwayat Transaksi, 3. Pengurangan Bahan Baku */}
                 {isReportsSubmenuOpen && (
                   <div style={styles.submenuContainer}>
-                    {/* 1. Submenu: Laporan Penjualan & Laba HPP */}
+                    {/* 1. Submenu: Summary Penjualan Menu & Topping */}
                     {hasPermission('reports-sales') && (
                       <button
-                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-sales' || (activeMenu === 'reports' && activeReportTab === 'sales')) ? 'is-sub-active' : ''}`}
+                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? 'is-sub-active' : ''}`}
                         style={{
                           ...styles.subnavButton,
-                          ...((activeMenu === 'reports-sales' || (activeMenu === 'reports' && activeReportTab === 'sales')) ? styles.subnavButtonActive : {})
+                          ...((activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? styles.subnavButtonActive : {})
                         }}
                         onClick={() => {
-                          handleSelectMenu('reports-sales');
+                          handleSelectMenu('reports-sales-summary');
                           setActiveReportTab('sales');
+                          setActiveSalesSection('products');
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                          <TrendingUp
+                          <Cookie
                             size={14}
-                            color={(activeMenu === 'reports-sales' || (activeMenu === 'reports' && activeReportTab === 'sales')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
+                            color={(activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
                             style={{ flexShrink: 0 }}
                           />
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {isSuperAdmin ? 'Penjualan & Laba HPP' : 'Laporan Penjualan'}
+                            Summary Menu & Topping
+                          </span>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* 2. Submenu: Riwayat Transaksi Penjualan */}
+                    {hasPermission('reports-sales') && (
+                      <button
+                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? 'is-sub-active' : ''}`}
+                        style={{
+                          ...styles.subnavButton,
+                          ...((activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? styles.subnavButtonActive : {})
+                        }}
+                        onClick={() => {
+                          handleSelectMenu('reports-sales-transactions');
+                          setActiveReportTab('sales');
+                          setActiveSalesSection('transactions');
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                          <Receipt
+                            size={14}
+                            color={(activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
+                            style={{ flexShrink: 0 }}
+                          />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Riwayat Transaksi
                           </span>
                         </div>
                       </button>

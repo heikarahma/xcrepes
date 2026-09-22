@@ -21,8 +21,7 @@ import {
   AlertCircle,
   AlertTriangle,
   History,
-  Boxes,
-  PlusCircle
+  Boxes
 } from 'lucide-react';
 
 export const RawMaterialListView = () => {
@@ -76,6 +75,50 @@ export const RawMaterialListView = () => {
     }).format(val || 0);
   };
 
+  const renderActionButtons = () => (
+    <div className="raw-material-header-actions">
+      {!isCashier && (
+        <Button
+          variant="primary"
+          icon={Plus}
+          onClick={openAddModal}
+          size="md"
+          className="raw-material-add-btn"
+        >
+          Tambah Bahan
+        </Button>
+      )}
+
+      {totalAllRawMaterials > 0 && (
+        <div className={`raw-material-sub-actions ${isCashier ? 'is-cashier' : ''}`}>
+          <Button
+            variant={isCashier ? "primary" : "outline"}
+            icon={isCashier ? Plus : undefined}
+            onClick={() => openAdjustModal(paginatedRawMaterials[0] || null, 'IN')}
+            size="md"
+            fullWidth={isCashier}
+            className="raw-material-adjust-btn"
+          >
+            {isCashier ? 'Catat Stok Masuk (Restok)' : 'Catat Perubahan Stok'}
+          </Button>
+
+          {!isCashier && (
+            <Button
+              variant="outline"
+              onClick={() => openWasteModal(paginatedRawMaterials[0] || null)}
+              size="md"
+              style={{ color: 'var(--red-600)', borderColor: 'var(--red-200)', backgroundColor: 'var(--red-50)' }}
+              className="raw-material-waste-btn"
+              title="Catat Bahan Rusak / Expired"
+            >
+              Bahan Rusak / Expired
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="raw-material-list-page animate-fade-in" style={styles.container}>
       {/* Top Title & Primary Actions */}
@@ -94,45 +137,9 @@ export const RawMaterialListView = () => {
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="raw-material-header-actions">
-          {!isCashier && (
-            <Button
-              variant="primary"
-              icon={Plus}
-              onClick={openAddModal}
-              size="md"
-              className="raw-material-add-btn"
-            >
-              Tambah Bahan
-            </Button>
-          )}
-
-          {totalAllRawMaterials > 0 && (
-            <div className="raw-material-sub-actions">
-              <Button
-                variant={isCashier ? "primary" : "outline"}
-                icon={PlusCircle}
-                onClick={() => openAdjustModal(paginatedRawMaterials[0] || null, 'IN')}
-                size="md"
-                className="raw-material-adjust-btn"
-              >
-                {isCashier ? 'Catat Stok Masuk (Restok)' : 'Catat Perubahan Stok'}
-              </Button>
-
-              {!isCashier && (
-                <Button
-                  variant="outline"
-                  onClick={() => openWasteModal(paginatedRawMaterials[0] || null)}
-                  size="md"
-                  style={{ color: 'var(--red-600)', borderColor: 'var(--red-200)', backgroundColor: 'var(--red-50)' }}
-                  className="raw-material-waste-btn"
-                >
-                  Catat Bahan Rusak / Expired
-                </Button>
-              )}
-            </div>
-          )}
+        {/* Action Buttons (Desktop only - on mobile/tablet placed below tabs) */}
+        <div className="raw-material-actions-desktop">
+          {renderActionButtons()}
         </div>
       </div>
 
@@ -242,11 +249,8 @@ export const RawMaterialListView = () => {
           className={`tab-item-btn ${activeTab === 'inventory' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('inventory')}
         >
-          <Boxes size={15} />
+          <Boxes size={16} />
           <span>Daftar Stok Bahan</span>
-          <span className={`tab-badge-pill ${activeTab === 'inventory' ? 'is-active' : ''}`}>
-            {totalAllRawMaterials}
-          </span>
         </button>
 
         <button
@@ -254,13 +258,17 @@ export const RawMaterialListView = () => {
           className={`tab-item-btn ${activeTab === 'history' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          <History size={15} />
+          <History size={16} />
           <span>Riwayat Perubahan Stok</span>
-          <span className={`tab-badge-pill ${activeTab === 'history' ? 'is-active' : ''}`}>
-            {stockLogs.length}
-          </span>
         </button>
       </div>
+
+      {/* Action Buttons (Mobile only - placed below tabs for inventory tab) */}
+      {activeTab === 'inventory' && (
+        <div className="raw-material-actions-mobile">
+          {renderActionButtons()}
+        </div>
+      )}
 
       {/* TAB CONTENT 1: DAFTAR BAHAN BAKU */}
       {activeTab === 'inventory' && (
@@ -631,20 +639,21 @@ export const RawMaterialListView = () => {
                       }}>
                         <div style={styles.mobileDetailBox}>
                           <span style={styles.mobileDetailLabel}>Sisa Stok</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <span style={{ 
                               fontWeight: 800, 
                               fontSize: '1rem',
+                              whiteSpace: 'nowrap',
                               color: isEmpty ? '#dc2626' : isLowStock ? '#d97706' : 'var(--neutral-900)' 
                             }}>
                               {new Intl.NumberFormat('id-ID').format(stockVal)} {item.unitName || item.unit_name}
                             </span>
                             {isEmpty ? (
-                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px' }}>
+                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 Habis (0)
                               </span>
                             ) : isLowStock ? (
-                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#d97706', backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px' }}>
+                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#d97706', backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 Menipis
                               </span>
                             ) : null}
@@ -683,7 +692,7 @@ export const RawMaterialListView = () => {
 
       {/* TAB CONTENT 2: RIWAYAT PERUBAHAN STOK */}
       {activeTab === 'history' && (
-        <StockHistoryListView />
+        <StockHistoryListView mobileActionButtons={renderActionButtons()} />
       )}
 
       {/* Embedded Mobile Responsive Styles */}
@@ -694,12 +703,12 @@ export const RawMaterialListView = () => {
         .raw-material-tab-container {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           margin-bottom: 0;
           background-color: var(--neutral-100);
           border: 1px solid var(--border-color);
           border-radius: 12px;
-          padding: 4px;
+          padding: 5px;
           box-sizing: border-box;
           width: 100%;
         }
@@ -708,45 +717,38 @@ export const RawMaterialListView = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 9px 12px;
-          border-radius: 8px;
-          font-size: 0.813rem;
+          gap: 8px;
+          padding: 10px 16px;
+          border-radius: 9px;
+          font-size: 0.875rem;
           font-weight: 600;
           color: var(--neutral-600);
           background: transparent;
-          border: none;
+          border: 1px solid transparent;
           cursor: pointer;
           transition: all var(--transition-fast);
           white-space: nowrap;
           box-sizing: border-box;
+          user-select: none;
         }
         .tab-item-btn:hover:not(.is-active) {
           color: var(--neutral-900);
-          background-color: rgba(255, 255, 255, 0.5);
+          background-color: rgba(255, 255, 255, 0.6);
         }
         .tab-item-btn.is-active {
           background-color: #ffffff;
           color: var(--blue-600);
           font-weight: 700;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+          border-color: rgba(0, 0, 0, 0.04);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
         }
-        .tab-badge-pill {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.688rem;
-          font-weight: 700;
-          padding: 2px 7px;
-          border-radius: 999px;
-          background-color: var(--neutral-200);
-          color: var(--neutral-600);
-          line-height: 1;
+
+        .raw-material-actions-desktop {
+          display: block;
         }
-        .tab-badge-pill.is-active {
-          background-color: var(--blue-50);
-          color: var(--blue-600);
-          border: 1px solid var(--blue-200);
+
+        .raw-material-actions-mobile {
+          display: none;
         }
 
         .raw-material-header-actions {
@@ -848,13 +850,14 @@ export const RawMaterialListView = () => {
           .raw-material-list-page {
             padding: 0 !important;
             margin: 0 !important;
+            gap: 0 !important;
           }
 
           .raw-material-header-section {
             flex-direction: column !important;
             align-items: stretch !important;
-            gap: 12px !important;
-            margin-bottom: 4px !important;
+            gap: 8px !important;
+            margin-bottom: 16px !important;
           }
 
           .raw-material-title {
@@ -865,16 +868,38 @@ export const RawMaterialListView = () => {
             font-size: 0.781rem !important;
           }
 
+          /* Hide actions from header on mobile/tablet */
+          .raw-material-actions-desktop {
+            display: none !important;
+          }
+
+          /* Show actions below tabs on mobile/tablet */
+          .raw-material-actions-mobile {
+            display: block !important;
+            width: 100% !important;
+            margin: 16px 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+          }
+
           .raw-material-header-actions {
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
             width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
           }
 
           .raw-material-add-btn {
             width: 100% !important;
             min-height: 42px !important;
+            height: 42px !important;
+            font-size: 0.875rem !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            box-sizing: border-box !important;
           }
 
           .raw-material-sub-actions {
@@ -882,36 +907,67 @@ export const RawMaterialListView = () => {
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
             width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .raw-material-sub-actions.is-cashier {
+            display: block !important;
+            grid-template-columns: 1fr !important;
+            width: 100% !important;
+          }
+
+          .raw-material-sub-actions.is-cashier .raw-material-adjust-btn {
+            width: 100% !important;
+            font-size: 0.875rem !important;
           }
 
           .raw-material-adjust-btn,
           .raw-material-waste-btn {
             width: 100% !important;
-            min-height: 40px !important;
+            min-height: 42px !important;
+            height: 42px !important;
             font-size: 0.813rem !important;
-            padding: 0 8px !important;
+            font-weight: 600 !important;
+            padding: 0 10px !important;
+            display: flex !important;
+            align-items: center !important;
             justify-content: center !important;
+            text-align: center !important;
             white-space: nowrap !important;
+            box-sizing: border-box !important;
+            border-radius: 8px !important;
           }
 
           .raw-material-stats-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 10px !important;
+            margin-bottom: 16px !important;
           }
 
           .raw-material-stats-grid.is-cashier {
             grid-template-columns: repeat(2, 1fr) !important;
+            margin-bottom: 16px !important;
           }
 
           .raw-material-stats-grid.is-cashier > div:last-child {
             grid-column: span 2;
           }
 
+          .raw-material-tab-container {
+            margin-bottom: 0 !important;
+          }
+
           .raw-material-card-wrapper {
             border-radius: 12px !important;
             overflow: hidden !important;
-            margin: 8px 0 20px 0 !important;
+            margin: 0 0 20px 0 !important;
             box-shadow: var(--shadow-sm) !important;
+          }
+
+          .stock-history-view {
+            margin-top: 16px !important;
           }
 
           .raw-material-toolbar {
@@ -1012,18 +1068,22 @@ export const RawMaterialListView = () => {
         }
 
         @media (max-width: 480px) {
-          .tab-item-btn {
-            font-size: 0.75rem !important;
-            padding: 8px 6px !important;
+          .raw-material-tab-container {
+            padding: 4px !important;
             gap: 4px !important;
           }
-          .tab-badge-pill {
-            font-size: 0.625rem !important;
-            padding: 1px 5px !important;
+          .tab-item-btn {
+            font-size: 0.781rem !important;
+            padding: 9px 8px !important;
+            gap: 6px !important;
           }
           .raw-material-adjust-btn span,
           .raw-material-waste-btn span {
             font-size: 0.75rem !important;
+          }
+          .raw-material-sub-actions.is-cashier .raw-material-adjust-btn,
+          .raw-material-sub-actions.is-cashier .raw-material-adjust-btn span {
+            font-size: 0.875rem !important;
           }
         }
       `}</style>

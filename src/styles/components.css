@@ -160,6 +160,8 @@
   font-weight: var(--font-weight-semibold);
   border-radius: var(--radius-full);
   line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge-dot {

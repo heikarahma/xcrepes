@@ -56,6 +56,7 @@ import { WasteRecordModal } from './views/inventory/rawMaterial/WasteRecordModal
 
 // Views [V] - Retur Pesanan POS & Preview Foto
 import { OrderReturnModal } from './views/pos/OrderReturnModal';
+import { OrderCancelModal } from './views/pos/OrderCancelModal';
 import { ReturnsManagementView } from './views/returns/ReturnsManagementView';
 import { ImagePreviewModal } from './views/components/ImagePreviewModal';
 import { useRawMaterial } from './controllers/RawMaterialController';
@@ -86,7 +87,7 @@ function MainLayout() {
   useEffect(() => {
     if (currentUser?.role === 'kasir') {
       let isAllowed = false;
-      if (activeMenu === 'reports' || activeMenu === 'reports-sales' || activeMenu === 'reports-materials') {
+      if (activeMenu === 'reports' || activeMenu === 'reports-sales' || activeMenu === 'reports-sales-summary' || activeMenu === 'reports-sales-transactions' || activeMenu === 'reports-materials') {
         isAllowed = hasPermission('reports-sales') || hasPermission('reports-materials');
       } else {
         isAllowed = hasPermission(activeMenu);
@@ -94,7 +95,7 @@ function MainLayout() {
 
       // Jika menu yang aktif saat ini tidak diizinkan, arahkan ke menu pertama yang diizinkan
       if (!isAllowed) {
-        const candidateMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'reports-sales', 'reports-materials', 'settings', 'unit'];
+        const candidateMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'reports-sales-summary', 'reports-sales-transactions', 'reports-materials', 'settings', 'unit'];
         const firstPermitted = candidateMenus.find(m => hasPermission(m));
         if (firstPermitted) {
           setActiveMenu(firstPermitted);
@@ -123,6 +124,8 @@ function MainLayout() {
         return <SettingsView />;
       case 'reports':
       case 'reports-sales':
+      case 'reports-sales-summary':
+      case 'reports-sales-transactions':
       case 'reports-materials':
         return <ReportsView />;
       case 'cashier-management':
@@ -170,11 +173,12 @@ function MainLayout() {
       <StockAdjustModal />
       <WasteRecordModal />
 
-      {/* Modals for Kasir POS & Retur Pesanan */}
+      {/* Modals for Kasir POS & Retur Pesanan & Pembatalan */}
       <ToppingSelectionModal />
       <PaymentModal />
       <ReceiptModal />
       <OrderReturnModal />
+      <OrderCancelModal />
 
       {/* Modal Zoom / Preview Bukti Foto */}
       <ImagePreviewModal

@@ -120,12 +120,7 @@ export const StockAdjustModal = () => {
     closeAdjustModal();
   };
 
-  // Quick note chips suggestions
-  const noteSuggestions = {
-    IN: ['Restok dari supplier', 'Pembelian darurat', 'Bonus supplier'],
-    OUT: ['Pemakaian adonan / masak', 'Bahan kedaluwarsa (expired)', 'Bahan tumpah / rusak'],
-    ADJUST: ['Koreksi opname fisik mingguan', 'Koreksi selisih timbangan']
-  };
+
 
   return (
     <Modal
@@ -318,20 +313,6 @@ export const StockAdjustModal = () => {
             onChange={(e) => setNote(e.target.value)}
             style={{ height: '40px' }}
           />
-
-          {/* Quick Note Suggestions */}
-          <div style={styles.chipsRow}>
-            {(noteSuggestions[isCashier ? 'IN' : adjustType] || noteSuggestions.IN).map((suggestion, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setNote(suggestion)}
-                style={styles.chipBtn}
-              >
-                + {suggestion}
-              </button>
-            ))}
-          </div>
         </div>
       </form>
     </Modal>
@@ -396,21 +377,5 @@ const styles = {
     border: '1px solid var(--blue-200)',
     borderRadius: 'var(--radius-md)',
     padding: '10px 14px'
-  },
-  chipsRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-    marginTop: '6px'
-  },
-  chipBtn: {
-    fontSize: '0.688rem',
-    padding: '3px 8px',
-    borderRadius: 'var(--radius-sm)',
-    border: '1px solid var(--border-subtle)',
-    backgroundColor: 'var(--neutral-50)',
-    color: 'var(--neutral-600)',
-    cursor: 'pointer',
-    transition: 'all var(--transition-fast)'
   }
 };

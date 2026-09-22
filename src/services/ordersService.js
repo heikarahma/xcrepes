@@ -35,12 +35,15 @@ export const ordersService = {
         totalItemsCount: Number(row.total_items_count) || 0,
         paymentMethod: row.payment_method || 'cash',
         cashReceived: Number(row.cash_received) || 0,
-        changeAmount: Number(row.change_amount) || 0,
         returnReason: row.return_reason || null,
         returnNote: row.return_note || null,
         returnPhoto: row.return_photo || null,
         returnBy: row.return_by || null,
         returnedAt: row.returned_at || null,
+        cancelReason: row.status === 'cancelled' ? (row.return_reason?.startsWith('[BATAL] ') ? row.return_reason.replace('[BATAL] ', '') : (row.return_reason || 'Dibatalkan oleh Admin')) : null,
+        cancelNote: row.status === 'cancelled' ? (row.return_note || '') : null,
+        cancelBy: row.status === 'cancelled' ? (row.return_by || 'Admin') : null,
+        cancelledAt: row.status === 'cancelled' ? row.returned_at : null,
         createdAt: row.created_at
       })),
       error: null
@@ -133,6 +136,29 @@ export const ordersService = {
 
     if (error) {
       console.error('ordersService.updateOrderReturn error:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  },
+
+  async cancelOrder(id, { reason, note, user }) {
+    if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update({
+        status: 'cancelled',
+        return_reason: reason ? `[BATAL] ${reason}` : '[BATAL] Dibatalkan oleh Admin',
+        return_note: note || '',
+        return_by: user || 'Super Admin',
+        returned_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('ordersService.cancelOrder error:', error);
       return { data: null, error };
     }
 

@@ -26,7 +26,7 @@ import {
   FileText
 } from 'lucide-react';
 
-export const StockHistoryListView = () => {
+export const StockHistoryListView = ({ mobileActionButtons }) => {
   const { currentUser } = useAuth();
   const isCashier = currentUser?.role === 'kasir';
 
@@ -178,8 +178,15 @@ export const StockHistoryListView = () => {
         </div>
       </div>
 
+      {/* Mobile Action Buttons: Placed below information cards on mobile */}
+      {mobileActionButtons && (
+        <div className="raw-material-actions-mobile stock-history-mobile-actions">
+          {mobileActionButtons}
+        </div>
+      )}
+
       {/* 2. Main Table & Toolbar Container */}
-      <div className="blue-card" style={{ padding: 0, marginTop: '16px' }}>
+      <div className="blue-card stock-history-main-card" style={{ padding: 0 }}>
         {/* Toolbar */}
         <div className="stock-history-toolbar" style={styles.toolbar}>
           {/* Left: Filter Buttons (Hanya untuk Admin/Owner) */}
@@ -595,6 +602,12 @@ export const StockHistoryListView = () => {
         .mobile-history-cards-wrapper {
           display: none;
         }
+        .stock-history-mobile-actions {
+          display: none;
+        }
+        .stock-history-main-card {
+          margin-top: 16px;
+        }
         .stock-history-stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -608,6 +621,16 @@ export const StockHistoryListView = () => {
         }
 
         @media (max-width: 1024px) {
+          .stock-history-mobile-actions {
+            display: block !important;
+            width: 100% !important;
+            margin: 16px 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+          }
+          .stock-history-main-card {
+            margin-top: 0 !important;
+          }
           .desktop-history-table-wrapper {
             display: none !important;
           }

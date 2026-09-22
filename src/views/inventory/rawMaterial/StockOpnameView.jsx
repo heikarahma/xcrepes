@@ -12,6 +12,7 @@ import {
 import { 
   ClipboardCheck, 
   Plus, 
+  Package,
   Edit3, 
   Trash2, 
   Search, 
@@ -491,43 +492,93 @@ export const StockOpnameView = () => {
 
           {/* Table Summary of today's closed opname (KASIR: NO SYSTEM STOCK, NO DIFFERENCE) */}
           <div className="blue-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table className="blue-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '50px', textAlign: 'center' }}>No</th>
-                  <th>Bahan Baku</th>
-                  <th>Satuan</th>
-                  <th style={{ textAlign: 'right' }}>Stok Fisik Aktual</th>
-                  <th style={{ textAlign: 'center' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+            <div className="desktop-opname-table-wrapper">
+              <table className="blue-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+                    <th>Bahan Baku</th>
+                    <th>Satuan</th>
+                    <th style={{ textAlign: 'right' }}>Stok Fisik Aktual</th>
+                    <th style={{ textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(todayReport?.items || []).map((item, idx) => {
+                    const hasActual = Boolean(item.hasActual && item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null);
+                    return (
+                      <tr key={item.id || idx}>
+                        <td style={{ textAlign: 'center', color: 'var(--neutral-400)' }}>{idx + 1}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>{item.name}</td>
+                        <td style={{ color: 'var(--neutral-600)' }}>{item.unitName}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: hasActual ? 'var(--neutral-900)' : 'var(--neutral-400)' }}>
+                          {hasActual ? formatNumber(item.actualStock) : '-'}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {hasActual ? (
+                            <span style={styles.statusPillCounted}>
+                              <Check size={11} /> Sudah Dihitung
+                            </span>
+                          ) : (
+                            <span style={styles.statusPillUncounted}>
+                              <Clock size={11} /> Belum Dihitung
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards for Closed Opname */}
+            <div className="mobile-opname-cards-wrapper">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
                 {(todayReport?.items || []).map((item, idx) => {
                   const hasActual = Boolean(item.hasActual && item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null);
                   return (
-                    <tr key={item.id || idx}>
-                      <td style={{ textAlign: 'center', color: 'var(--neutral-400)' }}>{idx + 1}</td>
-                      <td style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>{item.name}</td>
-                      <td style={{ color: 'var(--neutral-600)' }}>{item.unitName}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: hasActual ? 'var(--neutral-900)' : 'var(--neutral-400)' }}>
-                        {hasActual ? formatNumber(item.actualStock) : '-'}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {hasActual ? (
-                          <span style={styles.statusPillCounted}>
-                            <Check size={11} /> Sudah Dihitung
+                    <div
+                      key={item.id || idx}
+                      className="mobile-opname-card"
+                      style={{
+                        ...styles.mobileOpnameCard,
+                        borderLeft: hasActual ? '4px solid #10b981' : '4px solid #f59e0b'
+                      }}
+                    >
+                      {/* Top Row: #No + Name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={styles.rowNumberTag}>#{idx + 1}</span>
+                        <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
+                          {item.name}
+                        </span>
+                      </div>
+
+                      {/* Middle Row: Detail Box with Stok Fisik Aktual & Status Badge side-by-side */}
+                      <div style={styles.mobileDetailGrid}>
+                        <div style={styles.mobileDetailBox}>
+                          <span style={styles.mobileDetailLabel}>Stok Fisik Aktual</span>
+                          <span style={{ fontWeight: 800, fontSize: '1rem', color: hasActual ? 'var(--neutral-900)' : 'var(--neutral-400)' }}>
+                            {hasActual ? formatNumber(item.actualStock) : '-'} {item.unitName}
                           </span>
-                        ) : (
-                          <span style={styles.statusPillUncounted}>
-                            <Clock size={11} /> Belum Dihitung
-                          </span>
-                        )}
-                      </td>
-                    </tr>
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          {hasActual ? (
+                            <span style={styles.statusPillCounted}>
+                              <Check size={11} /> Sudah Dihitung
+                            </span>
+                          ) : (
+                            <span style={styles.statusPillUncounted}>
+                              <Clock size={11} /> Belum Dihitung
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -554,17 +605,6 @@ export const StockOpnameView = () => {
             <p style={styles.pageSubtitle}>
               Fokus masukkan stok fisik aktual bahan baku di outlet sebelum store closing.
             </p>
-          </div>
-
-          <div style={styles.headerActions}>
-            <Button
-              variant="primary"
-              icon={Check}
-              size="md"
-              onClick={() => setIsClosingConfirmModalOpen(true)}
-            >
-              Selesaikan Store Closing
-            </Button>
           </div>
         </div>
 
@@ -611,7 +651,7 @@ export const StockOpnameView = () => {
         </div>
 
         {/* Warning Banner if uncounted items exist */}
-        {uncountedItems.length > 0 && (
+        {uncountedItems.length > 0 ? (
           <div style={styles.warningAlertBox}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <AlertTriangle size={20} color="#d97706" />
@@ -625,14 +665,41 @@ export const StockOpnameView = () => {
               </div>
             </div>
           </div>
+        ) : (
+          <div style={{ ...styles.warningAlertBox, backgroundColor: '#ecfdf5', borderColor: '#a7f3d0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Check size={20} color="#059669" />
+              <div>
+                <strong style={{ fontSize: '0.875rem', color: '#065f46' }}>
+                  Semua bahan telah selesai dihitung ({rawMaterials.length} bahan).
+                </strong>
+                <p style={{ margin: '2px 0 0', fontSize: '0.813rem', color: '#047857' }}>
+                  Seluruh stok fisik telah tercatat. Silakan klik tombol di bawah untuk menyelesaikan store closing.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
+
+        {/* Action Button: Selesaikan Store Closing Disimpan di Bawah Card Informasi Bahan Belum Dihitung */}
+        <div className="opname-closing-action-wrap" style={styles.closingActionWrap}>
+          <Button
+            variant="primary"
+            icon={Check}
+            size="md"
+            onClick={() => setIsClosingConfirmModalOpen(true)}
+            className="btn-selesaikan-closing"
+          >
+            Selesaikan Store Closing
+          </Button>
+        </div>
 
         {/* Review Comparison Table Card */}
         <div className="blue-card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Table Toolbar */}
-          <div style={styles.tableToolbar}>
+          <div className="stock-opname-toolbar" style={styles.tableToolbar}>
             {/* Filter Pills */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="stock-opname-filter-pills" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 type="button"
                 style={{ ...styles.pillBtn, ...(kasirStatusFilter === 'ALL' ? styles.pillBtnActive : {}) }}
@@ -657,7 +724,7 @@ export const StockOpnameView = () => {
             </div>
 
             {/* Quick Search */}
-            <div style={styles.miniSearchWrapper}>
+            <div className="stock-opname-mini-search" style={styles.miniSearchWrapper}>
               <Search size={14} color="var(--neutral-400)" style={styles.miniSearchIcon} />
               <input
                 type="text"
@@ -678,8 +745,8 @@ export const StockOpnameView = () => {
             </div>
           </div>
 
-          {/* Table - KASIR: HANYA NO, NAMA BAHAN, SATUAN, STOK FISIK AKTUAL, STATUS HITUNG, AKSI */}
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          {/* 1. Desktop Table View */}
+          <div className="desktop-opname-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="blue-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', minWidth: '600px' }}>
               <thead>
                 <tr>
@@ -770,19 +837,118 @@ export const StockOpnameView = () => {
             </table>
           </div>
 
+          {/* 2. Mobile Card List View (Visible on Mobile/Tablet <= 1024px) */}
+          <div className="mobile-opname-cards-wrapper">
+            {filteredReviewList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--neutral-500)' }}>
+                <Package size={36} color="var(--neutral-300)" style={{ margin: '0 auto 8px', display: 'block' }} />
+                <p style={{ fontWeight: 600, color: 'var(--neutral-700)', margin: '0 0 4px', fontSize: '0.875rem' }}>
+                  Tidak Ada Bahan Baku
+                </p>
+                <span style={{ fontSize: '0.781rem' }}>
+                  Tidak ada bahan baku yang cocok dengan filter atau pencarian saat ini.
+                </span>
+              </div>
+            ) : (
+              <div className="mobile-opname-cards-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+                {filteredReviewList.map((item, idx) => {
+                  const hasActual = item.hasActual;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="mobile-opname-card"
+                      style={{
+                        ...styles.mobileOpnameCard,
+                        borderLeft: hasActual ? '4px solid #10b981' : '4px solid #f59e0b'
+                      }}
+                    >
+                      {/* Top Row: #No + Name + Category on left */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span style={styles.rowNumberTag}>#{idx + 1}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-900)', wordBreak: 'break-word', lineHeight: 1.25 }}>
+                            {item.name}
+                          </span>
+                          <span style={{ fontSize: '0.688rem', color: 'var(--neutral-500)' }}>
+                            {item.categoryName || 'Bahan Baku'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Detail Box with Stok Fisik Aktual and Status Badge SIDE-BY-SIDE */}
+                      <div style={styles.mobileDetailGrid}>
+                        <div style={styles.mobileDetailBox}>
+                          <span style={styles.mobileDetailLabel}>Stok Fisik Aktual</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontWeight: 800,
+                              fontSize: '1.063rem',
+                              color: hasActual ? '#059669' : 'var(--neutral-400)'
+                            }}>
+                              {hasActual ? formatNumber(item.actualStock) : '-'}
+                            </span>
+                            <span style={{ fontSize: '0.813rem', color: 'var(--neutral-600)', fontWeight: 600 }}>
+                              {item.unitName}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div style={{ flexShrink: 0 }}>
+                          {!hasActual ? (
+                            <span style={styles.statusPillUncounted}>
+                              <Clock size={11} /> Belum Dihitung
+                            </span>
+                          ) : (
+                            <span style={styles.statusPillCounted}>
+                              <Check size={11} /> Sudah Dihitung
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Actions */}
+                      <div style={styles.mobileActionFooter}>
+                        {!hasActual ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAddModal(item)}
+                            style={styles.mobileActionInputBtn}
+                          >
+                            <Plus size={14} /> Input Hitungan Fisik
+                          </button>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddModal(item)}
+                              style={styles.mobileActionEditBtn}
+                            >
+                              <Edit3 size={14} /> Ubah Stok
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeCountedItem(item.id)}
+                              style={styles.mobileActionResetBtn}
+                              title="Reset hitungan fisik bahan ini"
+                            >
+                              <RotateCcw size={14} /> Reset
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Table Footer Bar */}
           <div style={styles.tableFooterBar}>
             <span style={{ fontSize: '0.813rem', color: 'var(--neutral-500)' }}>
               Menampilkan <strong>{filteredReviewList.length}</strong> dari <strong>{rawMaterials.length}</strong> bahan baku
             </span>
-            <Button
-              variant="primary"
-              icon={Check}
-              size="sm"
-              onClick={() => setIsClosingConfirmModalOpen(true)}
-            >
-              Selesaikan Store Closing
-            </Button>
           </div>
         </div>
       </div>
@@ -896,7 +1062,7 @@ export const StockOpnameView = () => {
           const totalDiscrepancy = deficitCount + surplusCount;
 
           return (
-            <div style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="opname-superadmin-kpi-grid" style={{ ...styles.kpiGrid, gridTemplateColumns: 'repeat(3, 1fr)' }}>
               {/* Card 1: TOTAL BAHAN */}
               <div 
                 style={{ 
@@ -1063,178 +1229,355 @@ export const StockOpnameView = () => {
             </div>
           </div>
 
-          <table className="blue-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ width: '45px', textAlign: 'center' }}>No</th>
-                <th>Nama Bahan Baku</th>
-                <th>Satuan</th>
-                <th style={{ textAlign: 'right' }}>Stok Sistem</th>
-                <th style={{ textAlign: 'right' }}>Stok Aktual</th>
-                <th style={{ textAlign: 'center' }}>Dicatat Oleh</th>
-                <th style={{ textAlign: 'right' }}>Selisih</th>
-                <th>Catatan / Keterangan Superadmin</th>
-                <th style={{ width: '90px', textAlign: 'center' }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAdminItems.map((item, idx) => {
-                const isDeficit = Boolean(item.hasActual && item.status === 'DEFICIT');
-                const isSurplus = Boolean(item.hasActual && item.status === 'SURPLUS');
-                const isMatch = Boolean(item.hasActual && item.status === 'MATCH');
-                const hasNote = Boolean(item.adminNote || item.note);
+          {/* Desktop Table View (Hidden on mobile) */}
+          <div className="desktop-opname-table-wrapper">
+            <table className="blue-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '45px', textAlign: 'center' }}>No</th>
+                  <th>Nama Bahan Baku</th>
+                  <th>Satuan</th>
+                  <th style={{ textAlign: 'right' }}>Stok Sistem</th>
+                  <th style={{ textAlign: 'right' }}>Stok Aktual</th>
+                  <th style={{ textAlign: 'center' }}>Dicatat Oleh</th>
+                  <th style={{ textAlign: 'right' }}>Selisih</th>
+                  <th>Catatan / Keterangan Superadmin</th>
+                  <th style={{ width: '90px', textAlign: 'center' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAdminItems.map((item, idx) => {
+                  const isDeficit = Boolean(item.hasActual && item.status === 'DEFICIT');
+                  const isSurplus = Boolean(item.hasActual && item.status === 'SURPLUS');
+                  const hasNote = Boolean(item.adminNote || item.note);
 
-                return (
-                  <tr 
-                    key={item.id || idx}
-                    style={{
-                      backgroundColor: isDeficit ? '#fff8f8' : isSurplus ? '#fffdf5' : 'inherit'
-                    }}
-                  >
-                    <td style={{ textAlign: 'center', color: 'var(--neutral-400)' }}>{idx + 1}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>{item.name}</td>
-                    <td style={{ color: 'var(--neutral-600)' }}>{item.unitName}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--neutral-600)' }}>{formatNumber(item.systemStock)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      {item.hasActual ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetailModal(item)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '2px 6px',
+                  return (
+                    <tr 
+                      key={item.id || idx}
+                      style={{
+                        backgroundColor: isDeficit ? '#fff8f8' : isSurplus ? '#fffdf5' : 'inherit'
+                      }}
+                    >
+                      <td style={{ textAlign: 'center', color: 'var(--neutral-400)' }}>{idx + 1}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>{item.name}</td>
+                      <td style={{ color: 'var(--neutral-600)' }}>{item.unitName}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--neutral-600)' }}>{formatNumber(item.systemStock)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {item.hasActual ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetailModal(item)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontWeight: 700,
+                              color: 'var(--neutral-900)'
+                            }}
+                            title="Klik untuk mengubah stok aktual"
+                          >
+                            <span>{formatNumber(item.actualStock)}</span>
+                            <Edit3 size={11} color="var(--blue-600)" style={{ opacity: 0.65 }} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetailModal(item)}
+                            style={{
+                              background: '#fffbeb',
+                              border: '1px dashed #f59e0b',
+                              color: '#b45309',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              padding: '2px 6px',
+                              cursor: 'pointer'
+                            }}
+                            title="Klik untuk mengisi stok aktual"
+                          >
+                            + Isi Stok
+                          </button>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {item.hasActual ? (
+                          <span style={{
+                            fontSize: '0.813rem',
+                            fontWeight: 500,
+                            color: 'var(--neutral-700)',
+                            backgroundColor: 'var(--neutral-100)',
+                            padding: '2px 8px',
                             borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontWeight: 700,
-                            color: 'var(--neutral-900)'
-                          }}
-                          title="Klik untuk mengubah stok aktual"
-                        >
-                          <span>{formatNumber(item.actualStock)}</span>
-                          <Edit3 size={11} color="var(--blue-600)" style={{ opacity: 0.65 }} />
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetailModal(item)}
-                          style={{
-                            background: '#fffbeb',
-                            border: '1px dashed #f59e0b',
-                            color: '#b45309',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            borderRadius: '4px',
-                            padding: '2px 6px',
-                            cursor: 'pointer'
-                          }}
-                          title="Klik untuk mengisi stok aktual"
-                        >
-                          + Isi Stok
-                        </button>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {item.hasActual ? (
-                        <span style={{
-                          fontSize: '0.813rem',
-                          fontWeight: 500,
-                          color: 'var(--neutral-700)',
-                          backgroundColor: 'var(--neutral-100)',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          display: 'inline-block'
-                        }}>
-                          {item.countedBy || currentAdminReport?.closedBy || 'Kasir'}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--neutral-400)' }}>-</span>
-                      )}
-                    </td>
-                    <td style={{ 
-                      textAlign: 'right', 
-                      fontWeight: 700,
-                      color: !item.hasActual ? 'var(--neutral-400)' : isDeficit ? '#dc2626' : isSurplus ? '#b45309' : '#059669'
-                    }}>
-                      {!item.hasActual ? '-' : item.difference > 0 ? `+${formatNumber(item.difference)}` : formatNumber(item.difference)}
-                    </td>
-                    <td>
-                      {hasNote ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetailModal(item)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'block',
-                            width: '100%'
-                          }}
-                          title="Klik untuk mengubah catatan atau stok aktual"
-                        >
-                          <span style={styles.adminNoteText}>
-                            {item.adminNote || item.note}
+                            display: 'inline-block'
+                          }}>
+                            {item.countedBy || currentAdminReport?.closedBy || 'Kasir'}
                           </span>
-                        </button>
-                      ) : (
+                        ) : (
+                          <span style={{ color: 'var(--neutral-400)' }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ 
+                        textAlign: 'right', 
+                        fontWeight: 700,
+                        color: !item.hasActual ? 'var(--neutral-400)' : isDeficit ? '#dc2626' : isSurplus ? '#b45309' : '#059669'
+                      }}>
+                        {!item.hasActual ? '-' : item.difference > 0 ? `+${formatNumber(item.difference)}` : formatNumber(item.difference)}
+                      </td>
+                      <td>
+                        {hasNote ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetailModal(item)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              display: 'block',
+                              width: '100%'
+                            }}
+                            title="Klik untuk mengubah catatan atau stok aktual"
+                          >
+                            <span style={styles.adminNoteText}>
+                              {item.adminNote || item.note}
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetailModal(item)}
+                            style={styles.addNoteBtn}
+                            title="Klik untuk menambah catatan atau stok aktual"
+                          >
+                            + Catatan
+                          </button>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
                         <button
                           type="button"
                           onClick={() => handleOpenDetailModal(item)}
-                          style={styles.addNoteBtn}
-                          title="Klik untuk menambah catatan atau stok aktual"
+                          style={styles.tableActionReviewBtn}
+                          title="Lihat Detail"
                         >
-                          + Catatan
+                          Detail
                         </button>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetailModal(item)}
-                        style={styles.tableActionReviewBtn}
-                        title="Lihat Detail"
-                      >
-                        Detail
-                      </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredAdminItems.length === 0 && (
+                  <tr>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--neutral-500)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <CheckCircle2 size={32} color="#059669" />
+                        <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                          {adminStatusFilter === 'DISCREPANCY' 
+                            ? 'Bagus! Tidak ada bahan dengan selisih yang patut dicurigai.' 
+                            : adminStatusFilter === 'MATCH'
+                            ? 'Belum ada bahan yang sesuai dari hasil hitungan fisik.'
+                            : adminStatusFilter === 'UNCOUNTED'
+                            ? 'Bagus! Semua bahan sudah selesai dihitung.'
+                            : 'Tidak ada data bahan baku yang cocok.'}
+                        </span>
+                        <span style={{ fontSize: '0.813rem' }}>
+                          {adminStatusFilter === 'DISCREPANCY'
+                            ? 'Semua stok fisik yang diperiksa tercatat sesuai dengan penjualan sistem.'
+                            : adminStatusFilter === 'MATCH'
+                            ? 'Bahan dikatakan sesuai apabila sudah dihitung fisik dan jumlahnya cocok dengan stok sistem.'
+                            : adminStatusFilter === 'UNCOUNTED'
+                            ? 'Semua bahan baku telah tercatat stok fisik aktualnya.'
+                            : 'Coba ubah kata kunci pencarian atau filter status.'}
+                        </span>
+                      </div>
                     </td>
                   </tr>
-                );
-              })}
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {filteredAdminItems.length === 0 && (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--neutral-500)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                      <CheckCircle2 size={32} color="#059669" />
-                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
-                        {adminStatusFilter === 'DISCREPANCY' 
-                          ? 'Bagus! Tidak ada bahan dengan selisih yang patut dicurigai.' 
-                          : adminStatusFilter === 'MATCH'
-                          ? 'Belum ada bahan yang sesuai dari hasil hitungan fisik.'
-                          : adminStatusFilter === 'UNCOUNTED'
-                          ? 'Bagus! Semua bahan sudah selesai dihitung.'
-                          : 'Tidak ada data bahan baku yang cocok.'}
-                      </span>
-                      <span style={{ fontSize: '0.813rem' }}>
-                        {adminStatusFilter === 'DISCREPANCY'
-                          ? 'Semua stok fisik yang diperiksa tercatat sesuai dengan penjualan sistem.'
-                          : adminStatusFilter === 'MATCH'
-                          ? 'Bahan dikatakan sesuai apabila sudah dihitung fisik dan jumlahnya cocok dengan stok sistem.'
-                          : adminStatusFilter === 'UNCOUNTED'
-                          ? 'Semua bahan baku telah tercatat stok fisik aktualnya.'
-                          : 'Coba ubah kata kunci pencarian atau filter status.'}
-                      </span>
+          {/* Mobile Cards View (Shown on mobile screens <= 1024px) */}
+          <div className="mobile-opname-cards-wrapper">
+            {filteredAdminItems.length === 0 ? (
+              <div style={{ padding: '36px 16px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={32} color="#059669" />
+                  <span style={{ fontWeight: 600, color: 'var(--neutral-700)', fontSize: '0.938rem' }}>
+                    {adminStatusFilter === 'DISCREPANCY' 
+                      ? 'Bagus! Tidak ada bahan dengan selisih yang patut dicurigai.' 
+                      : adminStatusFilter === 'MATCH'
+                      ? 'Belum ada bahan yang sesuai dari hasil hitungan fisik.'
+                      : adminStatusFilter === 'UNCOUNTED'
+                      ? 'Bagus! Semua bahan sudah selesai dihitung.'
+                      : 'Tidak ada data bahan baku yang cocok.'}
+                  </span>
+                  <span style={{ fontSize: '0.813rem', color: 'var(--neutral-500)' }}>
+                    {adminStatusFilter === 'DISCREPANCY'
+                      ? 'Semua stok fisik yang diperiksa tercatat sesuai dengan penjualan sistem.'
+                      : adminStatusFilter === 'MATCH'
+                      ? 'Bahan dikatakan sesuai apabila sudah dihitung fisik dan jumlahnya cocok dengan stok sistem.'
+                      : adminStatusFilter === 'UNCOUNTED'
+                      ? 'Semua bahan baku telah tercatat stok fisik aktualnya.'
+                      : 'Coba ubah kata kunci pencarian atau filter status.'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px' }}>
+                {filteredAdminItems.map((item, idx) => {
+                  const isDeficit = Boolean(item.hasActual && item.status === 'DEFICIT');
+                  const isSurplus = Boolean(item.hasActual && item.status === 'SURPLUS');
+                  const isMatch = Boolean(item.hasActual && item.status === 'MATCH');
+                  const hasNote = Boolean(item.adminNote || item.note);
+
+                  const borderLeftColor = !item.hasActual 
+                    ? '#f59e0b' 
+                    : isDeficit 
+                    ? '#ef4444' 
+                    : isSurplus 
+                    ? '#f59e0b' 
+                    : '#10b981';
+
+                  return (
+                    <div
+                      key={item.id || idx}
+                      className="mobile-opname-card"
+                      style={{
+                        ...styles.mobileOpnameCard,
+                        borderLeft: `4px solid ${borderLeftColor}`
+                      }}
+                    >
+                      {/* Top Row: #No + Name + Unit, Status Badge on Right */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          <span style={styles.rowNumberTag}>#{idx + 1}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                            <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-900)', wordBreak: 'break-word', lineHeight: 1.25 }}>
+                              {item.name}
+                            </span>
+                            <span style={{ fontSize: '0.688rem', color: 'var(--neutral-500)' }}>
+                              Satuan: <strong>{item.unitName}</strong> · Dicatat: {item.countedBy || currentAdminReport?.closedBy || 'Kasir'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Pill Badge */}
+                        <div style={{ flexShrink: 0 }}>
+                          {!item.hasActual ? (
+                            <span style={styles.statusPillUncounted}>
+                              <Clock size={11} /> Belum Dihitung
+                            </span>
+                          ) : isMatch ? (
+                            <span style={styles.statusPillMatch}>
+                              <Check size={11} /> Sesuai
+                            </span>
+                          ) : isDeficit ? (
+                            <span style={styles.statusPillDeficit}>
+                              <AlertTriangle size={11} /> Deficit
+                            </span>
+                          ) : (
+                            <span style={{ ...styles.statusPillDeficit, backgroundColor: '#fffbeb', borderColor: '#fde68a', color: '#b45309' }}>
+                              <AlertTriangle size={11} /> Surplus
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Comparison Stats Box (Stok Sistem, Stok Aktual, Selisih) */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '8px',
+                        padding: '9px 11px',
+                        backgroundColor: isDeficit ? '#fef2f2' : isSurplus ? '#fffbeb' : 'var(--neutral-50)',
+                        borderRadius: '8px',
+                        border: `1px solid ${isDeficit ? '#fecaca' : isSurplus ? '#fde68a' : 'var(--border-subtle)'}`
+                      }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.625rem', color: 'var(--neutral-500)', fontWeight: 600, textTransform: 'uppercase' }}>
+                            Stok Sistem
+                          </span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--neutral-800)' }}>
+                            {formatNumber(item.systemStock)} <span style={{ fontSize: '0.688rem', fontWeight: 500, color: 'var(--neutral-500)' }}>{item.unitName}</span>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.625rem', color: 'var(--neutral-500)', fontWeight: 600, textTransform: 'uppercase' }}>
+                            Stok Aktual
+                          </span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 800, color: item.hasActual ? 'var(--neutral-900)' : 'var(--neutral-400)' }}>
+                            {item.hasActual ? formatNumber(item.actualStock) : '-'} <span style={{ fontSize: '0.688rem', fontWeight: 500, color: 'var(--neutral-500)' }}>{item.unitName}</span>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.625rem', color: 'var(--neutral-500)', fontWeight: 600, textTransform: 'uppercase' }}>
+                            Selisih
+                          </span>
+                          <span style={{ 
+                            fontSize: '0.875rem', 
+                            fontWeight: 800, 
+                            color: !item.hasActual ? 'var(--neutral-400)' : isDeficit ? '#dc2626' : isSurplus ? '#b45309' : '#059669' 
+                          }}>
+                            {!item.hasActual 
+                              ? '-' 
+                              : item.difference > 0 
+                              ? `+${formatNumber(item.difference)}` 
+                              : formatNumber(item.difference)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Note row if present */}
+                      {hasNote && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '6px',
+                          padding: '6px 10px',
+                          backgroundColor: 'rgba(0,0,0,0.02)',
+                          borderRadius: '6px',
+                          border: '1px dashed var(--border-color)',
+                          fontSize: '0.75rem',
+                          color: 'var(--neutral-700)'
+                        }}>
+                          <FileText size={12} color="var(--neutral-500)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <span style={{ fontStyle: 'italic', wordBreak: 'break-word' }}>
+                            {item.adminNote || item.note}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Bottom Row: Detail & Edit Button */}
+                      <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '2px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetailModal(item)}
+                          style={{
+                            ...styles.mobileActionEditBtn,
+                            width: '100%',
+                            justifyContent: 'center',
+                            padding: '8px 12px'
+                          }}
+                        >
+                          <Edit3 size={14} /> Detail &amp; Sesuaikan Stok
+                        </button>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1333,34 +1676,49 @@ export const StockOpnameView = () => {
             </>
           )}
 
-          {/* Modal CTAs */}
-          <div style={styles.modalFooterActions}>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
-            >
-              Batal
-            </Button>
+          {/* Modal CTAs: Perbarui Hitungan on left, Batal on right, 50:50 2-column layout */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            width: '100%',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--border-color)'
+          }}>
+            {!isEditMode && (
+              <Button
+                variant="outline"
+                onClick={() => handleSaveModalItem(true)}
+                disabled={!selectedMaterialId || inputActualStock === ''}
+                title="Simpan dan langsung pilih bahan berikutnya"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                Simpan &amp; Lanjut
+              </Button>
+            )}
 
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {!isEditMode && (
-                <Button
-                  variant="outline"
-                  onClick={() => handleSaveModalItem(true)}
-                  disabled={!selectedMaterialId || inputActualStock === ''}
-                  title="Simpan dan langsung pilih bahan berikutnya"
-                >
-                  Simpan &amp; Lanjut
-                </Button>
-              )}
-
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '10px',
+              width: '100%'
+            }}>
               <Button
                 variant="primary"
                 icon={Check}
                 onClick={() => handleSaveModalItem(false)}
                 disabled={!selectedMaterialId || inputActualStock === ''}
+                style={{ width: '100%', justifyContent: 'center' }}
               >
                 {isEditMode ? 'Perbarui Hitungan' : 'Tambahkan'}
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsAddModalOpen(false)}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                Batal
               </Button>
             </div>
           </div>
@@ -1632,19 +1990,28 @@ export const StockOpnameView = () => {
                 />
               </div>
 
-              <div style={styles.modalFooterActions}>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDetailModalOpen(false)}
-                >
-                  Batal
-                </Button>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px',
+                width: '100%',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border-color)'
+              }}>
                 <Button
                   variant="primary"
                   icon={Save}
                   onClick={handleSaveAdminDetail}
+                  style={{ width: '100%', justifyContent: 'center' }}
                 >
                   Simpan Perubahan
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  Batal
                 </Button>
               </div>
             </div>
@@ -1654,20 +2021,80 @@ export const StockOpnameView = () => {
 
       {/* Embedded Mobile Responsive Styles */}
       <style>{`
+        .desktop-opname-table-wrapper {
+          display: block;
+        }
+        .mobile-opname-cards-wrapper {
+          display: none;
+        }
+
         .opname-kasir-dashboard,
         .opname-superadmin-screen,
         .opname-review-screen {
           width: 100%;
         }
 
+        .opname-closing-action-wrap {
+          display: flex;
+          justify-content: flex-end;
+          width: 100%;
+        }
+
+        .btn-selesaikan-closing {
+          min-height: 42px;
+          height: 42px;
+          font-weight: 600;
+          font-size: 0.875rem;
+          border-radius: 8px;
+        }
+
         @media (max-width: 1024px) {
           .stock-opname-page {
             padding: 0 !important;
+          }
+          .desktop-opname-table-wrapper {
+            display: none !important;
+          }
+          .mobile-opname-cards-wrapper {
+            display: block !important;
+          }
+          .opname-closing-action-wrap {
+            display: block !important;
+            width: 100% !important;
+          }
+          .btn-selesaikan-closing {
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .stock-opname-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            padding: 12px 14px !important;
+          }
+          .stock-opname-filter-pills {
+            width: 100% !important;
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            padding-bottom: 4px !important;
+            -webkit-overflow-scrolling: touch;
+          }
+          .stock-opname-mini-search {
+            width: 100% !important;
+          }
+          .stock-opname-mini-search input {
+            height: 38px !important;
+            font-size: 0.813rem !important;
           }
         }
 
         @media (max-width: 768px) {
           .counted-cards-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .opname-superadmin-kpi-grid {
             grid-template-columns: 1fr !important;
           }
         }
@@ -2169,6 +2596,11 @@ const styles = {
     flexWrap: 'wrap',
     gap: '12px'
   },
+  closingActionWrap: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    width: '100%'
+  },
   warningAlertBox: {
     backgroundColor: '#fffbeb',
     border: '1px solid #fde68a',
@@ -2240,6 +2672,100 @@ const styles = {
     padding: '4px 6px',
     cursor: 'pointer',
     transition: 'all 0.15s ease'
+  },
+  // Mobile Card Styles
+  mobileOpnameCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    backgroundColor: '#ffffff',
+    border: '1px solid var(--border-color)',
+    borderRadius: '10px',
+    padding: '12px 14px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+  },
+  rowNumberTag: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: 'var(--blue-600)',
+    backgroundColor: 'var(--blue-50)',
+    border: '1px solid var(--blue-200)',
+    padding: '2px 7px',
+    borderRadius: 'var(--radius-xs)',
+    display: 'inline-block',
+    flexShrink: 0
+  },
+  mobileDetailGrid: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    backgroundColor: 'var(--neutral-50)',
+    borderRadius: '8px',
+    border: '1px solid var(--border-subtle)'
+  },
+  mobileDetailBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px'
+  },
+  mobileDetailLabel: {
+    fontSize: '0.688rem',
+    fontWeight: 600,
+    color: 'var(--neutral-500)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em'
+  },
+  mobileActionFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%'
+  },
+  mobileActionInputBtn: {
+    width: '100%',
+    height: '38px',
+    borderRadius: '8px',
+    backgroundColor: 'var(--blue-600)',
+    color: '#ffffff',
+    border: 'none',
+    fontWeight: 600,
+    fontSize: '0.813rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+  },
+  mobileActionEditBtn: {
+    flex: 1,
+    height: '38px',
+    borderRadius: '8px',
+    backgroundColor: 'var(--blue-50)',
+    color: 'var(--blue-600)',
+    border: '1px solid var(--blue-200)',
+    fontWeight: 600,
+    fontSize: '0.813rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    cursor: 'pointer'
+  },
+  mobileActionResetBtn: {
+    padding: '0 12px',
+    height: '38px',
+    borderRadius: '8px',
+    backgroundColor: 'var(--neutral-50)',
+    color: 'var(--neutral-600)',
+    border: '1px solid var(--border-color)',
+    fontWeight: 600,
+    fontSize: '0.813rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    cursor: 'pointer'
   },
   // Modal Fields
   formLabel: {
