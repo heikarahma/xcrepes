@@ -1,0 +1,24 @@
+[
+  {
+    "id": "store_default",
+    "app_name": "XCrepes POS",
+    "store_name": "XCrepes D'Botanica",
+    "store_tagline": "Crispy & Tasty Crepes in Town",
+    "logo": null,
+    "phone": "0812-3456-7890",
+    "address": "D'Botanica Mall Bandung, Lt. LG Food Court No. 12",
+    "email": "contact@xcrepes.id",
+    "receipt_title": "XCrepes D'Botanica",
+    "receipt_subtitle": "Cabang D'Botanica Mall Bandung",
+    "receipt_phone": "0812-3456-7890",
+    "receipt_footer1": "Terima Kasih Atas Kunjungan Anda!",
+    "receipt_footer2": "Follow Instagram @xcrepes.id",
+    "paper_size": "58mm",
+    "show_logo_on_receipt": false,
+    "show_cashier_name": true,
+    "show_customer_name": true,
+    "show_table_number": true,
+    "show_notes": true,
+    "updated_at": "2026-09-11T01:58:30.37+00:00"
+  }
+]

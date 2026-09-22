@@ -1,0 +1,482 @@
+[
+  {
+    "id": "TOP-024",
+    "name": "Yupi",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-022",
+        "rawMaterialName": "Yupi"
+      }
+    ],
+    "created_at": "2026-09-16T08:20:19.227+00:00",
+    "updated_at": "2026-09-16T08:20:19.227+00:00"
+  },
+  {
+    "id": "TOP-025",
+    "name": "Top Chocolate",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "10",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-026",
+        "rawMaterialName": "Selai Top Chocolate"
+      }
+    ],
+    "created_at": "2026-09-16T08:22:03.522+00:00",
+    "updated_at": "2026-09-16T08:22:03.522+00:00"
+  },
+  {
+    "id": "TOP-026",
+    "name": "Top Strawberry",
+    "price": 1997,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "10",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-028",
+        "rawMaterialName": "Selai Top Strawberry"
+      }
+    ],
+    "created_at": "2026-09-16T08:24:08.602+00:00",
+    "updated_at": "2026-09-16T08:24:08.602+00:00"
+  },
+  {
+    "id": "TOP-001",
+    "name": "Chocolate",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "2",
+        "unitName": "Bungkus",
+        "rawMaterialId": "RAW-002",
+        "rawMaterialName": "Coklat"
+      }
+    ],
+    "created_at": "2026-09-11T07:22:53.996+00:00",
+    "updated_at": "2026-09-11T07:22:53.996+00:00"
+  },
+  {
+    "id": "TOP-002",
+    "name": "Selai Strawberry",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-005",
+        "rawMaterialName": "Selai strawberry"
+      }
+    ],
+    "created_at": "2026-09-11T07:24:11.337+00:00",
+    "updated_at": "2026-09-11T07:24:11.337+00:00"
+  },
+  {
+    "id": "TOP-003",
+    "name": "Selai Blueberry",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-006",
+        "rawMaterialName": "Selai Blueberry"
+      }
+    ],
+    "created_at": "2026-09-11T07:36:15.897+00:00",
+    "updated_at": "2026-09-11T07:36:15.897+00:00"
+  },
+  {
+    "id": "TOP-004",
+    "name": "Milk",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-014",
+        "rawMaterialName": "Milk"
+      }
+    ],
+    "created_at": "2026-09-11T07:38:23.568+00:00",
+    "updated_at": "2026-09-11T07:38:23.568+00:00"
+  },
+  {
+    "id": "TOP-005",
+    "name": "Selai Peanut",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-007",
+        "rawMaterialName": "Selai Peanut"
+      }
+    ],
+    "created_at": "2026-09-11T07:39:38.774+00:00",
+    "updated_at": "2026-09-11T07:39:38.774+00:00"
+  },
+  {
+    "id": "TOP-006",
+    "name": "Selai srikaya",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-008",
+        "rawMaterialName": "Selai Srikaya"
+      }
+    ],
+    "created_at": "2026-09-11T07:40:23.048+00:00",
+    "updated_at": "2026-09-11T07:40:32.376+00:00"
+  },
+  {
+    "id": "TOP-007",
+    "name": "Oreo",
+    "price": 1600,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "2",
+        "unitName": "Bungkus",
+        "rawMaterialId": "RAW-004",
+        "rawMaterialName": "Oreo"
+      }
+    ],
+    "created_at": "2026-09-11T07:40:59.275+00:00",
+    "updated_at": "2026-09-11T07:40:59.275+00:00"
+  },
+  {
+    "id": "TOP-008",
+    "name": "Banana",
+    "price": 4000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-013",
+        "rawMaterialName": "pisang"
+      }
+    ],
+    "created_at": "2026-09-11T07:41:36.639+00:00",
+    "updated_at": "2026-09-11T07:41:36.639+00:00"
+  },
+  {
+    "id": "TOP-009",
+    "name": "Silverqueen",
+    "price": 9000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Bungkus",
+        "rawMaterialId": "RAW-010",
+        "rawMaterialName": "Silverqueen"
+      }
+    ],
+    "created_at": "2026-09-11T07:42:17.25+00:00",
+    "updated_at": "2026-09-11T07:42:17.25+00:00"
+  },
+  {
+    "id": "TOP-010",
+    "name": "Silverqueen Matcha",
+    "price": 9000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Bungkus",
+        "rawMaterialId": "RAW-011",
+        "rawMaterialName": "Silverqueen Matcha"
+      }
+    ],
+    "created_at": "2026-09-11T07:46:41.829+00:00",
+    "updated_at": "2026-09-11T07:46:41.829+00:00"
+  },
+  {
+    "id": "TOP-011",
+    "name": "Nutella",
+    "price": 9000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-015",
+        "rawMaterialName": "Nuttella"
+      }
+    ],
+    "created_at": "2026-09-11T07:47:51.788+00:00",
+    "updated_at": "2026-09-11T07:48:08.32+00:00"
+  },
+  {
+    "id": "TOP-012",
+    "name": "Ovomaltine",
+    "price": 9000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "30",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-017",
+        "rawMaterialName": "Ovomaltine"
+      }
+    ],
+    "created_at": "2026-09-11T07:50:24.24+00:00",
+    "updated_at": "2026-09-11T07:50:24.24+00:00"
+  },
+  {
+    "id": "TOP-013",
+    "name": "Choco Crunchy",
+    "price": 9000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "27",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-016",
+        "rawMaterialName": "Choco Crunchy"
+      }
+    ],
+    "created_at": "2026-09-11T07:51:41.529+00:00",
+    "updated_at": "2026-09-11T07:51:41.529+00:00"
+  },
+  {
+    "id": "TOP-014",
+    "name": "Pistachio Kunafa",
+    "price": 20000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "33",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-009",
+        "rawMaterialName": "Selai Pistachio K"
+      }
+    ],
+    "created_at": "2026-09-11T07:52:34.015+00:00",
+    "updated_at": "2026-09-11T07:52:34.015+00:00"
+  },
+  {
+    "id": "TOP-015",
+    "name": "Tuna",
+    "price": 8000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-035",
+        "rawMaterialName": "Tuna"
+      }
+    ],
+    "created_at": "2026-09-11T07:53:21.194+00:00",
+    "updated_at": "2026-09-11T07:53:21.194+00:00"
+  },
+  {
+    "id": "TOP-016",
+    "name": "Beef Burger",
+    "price": 8000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-032",
+        "rawMaterialName": "Beef Burger"
+      }
+    ],
+    "created_at": "2026-09-11T07:54:10.058+00:00",
+    "updated_at": "2026-09-11T07:54:10.058+00:00"
+  },
+  {
+    "id": "TOP-017",
+    "name": "Smoke Beef",
+    "price": 8000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-033",
+        "rawMaterialName": "Smoke Beef"
+      }
+    ],
+    "created_at": "2026-09-11T07:54:56.707+00:00",
+    "updated_at": "2026-09-11T07:54:56.707+00:00"
+  },
+  {
+    "id": "TOP-018",
+    "name": "Sausage",
+    "price": 8000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-034",
+        "rawMaterialName": "Sosis"
+      }
+    ],
+    "created_at": "2026-09-11T07:55:34.399+00:00",
+    "updated_at": "2026-09-11T07:55:34.399+00:00"
+  },
+  {
+    "id": "TOP-019",
+    "name": "Cheese Slice",
+    "price": 5000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-040",
+        "rawMaterialName": "Cheese Slice"
+      }
+    ],
+    "created_at": "2026-09-11T07:56:14.514+00:00",
+    "updated_at": "2026-09-11T07:56:14.514+00:00"
+  },
+  {
+    "id": "TOP-020",
+    "name": "Cheese",
+    "price": 5000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "2",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-003",
+        "rawMaterialName": "Cheese"
+      }
+    ],
+    "created_at": "2026-09-11T07:56:57.052+00:00",
+    "updated_at": "2026-09-11T07:56:57.052+00:00"
+  },
+  {
+    "id": "TOP-021",
+    "name": "Dus Crepes",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-041",
+        "rawMaterialName": "Dus Crepes"
+      }
+    ],
+    "created_at": "2026-09-11T07:57:48.765+00:00",
+    "updated_at": "2026-09-15T07:47:46.232+00:00"
+  },
+  {
+    "id": "TOP-022",
+    "name": "Ice  cream",
+    "price": 7996,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "80",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-019",
+        "rawMaterialName": "Ice Cream"
+      }
+    ],
+    "created_at": "2026-09-16T08:18:47.57+00:00",
+    "updated_at": "2026-09-16T08:18:47.57+00:00"
+  },
+  {
+    "id": "TOP-023",
+    "name": "Chacha",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "3",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-020",
+        "rawMaterialName": "Chacha"
+      }
+    ],
+    "created_at": "2026-09-16T08:19:33.917+00:00",
+    "updated_at": "2026-09-16T08:19:33.917+00:00"
+  },
+  {
+    "id": "TOP-027",
+    "name": "Top Blueberry",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "10",
+        "unitName": "Gram",
+        "rawMaterialId": "RAW-027",
+        "rawMaterialName": "Selai Top Blueberry"
+      }
+    ],
+    "created_at": "2026-09-16T08:27:06.075+00:00",
+    "updated_at": "2026-09-16T08:27:06.075+00:00"
+  },
+  {
+    "id": "TOP-028",
+    "name": "Astor",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Batang",
+        "rawMaterialId": "RAW-023",
+        "rawMaterialName": "Astor"
+      }
+    ],
+    "created_at": "2026-09-16T08:28:39.629+00:00",
+    "updated_at": "2026-09-16T08:28:39.629+00:00"
+  },
+  {
+    "id": "TOP-029",
+    "name": "Choco Stick",
+    "price": 2000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Pcs",
+        "rawMaterialId": "RAW-025",
+        "rawMaterialName": "Choco Stick"
+      }
+    ],
+    "created_at": "2026-09-16T08:31:10.227+00:00",
+    "updated_at": "2026-09-16T08:31:10.227+00:00"
+  },
+  {
+    "id": "TOP-030",
+    "name": "Marsmallow",
+    "price": 6000,
+    "description": "",
+    "ingredients": [
+      {
+        "quantity": "1",
+        "unitName": "Bungkus",
+        "rawMaterialId": "RAW-018",
+        "rawMaterialName": "marsmallow"
+      }
+    ],
+    "created_at": "2026-09-16T08:35:24.183+00:00",
+    "updated_at": "2026-09-16T08:35:24.183+00:00"
+  }
+]
