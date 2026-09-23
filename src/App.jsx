@@ -12,7 +12,8 @@ import {
   ProductMenuProvider, 
   OrderProvider,
   SettingsProvider,
-  ReportProvider
+  ReportProvider,
+  StockOpnameProvider
 } from './controllers';
 
 // Views [V] - Auth
@@ -228,15 +229,17 @@ function App() {
         <SettingsProvider>
           <CategoryProvider>
             <RawMaterialProvider>
-              <ToppingProvider>
-                <ProductMenuProvider>
-                  <OrderProvider>
-                    <ReportProvider>
-                      <AuthenticatedApp />
-                    </ReportProvider>
-                  </OrderProvider>
-                </ProductMenuProvider>
-              </ToppingProvider>
+              <StockOpnameProvider>
+                <ToppingProvider>
+                  <ProductMenuProvider>
+                    <OrderProvider>
+                      <ReportProvider>
+                        <AuthenticatedApp />
+                      </ReportProvider>
+                    </OrderProvider>
+                  </ProductMenuProvider>
+                </ToppingProvider>
+              </StockOpnameProvider>
             </RawMaterialProvider>
           </CategoryProvider>
         </SettingsProvider>

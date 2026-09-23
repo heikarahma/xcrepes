@@ -7,3 +7,4 @@ export * from './OrderController';
 export * from './SettingsController';
 export * from './ReportController';
 export * from './AuthController';
+export * from './StockOpnameController';

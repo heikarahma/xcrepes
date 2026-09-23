@@ -267,13 +267,8 @@ export const Sidebar = () => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <ClipboardCheck size={18} color={activeMenu === 'stock-opname' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Stock Opname</span>
+                      <span style={{ fontWeight: activeMenu === 'stock-opname' ? 700 : 500 }}>Stock Opname</span>
                     </div>
-                    {totalAllRawMaterials > 0 && (
-                      <span style={activeMenu === 'stock-opname' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
-                        {opnameSummary?.countedCount > 0 ? `${opnameSummary.countedCount}/${totalAllRawMaterials}` : totalAllRawMaterials}
-                      </span>
-                    )}
                   </button>
                 )}
               </div>

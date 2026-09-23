@@ -74,7 +74,7 @@ export const Navbar = () => {
       case 'raw-material':
         return { group: 'Inventori & Stok', title: 'Stok Bahan Baku', icon: Package };
       case 'stock-opname':
-        return { group: 'Inventori & Stok', title: 'Stock Opname Bahan Baku', icon: ClipboardCheck };
+        return { group: 'Inventori & Stok', title: 'Stock Opname', icon: ClipboardCheck };
       case 'returns':
         return { group: 'Retur & Kerusakan', title: 'Pusat Retur & Waste', icon: RotateCcw };
       case 'reports':

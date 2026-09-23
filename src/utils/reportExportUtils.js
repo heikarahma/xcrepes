@@ -1508,3 +1508,193 @@ export const exportStockOpnameToPDF = ({
   doc.save(filename);
 };
 
+/**
+ * Export Summary of Multiple Stock Opname Reports to Excel
+ */
+export const exportOpnameSummaryReportToExcel = ({
+  reports = [],
+  periodLabel = 'Semua Periode',
+  storeName = 'XCrepes POS'
+}) => {
+  const currentDateStr = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const totalReports = reports.length;
+  const submittedCount = reports.filter(r => r.status === 'SUBMITTED').length;
+  const voidCount = reports.filter(r => r.status === 'VOID').length;
+
+  let totalAudited = 0;
+  let totalMatch = 0;
+  let totalDeficit = 0;
+  let totalSurplus = 0;
+  let totalValuation = 0;
+
+  reports.forEach(r => {
+    if (r.status !== 'VOID') {
+      totalAudited += (r.summary?.totalMaterials || r.items?.length || 0);
+      totalMatch += (r.summary?.matchCount || 0);
+      totalDeficit += (r.summary?.deficitCount || 0);
+      totalSurplus += (r.summary?.surplusCount || 0);
+      totalValuation += (r.summary?.totalDifferenceValue || 0);
+    }
+  });
+
+  const rows = [
+    [storeName.toUpperCase()],
+    ['REKAPITULASI SUMMARY STOCK OPNAME BAHAN BAKU'],
+    [`Periode Laporan       : ${periodLabel}`],
+    [`Waktu Unduh           : ${currentDateStr} WIB`],
+    [`Total Sesi Opname     : ${totalReports} Laporan (${submittedCount} Terkirim, ${voidCount} Dibatalkan)`],
+    [`Total Bahan Diperiksa : ${totalAudited} Pemeriksaan Fisik`],
+    [`Ringkasan Hasil Fisik : ${totalMatch} Cocok, ${totalDeficit} Defisit, ${totalSurplus} Surplus`],
+    [`Total Valuasi Selisih : ${formatIDR(totalValuation)}`],
+    []
+  ];
+
+  const headerRow = [
+    'No',
+    'ID Laporan',
+    'Tanggal Opname',
+    'Petugas Kasir',
+    'Status Laporan',
+    'Cakupan Bahan',
+    'Item Cocok',
+    'Item Kurang (Defisit)',
+    'Item Lebih (Surplus)',
+    'Valuasi Selisih (Rp)',
+    'Versi',
+    'Koreksi Admin'
+  ];
+
+  rows.push(headerRow);
+
+  reports.forEach((report, idx) => {
+    const isVoid = report.status === 'VOID';
+    const sum = report.summary || {};
+    const hasCorrection = (report.auditTrail || []).some(a => a.action === 'ADMIN_CORRECTION');
+
+    rows.push([
+      idx + 1,
+      report.id || '-',
+      report.displayDate || report.opnameDate || report.date || '-',
+      report.submittedBy?.name || report.createdBy?.name || 'Kasir',
+      isVoid ? 'DIBATALKAN (VOID)' : 'TERKIRIM',
+      sum.totalMaterials || report.items?.length || 0,
+      isVoid ? '-' : (sum.matchCount || 0),
+      isVoid ? '-' : (sum.deficitCount || 0),
+      isVoid ? '-' : (sum.surplusCount || 0),
+      isVoid ? 0 : (sum.totalDifferenceValue || 0),
+      `v${report.version || 1}`,
+      hasCorrection ? 'Ada Koreksi Admin' : 'Tidak Ada'
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary Stock Opname');
+
+  const filename = `Summary_Stock_Opname_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  XLSX.writeFile(wb, filename);
+};
+
+/**
+ * Export Summary of Multiple Stock Opname Reports to PDF
+ */
+export const exportOpnameSummaryReportToPDF = ({
+  reports = [],
+  periodLabel = 'Semua Periode',
+  storeName = 'XCrepes POS'
+}) => {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'pt',
+    format: 'a4'
+  });
+
+  drawPDFHeader(
+    doc,
+    'SUMMARY LAPORAN AUDIT STOCK OPNAME',
+    'Rekapitulasi berkala pencatatan stok fisik, audit selisih fisik vs sistem, dan valuasi deviasi bahan baku.',
+    [{ label: 'Periode Waktu', value: periodLabel }],
+    storeName
+  );
+
+  const headRow = [
+    'No',
+    'ID Laporan & Tanggal',
+    'Petugas Kasir',
+    'Status',
+    'Bahan',
+    'Cocok',
+    'Kurang',
+    'Lebih',
+    'Valuasi Selisih',
+    'Versi & Koreksi'
+  ];
+
+  const tableBody = reports.map((report, idx) => {
+    const isVoid = report.status === 'VOID';
+    const sum = report.summary || {};
+    const hasCorrection = (report.auditTrail || []).some(a => a.action === 'ADMIN_CORRECTION');
+    const diffVal = sum.totalDifferenceValue || 0;
+
+    return [
+      idx + 1,
+      `${report.id}\n${report.displayDate || report.opnameDate || report.date || '-'}`,
+      report.submittedBy?.name || report.createdBy?.name || 'Kasir',
+      isVoid ? 'VOID' : 'TERKIRIM',
+      sum.totalMaterials || report.items?.length || 0,
+      isVoid ? '-' : `${sum.matchCount || 0}`,
+      isVoid ? '-' : `${sum.deficitCount || 0}`,
+      isVoid ? '-' : `${sum.surplusCount || 0}`,
+      isVoid ? '-' : (diffVal === 0 ? 'Rp 0' : formatIDR(diffVal)),
+      `v${report.version || 1}${hasCorrection ? ' (Koreksi Admin)' : ''}`
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 78,
+    head: [headRow],
+    body: tableBody,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 5,
+      textColor: [30, 41, 59],
+      valign: 'middle'
+    },
+    headStyles: {
+      fillColor: [0, 96, 174],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252]
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 26 },
+      1: { halign: 'left', fontStyle: 'bold', cellWidth: 140 },
+      2: { halign: 'left', cellWidth: 110 },
+      3: { halign: 'center', cellWidth: 65 },
+      4: { halign: 'center', cellWidth: 45 },
+      5: { halign: 'center', cellWidth: 45 },
+      6: { halign: 'center', cellWidth: 45 },
+      7: { halign: 'center', cellWidth: 45 },
+      8: { halign: 'right', fontStyle: 'bold', cellWidth: 100 },
+      9: { halign: 'center', cellWidth: 90 }
+    },
+    margin: { left: 36, right: 36 }
+  });
+
+  setupPDFFooter(doc, storeName);
+
+  const filename = `Summary_Stock_Opname_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(filename);
+};
+

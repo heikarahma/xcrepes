@@ -281,7 +281,10 @@ a:hover {
   .sales-report-tab,
   .material-report-tab,
   .cashier-view-container,
-  .settings-page {
+  .settings-page,
+  .stock-opname-page,
+  .stock-opname-admin-page,
+  .stock-opname-detail-page {
     padding: 0 0 24px 0 !important;
     margin: 0 !important;
     width: 100% !important;

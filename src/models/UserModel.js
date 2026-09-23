@@ -66,7 +66,7 @@ export const NAV_FEATURES = [
     label: 'Stock Opname',
     group: 'INVENTORI & STOK',
     iconName: 'ClipboardCheck',
-    description: 'Akses rekonsiliasi stok fisik vs sistem, cetak formulir, dan ekspor laporan'
+    description: 'Akses pencatatan stok fisik aktual harian dan rekonsiliasi selisih stok bahan baku'
   },
   {
     key: 'returns',

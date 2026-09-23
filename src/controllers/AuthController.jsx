@@ -26,14 +26,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(AUTH_USER_STORAGE_KEY);
       if (!saved) return null;
-      const parsed = JSON.parse(saved);
-      if (parsed && parsed.role === 'kasir') {
-        const perms = Array.isArray(parsed.permissions) ? parsed.permissions : [];
-        if (!perms.includes('stock-opname')) {
-          parsed.permissions = [...perms, 'stock-opname'];
-        }
-      }
-      return parsed;
+      return JSON.parse(saved);
     } catch (e) {
       console.error('Gagal membaca sesi user dari localStorage', e);
       return null;
@@ -204,7 +197,7 @@ export const AuthProvider = ({ children }) => {
       return perms.includes('reports-sales') || perms.includes(featureKey);
     }
 
-    // Fitur Stock Opname selalu dapat diakses oleh Kasir (tutup toko fisik harian kasir)
+    // Fitur Stock Opname dapat diakses oleh Kasir
     if (featureKey === 'stock-opname') {
       return true;
     }
