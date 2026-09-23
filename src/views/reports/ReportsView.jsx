@@ -5,6 +5,7 @@ import { useAuth } from '../../controllers/AuthController';
 import { SalesReportTab } from './SalesReportTab';
 import { MaterialUsageReportTab } from './MaterialUsageReportTab';
 import { Badge } from '../components/Badge';
+import { SearchSelect } from '../components/SearchSelect';
 import { 
   Package, 
   Calendar, 
@@ -92,22 +93,24 @@ export const ReportsView = () => {
             <span>Periode Waktu:</span>
           </div>
 
-          <div className="reports-date-select-wrapper" style={styles.selectWrapper}>
-            <select
+          <div style={{ minWidth: '190px' }}>
+            <SearchSelect
+              options={[
+                { value: 'all', label: 'Semua Waktu' },
+                { value: 'today', label: 'Hari Ini' },
+                { value: 'yesterday', label: 'Kemarin' },
+                { value: '7days', label: '7 Hari Terakhir' },
+                { value: '30days', label: '30 Hari Terakhir' },
+                { value: 'this_month', label: 'Bulan Ini' },
+                { value: 'custom', label: 'Kustom (Rentang Tanggal)' }
+              ]}
               value={dateRangePreset}
-              onChange={(e) => setDateRangePreset(e.target.value)}
-              className="blue-input"
-              style={styles.filterSelect}
-            >
-              <option value="all">Semua Waktu</option>
-              <option value="today">Hari Ini</option>
-              <option value="yesterday">Kemarin</option>
-              <option value="7days">7 Hari Terakhir</option>
-              <option value="30days">30 Hari Terakhir</option>
-              <option value="this_month">Bulan Ini</option>
-              <option value="custom">Kustom (Rentang Tanggal)</option>
-            </select>
-            <ChevronDown size={14} color="var(--neutral-400)" style={styles.filterChevron} />
+              onChange={(val) => setDateRangePreset(val)}
+              placeholder="Pilih periode..."
+              searchPlaceholder="Cari periode..."
+              clearable={false}
+              size="sm"
+            />
           </div>
 
           {/* Custom Date Pickers */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useOrder } from '../../controllers/OrderController';
 import { EmptyState } from '../components/EmptyState';
+import { SearchSelect } from '../components/SearchSelect';
 import { 
   Package, 
   Search, 
@@ -133,38 +134,44 @@ export const MaterialUsageReportTab = () => {
           />
         </div>
 
-        <div className="reports-filter-group" style={styles.filterGroup}>
+        <div className="reports-filter-group" style={{ ...styles.filterGroup, flexWrap: 'wrap' }}>
           {/* Filter Bahan Baku */}
-          <div className="reports-select-wrapper" style={styles.selectWrapper}>
-            <Package size={14} color="var(--neutral-500)" />
-            <select
+          <div style={{ minWidth: '220px', flex: '1 1 200px' }}>
+            <SearchSelect
+              options={[
+                { value: 'ALL', label: 'Semua Bahan Baku' },
+                ...availableRawMaterials.map(m => ({
+                  value: m.id,
+                  label: m.name,
+                  sublabel: `Satuan: ${m.unitName || 'Unit'}`
+                }))
+              ]}
               value={materialIdFilter}
-              onChange={(e) => setMaterialIdFilter(e.target.value)}
-              style={styles.filterSelect}
-            >
-              <option value="ALL">Semua Bahan Baku</option>
-              {availableRawMaterials.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.name} ({m.unitName})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setMaterialIdFilter(val)}
+              placeholder="Semua Bahan Baku"
+              searchPlaceholder="Cari bahan baku..."
+              icon={Package}
+              clearable={false}
+            />
           </div>
 
           {/* Filter Tipe Penyebab */}
-          <div className="reports-select-wrapper" style={styles.selectWrapper}>
-            <Filter size={14} color="var(--neutral-500)" />
-            <select
+          <div style={{ minWidth: '220px', flex: '1 1 200px' }}>
+            <SearchSelect
+              options={[
+                { value: 'ALL', label: 'Semua Penyebab Mutasi' },
+                { value: 'SALE', label: 'Hanya Penjualan Kasir POS' },
+                { value: 'WASTE', label: 'Bahan Rusak / Expired / Retur' },
+                { value: 'MANUAL_OUT', label: 'Pemakaian Manual Dapur' },
+                { value: 'ADJUST', label: 'Penyesuaian Stok Opname' }
+              ]}
               value={materialEventTypeFilter}
-              onChange={(e) => setMaterialEventTypeFilter(e.target.value)}
-              style={styles.filterSelect}
-            >
-              <option value="ALL">Semua Penyebab Mutasi</option>
-              <option value="SALE">Hanya Penjualan Kasir POS</option>
-              <option value="WASTE">Bahan Rusak / Expired / Retur</option>
-              <option value="MANUAL_OUT">Pemakaian Manual Dapur</option>
-              <option value="ADJUST">Penyesuaian Stok Opname</option>
-            </select>
+              onChange={(val) => setMaterialEventTypeFilter(val)}
+              placeholder="Semua Penyebab"
+              searchPlaceholder="Cari tipe mutasi..."
+              icon={Filter}
+              clearable={false}
+            />
           </div>
         </div>
       </div>

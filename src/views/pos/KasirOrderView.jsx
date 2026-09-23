@@ -4,6 +4,7 @@ import { useCategory } from '../../controllers/CategoryController';
 import { useOrder } from '../../controllers/OrderController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
 import { useUnit } from '../../controllers/UnitController';
+import { useAuth } from '../../controllers/AuthController';
 import { calculateItemDiscount, QUICK_PERCENT_PRESETS, QUICK_NOMINAL_PRESETS, checkMenuAvailability } from '../../models';
 import { InitialsAvatar } from '../components/InitialsAvatar';
 import { Button } from '../components/Button';
@@ -35,7 +36,8 @@ import {
   Gift,
   ChevronDown,
   Ban,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal
 } from 'lucide-react';
 
 export const KasirOrderView = () => {
@@ -47,8 +49,10 @@ export const KasirOrderView = () => {
     refetch: refetchMenus 
   } = useProductMenu();
   const menus = Array.isArray(productMenus) ? productMenus : (Array.isArray(contextMenus) ? contextMenus : []);
-  const { categories: contextCategories = [] } = useCategory();
+  const { categories: contextCategories = [], openReorderModal } = useCategory();
   const categories = Array.isArray(contextCategories) ? contextCategories : [];
+  const { currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'superadmin';
   const { rawMaterials = [] } = useRawMaterial();
   const { showToast } = useUnit();
   const {
@@ -196,6 +200,31 @@ export const KasirOrderView = () => {
               </button>
             );
           })}
+
+          {/* Tombol Atur Urutan Khusus Super Admin */}
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={openReorderModal}
+              style={{
+                ...styles.categoryPill,
+                ...styles.categoryPillInactive,
+                borderStyle: 'dashed',
+                borderColor: 'var(--blue-400)',
+                color: 'var(--blue-600)',
+                backgroundColor: 'var(--blue-50)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginLeft: '4px',
+                cursor: 'pointer'
+              }}
+              title="Atur Urutan Posisi Tab Kategori (Super Admin)"
+            >
+              <SlidersHorizontal size={13} />
+              <span>Atur Urutan</span>
+            </button>
+          )}
         </div>
 
         {/* Error State */}

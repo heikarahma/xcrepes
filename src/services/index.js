@@ -8,3 +8,4 @@ export * from './ordersService';
 export * from './cashiersService';
 export * from './settingsService';
 export * from './authService';
+export * from './opnameReportsService';

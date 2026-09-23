@@ -6,6 +6,7 @@ import { useAuth } from '../../controllers/AuthController';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
+import { SearchSelect } from '../components/SearchSelect';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -676,18 +677,22 @@ export const SalesReportTab = () => {
               </div>
 
               {/* Payment Method Select Filter */}
-              <div className="reports-select-wrapper" style={styles.selectWrapper}>
-                <Filter size={14} color="var(--neutral-500)" />
-                <select
+              <div style={{ minWidth: '180px' }}>
+                <SearchSelect
+                  options={[
+                    { value: 'ALL', label: 'Semua Pembayaran' },
+                    { value: 'cash', label: 'Tunai (Cash)' },
+                    { value: 'qris', label: 'QRIS' },
+                    { value: 'card', label: 'Kartu Debit/Kredit' }
+                  ]}
                   value={salesPaymentFilter}
-                  onChange={(e) => setSalesPaymentFilter(e.target.value)}
-                  style={styles.filterSelect}
-                >
-                  <option value="ALL">Semua Pembayaran</option>
-                  <option value="cash">Tunai (Cash)</option>
-                  <option value="qris">QRIS</option>
-                  <option value="card">Kartu Debit/Kredit</option>
-                </select>
+                  onChange={(val) => setSalesPaymentFilter(val)}
+                  placeholder="Semua Pembayaran"
+                  searchPlaceholder="Cari pembayaran..."
+                  icon={Filter}
+                  clearable={false}
+                  size="sm"
+                />
               </div>
             </div>
           </div>

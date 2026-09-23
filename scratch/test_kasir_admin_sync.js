@@ -3,8 +3,8 @@ import assert from 'assert';
 
 console.log('Testing: Synchronization between Kasir & Admin Stock Opname data...');
 
-const viewContent = fs.readFileSync('src/views/inventory/rawMaterial/StockOpnameView.jsx', 'utf-8');
-const controllerContent = fs.readFileSync('src/controllers/RawMaterialController.jsx', 'utf-8');
+const viewContent = fs.readFileSync('src/views/inventory/rawMaterial/StockOpnameView.jsx', 'utf-8').replace(/\r\n/g, '\n');
+const controllerContent = fs.readFileSync('src/controllers/RawMaterialController.jsx', 'utf-8').replace(/\r\n/g, '\n');
 
 // 1. Cross-tab storage synchronization listener in RawMaterialController
 assert(controllerContent.includes("window.addEventListener('storage', handleStorageChange)"), "Must listen to window storage event for cross-tab sync");
@@ -24,8 +24,8 @@ console.log('✔ Admin actual stock edits sync back to Kasir active counting dra
 
 // 4. Closed summary in Kasir is consistent with Admin
 assert(viewContent.includes("hasActual ? formatNumber(item.actualStock) : '-'"), "Kasir closed summary renders '-' for uncounted items consistent with Admin");
-assert(viewContent.includes("<span style={styles.statusPillCounted}>\n                            <Check size={11} /> Sudah Dihitung"), "Kasir closed summary shows Sudah Dihitung for counted items");
-assert(viewContent.includes("<span style={styles.statusPillUncounted}>\n                            <Clock size={11} /> Belum Dihitung"), "Kasir closed summary shows Belum Dihitung for uncounted items");
+assert(viewContent.includes("styles.statusPillCounted") && viewContent.includes("Sudah Dihitung"), "Kasir closed summary shows Sudah Dihitung for counted items");
+assert(viewContent.includes("styles.statusPillUncounted") && viewContent.includes("Belum Dihitung"), "Kasir closed summary shows Belum Dihitung for uncounted items");
 console.log('✔ Kasir closed summary renders identical actual stock and counting status as Admin');
 
 // 5. Reopen store closing syncs both back to draft

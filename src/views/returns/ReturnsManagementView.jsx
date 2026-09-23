@@ -5,6 +5,7 @@ import { useAuth } from '../../controllers/AuthController';
 import { useUnit } from '../../controllers/UnitController';
 import { ORDER_RETURN_REASONS, MATERIAL_WASTE_REASONS } from '../../models/RawMaterialModel';
 import { EmptyState } from '../components/EmptyState';
+import { SearchSelect } from '../components/SearchSelect';
 import { 
   RotateCcw, 
   Trash2, 
@@ -429,43 +430,46 @@ export const ReturnsManagementView = () => {
             </div>
 
             {/* Date Range Filter */}
-            <div className="select-wrapper" style={styles.selectWrapper}>
-              <Calendar size={14} color="var(--neutral-500)" />
-              <select
+            <div style={{ minWidth: '170px' }}>
+              <SearchSelect
+                options={[
+                  { value: 'ALL', label: 'Semua Waktu' },
+                  { value: 'TODAY', label: 'Hari Ini' },
+                  { value: 'WEEK', label: '7 Hari Terakhir' },
+                  { value: 'MONTH', label: 'Bulan Ini' }
+                ]}
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                style={styles.selectInput}
-              >
-                <option value="ALL">Semua Waktu</option>
-                <option value="TODAY">Hari Ini</option>
-                <option value="WEEK">7 Hari Terakhir</option>
-                <option value="MONTH">Bulan Ini</option>
-              </select>
+                onChange={(val) => setDateFilter(val)}
+                placeholder="Semua Waktu"
+                searchPlaceholder="Cari waktu..."
+                icon={Calendar}
+                clearable={false}
+                size="sm"
+              />
             </div>
 
             {/* Reason Category Filter (Filter Alasan - Di-take out khusus untuk Kasir) */}
             {!isCashier && (
-              <div className="select-wrapper" style={styles.selectWrapper}>
-                <Filter size={14} color="var(--neutral-500)" />
-                <select
+              <div style={{ minWidth: '180px' }}>
+                <SearchSelect
+                  options={[
+                    { value: 'ALL', label: 'Semua Alasan' },
+                    ...(activeTab === 'orders' 
+                      ? ORDER_RETURN_REASONS.map(r => ({ value: r, label: r }))
+                      : activeTab === 'materials'
+                      ? MATERIAL_WASTE_REASONS.map(r => ({ value: r, label: r }))
+                      : [...ORDER_RETURN_REASONS, ...MATERIAL_WASTE_REASONS]
+                          .filter((val, idx, self) => self.indexOf(val) === idx)
+                          .map(r => ({ value: r, label: r })))
+                  ]}
                   value={reasonFilter}
-                  onChange={(e) => setReasonFilter(e.target.value)}
-                  style={styles.selectInput}
-                >
-                  <option value="ALL">Semua Alasan</option>
-                  {activeTab === 'orders' && ORDER_RETURN_REASONS.map((r, i) => (
-                    <option key={i} value={r}>{r}</option>
-                  ))}
-                  {activeTab === 'materials' && MATERIAL_WASTE_REASONS.map((r, i) => (
-                    <option key={i} value={r}>{r}</option>
-                  ))}
-                  {activeTab === 'audit' && [
-                    ...ORDER_RETURN_REASONS,
-                    ...MATERIAL_WASTE_REASONS
-                  ].filter((val, idx, self) => self.indexOf(val) === idx).map((r, i) => (
-                    <option key={i} value={r}>{r}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setReasonFilter(val)}
+                  placeholder="Semua Alasan"
+                  searchPlaceholder="Cari alasan..."
+                  icon={Filter}
+                  clearable={false}
+                  size="sm"
+                />
               </div>
             )}
           </div>

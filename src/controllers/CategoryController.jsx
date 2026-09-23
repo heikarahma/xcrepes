@@ -18,15 +18,25 @@ export const useCategoryController = useCategory;
 export const CategoryProvider = ({ children }) => {
   const { showToast } = useUnit();
 
+  const CATEGORY_ORDER_STORAGE_KEY = 'xcrepes_category_order';
+
   // 1. Master Categories State (Cloud Database via Supabase)
   const [categories, setCategories] = useState([]);
+  const [categoryOrder, setCategoryOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CATEGORY_ORDER_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 2. Search, Filter & Sorting State
+  // 2. Search, Filter & Sorting State (defaults to 'custom' order for tabs)
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('date-desc'); // 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc'
+  const [sortBy, setSortBy] = useState('custom'); // 'custom' | 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc'
   
   // 3. Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,16 +58,33 @@ export const CategoryProvider = ({ children }) => {
     isBatch: false
   });
 
-  // Fetch Categories from Supabase
+  // Modal State for Reordering Categories
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+
+  const openReorderModal = () => setIsReorderModalOpen(true);
+  const closeReorderModal = () => setIsReorderModalOpen(false);
+
+  // Fetch Categories & Custom Order from Supabase
   const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await categoriesService.getCategories();
-      if (fetchErr) {
-        setError(fetchErr.message || 'Gagal memuat kategori dari server.');
+      const [catsRes, orderRes] = await Promise.all([
+        categoriesService.getCategories(),
+        categoriesService.getCategoryOrder()
+      ]);
+
+      if (catsRes.error) {
+        setError(catsRes.error.message || 'Gagal memuat kategori dari server.');
       } else {
-        setCategories(data || []);
+        setCategories(catsRes.data || []);
+      }
+
+      if (orderRes.data && Array.isArray(orderRes.data)) {
+        setCategoryOrder(orderRes.data);
+        try {
+          localStorage.setItem(CATEGORY_ORDER_STORAGE_KEY, JSON.stringify(orderRes.data));
+        } catch (e) {}
       }
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -71,12 +98,16 @@ export const CategoryProvider = ({ children }) => {
   useEffect(() => {
     fetchCategories();
 
-    const channel = subscribeToTable('categories', () => {
+    const channel1 = subscribeToTable('categories', () => {
+      fetchCategories();
+    });
+    const channel2 = subscribeToTable('inventory_stock_logs', () => {
       fetchCategories();
     });
 
     return () => {
-      if (channel) channel.unsubscribe();
+      if (channel1) channel1.unsubscribe();
+      if (channel2) channel2.unsubscribe();
     };
   }, [fetchCategories]);
 
@@ -218,6 +249,71 @@ export const CategoryProvider = ({ children }) => {
     }
   };
 
+  // Categories sorted by custom order for POS tabs and master lists
+  const sortedCategories = useMemo(() => {
+    if (!categoryOrder || categoryOrder.length === 0) {
+      return [...categories];
+    }
+    return [...categories].sort((a, b) => {
+      const indexA = categoryOrder.indexOf(a.id);
+      const indexB = categoryOrder.indexOf(b.id);
+      const posA = indexA !== -1 ? indexA : 9999;
+      const posB = indexB !== -1 ? indexB : 9999;
+      if (posA !== posB) return posA - posB;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [categories, categoryOrder]);
+
+  // Update whole category order array
+  const updateCategoryOrder = async (newOrderArray) => {
+    if (!Array.isArray(newOrderArray)) return { success: false };
+    setCategoryOrder(newOrderArray);
+    try {
+      localStorage.setItem(CATEGORY_ORDER_STORAGE_KEY, JSON.stringify(newOrderArray));
+    } catch (e) {}
+
+    try {
+      await categoriesService.saveCategoryOrder(newOrderArray);
+    } catch (err) {
+      console.warn('Failed saving category order to Supabase:', err);
+    }
+
+    showToast('Urutan kategori berhasil disimpan & disinkronkan.', 'success', 'Urutan Diperbarui');
+    return { success: true };
+  };
+
+  // Move a category to a specific 1-indexed position (e.g. 1st, 2nd, etc.)
+  const moveCategoryPosition = async (categoryId, targetPos1Indexed) => {
+    const currentList = sortedCategories.map(c => c.id);
+    const currentIndex = currentList.indexOf(categoryId);
+    if (currentIndex === -1) return { success: false };
+
+    const targetIndex = Math.max(0, Math.min(currentList.length - 1, targetPos1Indexed - 1));
+    if (currentIndex === targetIndex) return { success: true };
+
+    const updated = [...currentList];
+    const [movedItem] = updated.splice(currentIndex, 1);
+    updated.splice(targetIndex, 0, movedItem);
+
+    return updateCategoryOrder(updated);
+  };
+
+  // Move a category delta up (-1) or down (+1)
+  const moveCategoryDelta = async (categoryId, delta) => {
+    const currentList = sortedCategories.map(c => c.id);
+    const currentIndex = currentList.indexOf(categoryId);
+    if (currentIndex === -1) return { success: false };
+    const targetIndex = currentIndex + delta;
+    if (targetIndex < 0 || targetIndex >= currentList.length) return { success: false };
+
+    const updated = [...currentList];
+    const temp = updated[currentIndex];
+    updated[currentIndex] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    return updateCategoryOrder(updated);
+  };
+
   // Filtered & Sorted Categories (Memoized)
   const filteredCategories = useMemo(() => {
     let result = [...categories];
@@ -230,6 +326,14 @@ export const CategoryProvider = ({ children }) => {
     }
 
     result.sort((a, b) => {
+      if (sortBy === 'custom') {
+        const indexA = categoryOrder.indexOf(a.id);
+        const indexB = categoryOrder.indexOf(b.id);
+        const posA = indexA !== -1 ? indexA : 9999;
+        const posB = indexB !== -1 ? indexB : 9999;
+        if (posA !== posB) return posA - posB;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
       if (sortBy === 'name-asc') return a.name.localeCompare(b.name, 'id');
       if (sortBy === 'name-desc') return b.name.localeCompare(a.name, 'id');
       if (sortBy === 'date-asc') return new Date(a.createdAt) - new Date(b.createdAt);
@@ -238,7 +342,7 @@ export const CategoryProvider = ({ children }) => {
     });
 
     return result;
-  }, [categories, searchTerm, sortBy]);
+  }, [categories, categoryOrder, searchTerm, sortBy]);
 
   // Paginated Categories
   const paginatedCategories = useMemo(() => {
@@ -276,7 +380,15 @@ export const CategoryProvider = ({ children }) => {
   return (
     <CategoryContext.Provider
       value={{
-        categories,
+        categories: sortedCategories,
+        rawCategories: categories,
+        categoryOrder,
+        updateCategoryOrder,
+        moveCategoryPosition,
+        moveCategoryDelta,
+        isReorderModalOpen,
+        openReorderModal,
+        closeReorderModal,
         isLoading,
         error,
         isSubmitting,

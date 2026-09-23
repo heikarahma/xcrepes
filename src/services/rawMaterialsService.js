@@ -74,13 +74,14 @@ export const rawMaterialsService = {
     };
   },
 
-  async updateRawMaterial(id, { name, unitName, pricePerUnit, minStock, note }) {
+  async updateRawMaterial(id, { name, unitName, stock, pricePerUnit, minStock, note }) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     const updatePayload = {
       updated_at: new Date().toISOString()
     };
     if (name !== undefined) updatePayload.name = name;
     if (unitName !== undefined) updatePayload.unit_name = unitName;
+    if (stock !== undefined) updatePayload.stock = Math.max(0, Number(stock) || 0);
     if (pricePerUnit !== undefined) updatePayload.price_per_unit = Number(pricePerUnit) || 0;
     if (minStock !== undefined) updatePayload.min_stock = Number(minStock) || 10;
     if (note !== undefined) updatePayload.note = note;

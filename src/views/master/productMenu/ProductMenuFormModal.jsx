@@ -697,22 +697,24 @@ export const ProductMenuFormModal = () => {
         </div>
 
         {/* TIPE PROMO & DISKON */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', position: 'relative', zIndex: 5 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', position: 'relative', zIndex: 20 }}>
           <div style={styles.section}>
             <label style={styles.label}>TIPE PROMO</label>
-            <div style={{ position: 'relative' }}>
-              <select
-                value={promoType}
-                onChange={(e) => { setPromoType(e.target.value); if(e.target.value === 'none') setPromoAmount(''); }}
-                className="blue-input"
-                style={{...styles.nativeSelect, height: '44px'}}
-              >
-                <option value="none">Tanpa Promo</option>
-                <option value="discount">Diskon Nominal</option>
-                <option value="buy2_discount">Beli 2 Potongan</option>
-              </select>
-              <ChevronDown size={14} color="var(--neutral-400)" style={styles.selectChevron} />
-            </div>
+            <SearchSelect
+              options={[
+                { value: 'none', label: 'Tanpa Promo' },
+                { value: 'discount', label: 'Diskon Nominal' },
+                { value: 'buy2_discount', label: 'Beli 2 Potongan' }
+              ]}
+              value={promoType}
+              onChange={(val) => {
+                setPromoType(val);
+                if (val === 'none') setPromoAmount('');
+              }}
+              placeholder="Pilih tipe promo..."
+              searchPlaceholder="Cari tipe promo..."
+              clearable={false}
+            />
           </div>
           
           <div style={styles.section}>

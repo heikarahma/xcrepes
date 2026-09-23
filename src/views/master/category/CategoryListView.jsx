@@ -14,7 +14,8 @@ import {
   Layers, 
   X, 
   ArrowUpDown, 
-  ChevronDown 
+  ChevronDown,
+  SlidersHorizontal
 } from 'lucide-react';
 
 export const CategoryListView = () => {
@@ -41,7 +42,8 @@ export const CategoryListView = () => {
     openAddModal,
     openEditModal,
     openDeleteModal,
-    openBatchDeleteModal
+    openBatchDeleteModal,
+    openReorderModal
   } = useCategory();
 
   const currentPageIds = paginatedCategories.map(c => c.id);
@@ -64,15 +66,26 @@ export const CategoryListView = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          icon={Plus}
-          onClick={openAddModal}
-          size="md"
-          className="category-add-btn"
-        >
-          Tambah Kategori
-        </Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <Button
+            variant="outline"
+            icon={SlidersHorizontal}
+            onClick={openReorderModal}
+            size="md"
+            title="Atur Urutan Tab Kategori di Layar Kasir"
+          >
+            Atur Urutan Tab
+          </Button>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={openAddModal}
+            size="md"
+            className="category-add-btn"
+          >
+            Tambah Kategori
+          </Button>
+        </div>
       </div>
 
       {/* Main Card Container */}
@@ -111,6 +124,7 @@ export const CategoryListView = () => {
                 className="blue-input"
                 style={styles.filterSelect}
               >
+                <option value="custom">Urutan Tab Kasir</option>
                 <option value="date-desc">Terbaru</option>
                 <option value="date-asc">Terlama</option>
                 <option value="name-asc">Nama (A - Z)</option>

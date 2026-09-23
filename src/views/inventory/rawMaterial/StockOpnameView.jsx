@@ -5,10 +5,16 @@ import { Button } from '../../components/Button';
 import { Badge } from '../../components/Badge';
 import { Modal } from '../../components/Modal';
 import { EmptyState } from '../../components/EmptyState';
+import { SearchSelect } from '../../components/SearchSelect';
 import { 
   exportStockOpnameToPDF, 
   exportStockOpnameToExcel 
 } from '../../../utils/reportExportUtils';
+import { 
+  getLocalDateStr, 
+  formatDateIndonesian, 
+  formatDateTimeIndonesian 
+} from '../../../utils/dateUtils';
 import { 
   ClipboardCheck, 
   Plus, 
@@ -69,9 +75,9 @@ export const StockOpnameView = () => {
   // Superadmin view mode: 'REPORTS' | 'KASIR_SIMULATION'
   const [adminViewMode, setAdminViewMode] = useState('REPORTS');
 
-  // Selected date for Superadmin reports (defaults to today)
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [selectedReportDate, setSelectedReportDate] = useState(todayStr);
+  // Selected date for Superadmin reports (defaults to local date today)
+  const todayStr = useMemo(() => getLocalDateStr(), []);
+  const [selectedReportDate, setSelectedReportDate] = useState(() => getLocalDateStr());
 
   // Search & filter for Superadmin report table
   const [adminStatusFilter, setAdminStatusFilter] = useState('ALL'); // 'ALL' | 'DISCREPANCY' | 'MATCH' | 'UNCOUNTED'
@@ -181,9 +187,47 @@ export const StockOpnameView = () => {
   // -------------------------------------------------------------
   // COMPUTED DATA FOR SUPERADMIN REPORTS
   // -------------------------------------------------------------
+  // List of all completed reports sorted by date descending
+  const availableReports = useMemo(() => {
+    return [...dailyOpnameReports].sort((a, b) => {
+      const timeA = new Date(a.closedAt || a.date).getTime() || 0;
+      const timeB = new Date(b.closedAt || b.date).getTime() || 0;
+      return timeB - timeA;
+    });
+  }, [dailyOpnameReports]);
+
+  // Check if today has a completed report
+  const todayCompletedReport = useMemo(() => {
+    return dailyOpnameReports.find(r => 
+      r.date === todayStr || 
+      r.id === todayStr ||
+      r.id?.includes(todayStr) ||
+      (r.closedAt && getLocalDateStr(new Date(r.closedAt)) === todayStr)
+    ) || null;
+  }, [dailyOpnameReports, todayStr]);
+
+  // Latest completed report across any date
+  const latestCompletedReport = useMemo(() => {
+    return availableReports.find(r => r.status === 'COMPLETED') || null;
+  }, [availableReports]);
+
   // Get report corresponding to selectedReportDate
   const currentAdminReport = useMemo(() => {
-    const found = dailyOpnameReports.find(r => r.date === selectedReportDate);
+    // 1. Direct match by date or ID
+    let found = dailyOpnameReports.find(r => 
+      r.date === selectedReportDate || 
+      r.id === selectedReportDate || 
+      r.id?.includes(selectedReportDate)
+    );
+
+    // 2. Resilient fallback: match by local date of closedAt
+    if (!found) {
+      found = dailyOpnameReports.find(r => {
+        if (!r.closedAt) return false;
+        return getLocalDateStr(new Date(r.closedAt)) === selectedReportDate;
+      });
+    }
+
     if (found) {
       // Normalize items & summary:
       // Status is ONLY MATCH, DEFICIT, or SURPLUS when an item has been counted (hasActual === true).
@@ -1036,13 +1080,42 @@ export const StockOpnameView = () => {
           </div>
         </div>
 
-        {/* Filter Bar (Date Filter Only) */}
+        {/* Filter Bar (Date Filter & Sesi Closing Selector) */}
         <div style={styles.adminFilterBar}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* Quick Sesi Closing Selector */}
+            <div style={styles.filterFieldGroup}>
+              <Layers size={15} color="var(--blue-600)" />
+              <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--neutral-700)' }}>Sesi Closing:</span>
+              <select
+                value={selectedReportDate}
+                onChange={(e) => setSelectedReportDate(e.target.value)}
+                style={{
+                  ...styles.outletSelect,
+                  fontWeight: 600,
+                  color: 'var(--neutral-800)',
+                  backgroundColor: '#ffffff',
+                  minWidth: '220px',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={todayStr}>
+                  Hari Ini ({formatDateIndonesian(todayStr)}) - {todayCompletedReport ? `✓ Selesai (${todayCompletedReport.closedBy})` : 'Draft Berjalan'}
+                </option>
+                {availableReports
+                  .filter(r => r.date !== todayStr && !r.id?.includes(todayStr))
+                  .map(r => (
+                    <option key={r.id || r.date} value={r.date || r.id}>
+                      {r.displayDate || r.date} - Kasir: {r.closedBy || 'Kasir'} ({r.status === 'COMPLETED' ? 'Selesai' : 'Draft'})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
             {/* Date Filter */}
             <div style={styles.filterFieldGroup}>
               <Calendar size={15} color="var(--neutral-400)" />
-              <span style={{ fontSize: '0.813rem', fontWeight: 600, color: 'var(--neutral-600)' }}>Tanggal:</span>
+              <span style={{ fontSize: '0.813rem', fontWeight: 600, color: 'var(--neutral-600)' }}>Kalender:</span>
               <input
                 type="date"
                 value={selectedReportDate}
@@ -1050,8 +1123,85 @@ export const StockOpnameView = () => {
                 style={styles.dateInput}
               />
             </div>
+
+            {/* Quick Button if viewing another date */}
+            {selectedReportDate !== todayStr && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedReportDate(todayStr)}
+                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+              >
+                Kembali ke Hari Ini
+              </Button>
+            )}
+          </div>
+
+          {/* Status Badge of Selected Report */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {currentAdminReport?.status === 'COMPLETED' ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: '#059669',
+                backgroundColor: '#ecfdf5',
+                border: '1px solid #a7f3d0',
+                padding: '4px 10px',
+                borderRadius: '999px'
+              }}>
+                <CheckCircle2 size={13} color="#059669" /> Selesai Closing ({currentAdminReport.closedBy || 'Kasir'})
+              </span>
+            ) : (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#d97706',
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                padding: '4px 10px',
+                borderRadius: '999px'
+              }}>
+                <Clock size={13} color="#d97706" /> Draft Kasir Sedang Berjalan
+              </span>
+            )}
           </div>
         </div>
+
+        {/* Notice Banner: If today has no completed report yet, but there is a completed report from earlier */}
+        {!todayCompletedReport && latestCompletedReport && selectedReportDate === todayStr && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '10px',
+            padding: '10px 16px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Sparkles size={16} color="var(--blue-600)" />
+              <span style={{ fontSize: '0.813rem', color: 'var(--neutral-800)' }}>
+                Hari ini kasir belum closing. Laporan Store Closing terakhir yang sudah selesai tersedia pada tanggal <strong>{latestCompletedReport.displayDate || latestCompletedReport.date}</strong> oleh <strong>{latestCompletedReport.closedBy || 'Kasir'}</strong>.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedReportDate(latestCompletedReport.date || latestCompletedReport.id)}
+              style={{ backgroundColor: '#ffffff', fontSize: '0.75rem' }}
+            >
+              Lihat Laporan Terakhir
+            </Button>
+          </div>
+        )}
 
         {/* 3 Summary KPI Cards (Total Bahan, Sesuai Sistem, Selisih Patut Dicurigai) */}
         {(() => {
@@ -1605,29 +1755,28 @@ export const StockOpnameView = () => {
             </label>
             
             {!isEditMode ? (
-              <div style={styles.relativeField}>
-                <Search size={16} color="var(--neutral-400)" style={styles.fieldIcon} />
-                <select
-                  value={selectedMaterialId}
-                  onChange={(e) => {
-                    setSelectedMaterialId(e.target.value);
-                    setInputActualStock('');
-                  }}
-                  className="blue-input"
-                  style={styles.selectInputWithIcon}
-                >
-                  <option value="">-- Cari atau pilih bahan baku --</option>
-                  {rawMaterials.map((m) => {
-                    const isAlreadyCounted = opnameItems[m.id] !== undefined;
-                    return (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.unitName || m.unit_name || 'Unit'}) {isAlreadyCounted ? '✓ [Sudah Dihitung]' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-                <ChevronDown size={15} color="var(--neutral-400)" style={styles.fieldChevron} />
-              </div>
+              <SearchSelect
+                options={rawMaterials.map((m) => {
+                  const isAlreadyCounted = opnameItems[m.id] !== undefined;
+                  const uName = m.unitName || m.unit_name || 'Unit';
+                  return {
+                    value: m.id,
+                    label: m.name,
+                    sublabel: isAlreadyCounted ? '✓ Sudah Dihitung' : `Satuan: ${uName}`,
+                    badge: isAlreadyCounted ? 'Sudah Dihitung' : uName
+                  };
+                })}
+                value={selectedMaterialId}
+                onChange={(val) => {
+                  setSelectedMaterialId(val);
+                  setInputActualStock('');
+                }}
+                placeholder="-- Cari atau pilih bahan baku --"
+                searchPlaceholder="Ketik untuk mencari bahan baku..."
+                icon={Package}
+                clearable={false}
+                style={{ zIndex: 40 }}
+              />
             ) : (
               <div style={styles.selectedMaterialBadge}>
                 <strong>{currentSelectedMaterial?.name}</strong>

@@ -243,23 +243,29 @@ export const RawMaterialListView = () => {
       </div>
 
       {/* Navigation Tabs (Segmented Control) */}
-      <div className="raw-material-tab-container">
+      <div className="raw-material-tab-container" role="tablist">
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'inventory'}
           className={`tab-item-btn ${activeTab === 'inventory' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('inventory')}
         >
-          <Boxes size={16} />
-          <span>Daftar Stok Bahan</span>
+          <Boxes size={16} style={{ flexShrink: 0 }} />
+          <span className="tab-label-full">Daftar Stok Bahan</span>
+          <span className="tab-label-short">Daftar Stok</span>
         </button>
 
         <button
           type="button"
+          role="tab"
+          aria-selected={activeTab === 'history'}
           className={`tab-item-btn ${activeTab === 'history' ? 'is-active' : ''}`}
           onClick={() => setActiveTab('history')}
         >
-          <History size={16} />
-          <span>Riwayat Perubahan Stok</span>
+          <History size={16} style={{ flexShrink: 0 }} />
+          <span className="tab-label-full">Riwayat Perubahan Stok</span>
+          <span className="tab-label-short">Riwayat Stok</span>
         </button>
       </div>
 
@@ -701,8 +707,9 @@ export const RawMaterialListView = () => {
           display: none;
         }
         .raw-material-tab-container {
-          display: flex;
-          align-items: center;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: stretch;
           gap: 6px;
           margin-bottom: 0;
           background-color: var(--neutral-100);
@@ -713,7 +720,8 @@ export const RawMaterialListView = () => {
           width: 100%;
         }
         .tab-item-btn {
-          flex: 1 1 50%;
+          width: 100%;
+          min-width: 0;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -727,9 +735,9 @@ export const RawMaterialListView = () => {
           border: 1px solid transparent;
           cursor: pointer;
           transition: all var(--transition-fast);
-          white-space: nowrap;
           box-sizing: border-box;
           user-select: none;
+          -webkit-tap-highlight-color: transparent;
         }
         .tab-item-btn:hover:not(.is-active) {
           color: var(--neutral-900);
@@ -741,6 +749,18 @@ export const RawMaterialListView = () => {
           font-weight: 700;
           border-color: rgba(0, 0, 0, 0.04);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .tab-label-full {
+          display: inline;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tab-label-short {
+          display: none;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .raw-material-actions-desktop {
@@ -1056,6 +1076,24 @@ export const RawMaterialListView = () => {
         }
 
         @media (max-width: 640px) {
+          .tab-label-full {
+            display: none !important;
+          }
+          .tab-label-short {
+            display: inline !important;
+          }
+          .raw-material-tab-container {
+            padding: 4px !important;
+            gap: 4px !important;
+            margin-bottom: 0 !important;
+            border-radius: 10px !important;
+          }
+          .tab-item-btn {
+            font-size: 0.813rem !important;
+            padding: 9px 8px !important;
+            gap: 6px !important;
+            border-radius: 8px !important;
+          }
           .raw-material-stats-grid,
           .raw-material-stats-grid.is-cashier {
             grid-template-columns: 1fr !important;
@@ -1069,13 +1107,13 @@ export const RawMaterialListView = () => {
 
         @media (max-width: 480px) {
           .raw-material-tab-container {
-            padding: 4px !important;
+            padding: 3px !important;
             gap: 4px !important;
           }
           .tab-item-btn {
-            font-size: 0.781rem !important;
-            padding: 9px 8px !important;
-            gap: 6px !important;
+            font-size: 0.813rem !important;
+            padding: 9px 6px !important;
+            gap: 5px !important;
           }
           .raw-material-adjust-btn span,
           .raw-material-waste-btn span {
@@ -1084,6 +1122,14 @@ export const RawMaterialListView = () => {
           .raw-material-sub-actions.is-cashier .raw-material-adjust-btn,
           .raw-material-sub-actions.is-cashier .raw-material-adjust-btn span {
             font-size: 0.875rem !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .tab-item-btn {
+            font-size: 0.75rem !important;
+            padding: 8px 4px !important;
+            gap: 4px !important;
           }
         }
       `}</style>

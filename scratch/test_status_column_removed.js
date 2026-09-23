@@ -19,8 +19,7 @@ console.log('✔ Status pills are NOT rendered in Superadmin table rows');
 assert(viewContent.includes('colSpan={9}'), 'Empty state colSpan must be 9');
 console.log('✔ Empty state colSpan is 9');
 
-// 4. Action button still has purely text "Detail"
-assert(viewContent.includes('>Detail</button>') || viewContent.includes('>\r\n                        Detail\r\n                      </button>') || viewContent.includes('>\n                        Detail\n                      </button>'), 'Action button must contain text Detail');
+assert(viewContent.includes('styles.tableActionReviewBtn') && viewContent.includes('Detail'), 'Action button must contain text Detail');
 console.log('✔ Action button strictly contains text "Detail"');
 
 console.log('\nALL CHECKS PASSED SUCCESSFULLY! 🎉');

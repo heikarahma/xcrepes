@@ -114,5 +114,73 @@ export const categoriesService = {
       console.error('categoriesService.deleteCategoriesBatch error:', error);
     }
     return { error };
+  },
+
+  /**
+   * Fetch category custom display order from Supabase.
+   */
+  async getCategoryOrder() {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    try {
+      const { data, error } = await supabase
+        .from('inventory_stock_logs')
+        .select('*')
+        .eq('id', 'CONFIG-CATEGORY-ORDER')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('categoriesService.getCategoryOrder error:', error);
+        return { data: null, error };
+      }
+
+      if (data && data.note) {
+        try {
+          const parsed = JSON.parse(data.note);
+          if (Array.isArray(parsed)) {
+            return { data: parsed, error: null };
+          }
+        } catch (e) {}
+      }
+      return { data: null, error: null };
+    } catch (err) {
+      console.error('Unexpected error in getCategoryOrder:', err);
+      return { data: null, error: err };
+    }
+  },
+
+  /**
+   * Save category custom display order to Supabase.
+   */
+  async saveCategoryOrder(orderIds) {
+    if (!isSupabaseConfigured() || !Array.isArray(orderIds)) return { data: null, error: null };
+    try {
+      const payload = {
+        id: 'CONFIG-CATEGORY-ORDER',
+        type: 'CONFIG_CATEGORY_ORDER',
+        amount: 0,
+        previous_stock: 0,
+        current_stock: 0,
+        reference_invoice: 'CONFIG',
+        note: JSON.stringify(orderIds),
+        user_name: 'superadmin',
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('inventory_stock_logs')
+        .upsert([payload])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('categoriesService.saveCategoryOrder error:', error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (err) {
+      console.error('Unexpected error in saveCategoryOrder:', err);
+      return { data: null, error: err };
+    }
   }
 };

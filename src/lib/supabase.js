@@ -41,6 +41,9 @@ export const supabase = createClient(
 
 /**
  * Helper untuk berlangganan perubahan tabel Supabase secara Realtime (multi-device sync)
+ * Menggunakan unique channel identifier agar tidak terjadi konflik callback/collision
+ * saat komponen di-remount atau saat Vite Fast Refresh / HMR.
+ * 
  * @param {string} table - Nama tabel di Supabase
  * @param {function} callback - Callback function yang dipanggil saat ada INSERT/UPDATE/DELETE
  * @returns {object} Subscription channel yang dapat di-unsubscribe
@@ -48,18 +51,45 @@ export const supabase = createClient(
 export const subscribeToTable = (table, callback) => {
   if (!isSupabaseConfigured()) return null;
 
-  const channel = supabase
-    .channel(`public:${table}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table },
-      (payload) => {
-        if (typeof callback === 'function') {
-          callback(payload);
-        }
-      }
-    )
-    .subscribe();
+  try {
+    const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const channelName = `realtime_${table}_${uniqueId}`;
 
-  return channel;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table },
+        (payload) => {
+          if (typeof callback === 'function') {
+            callback(payload);
+          }
+        }
+      )
+      .subscribe();
+
+    const rawUnsubscribe = typeof channel.unsubscribe === 'function' 
+      ? channel.unsubscribe.bind(channel) 
+      : () => {};
+
+    let isUnsubscribed = false;
+    channel.unsubscribe = () => {
+      if (isUnsubscribed) return;
+      isUnsubscribed = true;
+      try {
+        if (typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(channel).catch(() => {});
+        } else {
+          rawUnsubscribe();
+        }
+      } catch {
+        rawUnsubscribe();
+      }
+    };
+
+    return channel;
+  } catch (err) {
+    console.warn(`[Supabase Realtime] Gagal membuat subscription untuk tabel '${table}':`, err);
+    return null;
+  }
 };

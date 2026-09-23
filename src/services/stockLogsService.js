@@ -8,6 +8,7 @@ export const stockLogsService = {
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
+      .neq('type', 'OPNAME_REPORT')
       .order('created_at', { ascending: false });
 
     if (error) {

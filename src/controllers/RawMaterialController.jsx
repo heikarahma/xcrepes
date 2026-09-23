@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { rawMaterialsService } from '../services/rawMaterialsService';
 import { stockLogsService } from '../services/stockLogsService';
+import { opnameReportsService } from '../services/opnameReportsService';
+import { getLocalDateStr, formatDateIndonesian } from '../utils/dateUtils';
 import { subscribeToTable } from '../lib/supabase';
 import { useUnit } from './UnitController';
 import { useAuth } from './AuthController';
@@ -133,14 +135,15 @@ export const RawMaterialProvider = ({ children }) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Fetch all materials and stock logs from Supabase
+  // Fetch all materials, stock logs, and stock opname daily reports from Supabase
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [matRes, logsRes] = await Promise.all([
+      const [matRes, logsRes, opnameRes] = await Promise.all([
         rawMaterialsService.getRawMaterials(),
-        stockLogsService.getStockLogs()
+        stockLogsService.getStockLogs(),
+        opnameReportsService.getOpnameReports()
       ]);
 
       if (matRes.error) {
@@ -153,6 +156,44 @@ export const RawMaterialProvider = ({ children }) => {
         console.error('Failed to fetch stock logs:', logsRes.error);
       } else {
         setStockLogs(logsRes.data || []);
+      }
+
+      // Synchronize Daily Opname Reports (Supabase Cloud + LocalStorage Fallback)
+      if (opnameRes.data) {
+        setDailyOpnameReports(prevLocal => {
+          const remoteReports = opnameRes.data || [];
+          const mergedMap = new Map();
+
+          // 1. Load all remote reports from Supabase cloud
+          remoteReports.forEach(r => {
+            if (r && r.id) mergedMap.set(r.id, r);
+            else if (r && r.date) mergedMap.set(`date-${r.date}`, r);
+          });
+
+          // 2. Keep local reports not yet in remote, and sync them to Supabase in the background
+          (prevLocal || []).forEach(localR => {
+            if (!localR) return;
+            const key = localR.id || `date-${localR.date}`;
+            if (!mergedMap.has(key)) {
+              mergedMap.set(key, localR);
+              opnameReportsService.saveOpnameReport(localR).catch(e => {
+                console.warn('Background sync of local opname report to Supabase:', e);
+              });
+            }
+          });
+
+          const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+            const timeA = new Date(a.closedAt || a.date).getTime() || 0;
+            const timeB = new Date(b.closedAt || b.date).getTime() || 0;
+            return timeB - timeA;
+          });
+
+          try {
+            localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(mergedList));
+          } catch (e) {}
+
+          return mergedList;
+        });
       }
     } catch (err) {
       console.error('Failed to fetch inventory data:', err);
@@ -269,7 +310,7 @@ export const RawMaterialProvider = ({ children }) => {
   };
 
   // B. Update Raw Material
-  const updateRawMaterial = async (id, { name, unitName, pricePerUnit, minStock, note }) => {
+  const updateRawMaterial = async (id, { name, unitName, stock, pricePerUnit, minStock, note }) => {
     if (isCashier) {
       return { success: false, error: 'Akses Ditolak: Kasir tidak memiliki izin untuk mengubah data master bahan baku.' };
     }
@@ -288,6 +329,9 @@ export const RawMaterialProvider = ({ children }) => {
       return { success: false, error: `Bahan baku "${trimmedName}" sudah dipakai.` };
     }
 
+    const target = rawMaterials.find(r => r.id === id);
+    const prevStock = target ? (Number(target.stock ?? target.currentStock ?? 0) || 0) : 0;
+    const parsedStock = stock !== undefined ? Math.max(0, Number(stock) || 0) : prevStock;
     const parsedPrice = Math.max(0, Number(pricePerUnit) || 0);
 
     setIsSubmitting(true);
@@ -295,6 +339,7 @@ export const RawMaterialProvider = ({ children }) => {
       const { data: updatedMat, error: err } = await rawMaterialsService.updateRawMaterial(id, {
         name: trimmedName,
         unitName,
+        stock: parsedStock,
         pricePerUnit: parsedPrice,
         minStock,
         note
@@ -306,6 +351,27 @@ export const RawMaterialProvider = ({ children }) => {
       }
 
       setRawMaterials(prev => prev.map(r => r.id === id ? updatedMat : r));
+
+      // Jika sisa stok diubah langsung saat edit bahan, catat audit log ADJUST
+      if (stock !== undefined && parsedStock !== prevStock) {
+        const actor = currentUser?.nama || 'Admin';
+        const newLog = {
+          id: `LOG-${Date.now()}`,
+          rawMaterialId: id,
+          rawMaterialName: trimmedName,
+          unitName,
+          type: 'ADJUST',
+          amount: Math.abs(parsedStock - prevStock),
+          previousStock: prevStock,
+          currentStock: parsedStock,
+          note: (note && note.trim()) || `Penyesuaian sisa stok dari edit bahan (${prevStock} -> ${parsedStock})`,
+          user: actor,
+          createdAt: new Date().toISOString()
+        };
+        await stockLogsService.createStockLog(newLog);
+        setStockLogs(prev => [newLog, ...prev]);
+      }
+
       showToast(`Data bahan baku "${trimmedName}" berhasil diperbarui.`, 'success', 'Perubahan Disimpan');
       return { success: true };
     } catch (err) {
@@ -341,7 +407,7 @@ export const RawMaterialProvider = ({ children }) => {
     if (!target) return { success: false, error: 'Bahan baku tidak ditemukan.' };
 
     const parsedAmount = Math.max(0, Number(amount) || 0);
-    if (parsedAmount <= 0) {
+    if (type !== 'ADJUST' && parsedAmount <= 0) {
       return { success: false, error: 'Jumlah penyesuaian harus lebih besar dari 0.' };
     }
 
@@ -838,12 +904,8 @@ export const RawMaterialProvider = ({ children }) => {
   };
 
   const completeStoreClosing = async ({ closedBy = 'Kasir', outlet = 'XCrepes Main Outlet' } = {}) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const displayDate = new Date().toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    const todayStr = getLocalDateStr();
+    const displayDate = formatDateIndonesian();
 
     const reportItems = rawMaterials.map(m => {
       const sysStock = Number(m.stock ?? m.currentStock ?? 0) || 0;
@@ -905,14 +967,19 @@ export const RawMaterialProvider = ({ children }) => {
     };
 
     setDailyOpnameReports(prev => {
-      const filtered = prev.filter(r => r.date !== todayStr);
+      const filtered = prev.filter(r => r.date !== todayStr && r.id !== newReport.id);
       const updated = [newReport, ...filtered];
       try {
         localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(updated));
       } catch (e) {
-        console.error('Failed saving daily opname report:', e);
+        console.error('Failed saving daily opname report to localStorage:', e);
       }
       return updated;
+    });
+
+    // Persist to Supabase Cloud Database for cross-device/browser synchronization
+    opnameReportsService.saveOpnameReport(newReport).catch(err => {
+      console.error('Failed saving daily opname report to Supabase:', err);
     });
 
     showToast(`Store Closing berhasil! Laporan Stock Opname hari ini telah dikirim ke Superadmin.`, 'success', 'Store Closing Berhasil');
@@ -920,7 +987,7 @@ export const RawMaterialProvider = ({ children }) => {
   };
 
   const updateAdminOpnameItem = (reportId, materialId, { actualStock, adminNote, user } = {}) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateStr();
     const hasActualStockInput = actualStock !== undefined && actualStock !== '' && actualStock !== null;
     const recorderName = user || currentUser?.nama || 'Super Admin';
 
@@ -1007,6 +1074,17 @@ export const RawMaterialProvider = ({ children }) => {
       } catch (e) {
         console.error('Failed saving opname item update:', e);
       }
+
+      // Sync changes to Supabase cloud
+      if (updated) {
+        const targetReport = updated.find(r => r.id === reportId || (!reportId && r.date === todayStr));
+        if (targetReport) {
+          opnameReportsService.saveOpnameReport(targetReport).catch(err => {
+            console.error('Failed updating opname report in Supabase:', err);
+          });
+        }
+      }
+
       return updated;
     });
 
@@ -1018,7 +1096,7 @@ export const RawMaterialProvider = ({ children }) => {
   };
 
   const reopenStoreClosing = (reportId) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateStr();
     setDailyOpnameReports(prev => {
       const target = prev.find(r => r.id === reportId || r.date === todayStr);
       if (target) {
@@ -1037,6 +1115,15 @@ export const RawMaterialProvider = ({ children }) => {
       try {
         localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(updated));
       } catch (e) {}
+
+      // Delete/reopen in Supabase cloud
+      const targetId = reportId || (target ? target.id : null);
+      if (targetId) {
+        opnameReportsService.deleteOpnameReport(targetId).catch(err => {
+          console.error('Failed deleting opname report from Supabase on reopen:', err);
+        });
+      }
+
       return updated;
     });
     showToast('Sesi Stock Opname dibuka kembali untuk penghitungan kasir.', 'info', 'Opname Dibuka');
@@ -1102,12 +1189,18 @@ export const RawMaterialProvider = ({ children }) => {
       setRawMaterials(updatedMaterials);
       setStockLogs(prev => [...newLogs, ...prev]);
 
+      const appliedReport = { ...report, appliedToInventory: true };
       setDailyOpnameReports(prev => {
-        const updated = prev.map(r => r.id === reportId ? { ...r, appliedToInventory: true } : r);
+        const updated = prev.map(r => r.id === reportId ? appliedReport : r);
         try {
           localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(updated));
         } catch (e) {}
         return updated;
+      });
+
+      // Update applied status in Supabase cloud
+      opnameReportsService.saveOpnameReport(appliedReport).catch(err => {
+        console.error('Failed updating appliedToInventory in Supabase:', err);
       });
 
       showToast(`Berhasil menerapkan penyesuaian ${adjustments.length} bahan baku ke sistem.`, 'success', 'Sinkronisasi Berhasil');
@@ -1303,9 +1396,13 @@ export const RawMaterialProvider = ({ children }) => {
     };
   }, [enrichedOpnameList, rawMaterials.length]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalDateStr();
   const todayReport = useMemo(() => {
-    return dailyOpnameReports.find(r => r.date === todayStr) || null;
+    return dailyOpnameReports.find(r => 
+      r.date === todayStr || 
+      r.id?.includes(todayStr) ||
+      (r.closedAt && getLocalDateStr(new Date(r.closedAt)) === todayStr)
+    ) || null;
   }, [dailyOpnameReports, todayStr]);
   const todayStoreClosed = Boolean(todayReport);
 

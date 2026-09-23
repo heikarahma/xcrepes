@@ -37,6 +37,7 @@ import { UnitDeleteModal } from './views/master/unit/UnitDeleteModal';
 import { CategoryListView } from './views/master/category/CategoryListView';
 import { CategoryFormModal } from './views/master/category/CategoryFormModal';
 import { CategoryDeleteModal } from './views/master/category/CategoryDeleteModal';
+import { CategoryReorderModal } from './views/master/category/CategoryReorderModal';
 
 import { ToppingListView } from './views/master/topping/ToppingListView';
 import { ToppingFormModal } from './views/master/topping/ToppingFormModal';
@@ -158,6 +159,7 @@ function MainLayout() {
       {/* Modals for Kategori */}
       <CategoryFormModal />
       <CategoryDeleteModal />
+      <CategoryReorderModal />
 
       {/* Modals for Topping */}
       <ToppingFormModal />

@@ -4,6 +4,7 @@ import { useAuth } from '../../../controllers/AuthController';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
+import { SearchSelect } from '../../components/SearchSelect';
 import { 
   ArrowDownLeft, 
   ArrowUpRight, 
@@ -41,8 +42,13 @@ export const StockAdjustModal = () => {
       } else if (rawMaterials.length > 0) {
         setSelectedMaterialId(rawMaterials[0].id);
       }
-      setAdjustType(isCashier ? 'IN' : (initialType || 'IN'));
-      setAmount('');
+      const type = isCashier ? 'IN' : (initialType || 'IN');
+      setAdjustType(type);
+      if (type === 'ADJUST' && item) {
+        setAmount(String(Number(item.stock ?? item.currentStock ?? 0) || 0));
+      } else {
+        setAmount('');
+      }
       setNote('');
       setErrors({});
       setIsSubmitting(false);
@@ -73,10 +79,19 @@ export const StockAdjustModal = () => {
     if (!selectedMaterialId) {
       err.material = 'Pilih bahan baku terlebih dahulu.';
     }
-    if (amount === '' || isNaN(Number(amount)) || Number(amount) <= 0) {
-      err.amount = 'Jumlah perubahan harus berupa angka lebih dari 0.';
+    const parsed = Number(amount);
+    if (amount === '' || isNaN(parsed)) {
+      err.amount = 'Jumlah stok harus berupa angka valid.';
+    } else if (adjustType === 'ADJUST') {
+      if (parsed < 0) {
+        err.amount = 'Sisa stok tidak boleh bernilai negatif.';
+      }
+    } else {
+      if (parsed <= 0) {
+        err.amount = 'Jumlah perubahan harus lebih dari 0.';
+      }
     }
-    if (!isCashier && adjustType === 'OUT' && currentStock < Number(amount)) {
+    if (!isCashier && adjustType === 'OUT' && currentStock < parsed) {
       err.amount = `Stok tidak mencukupi. Sisa stok hanya ${currentStock} ${unitName}.`;
     }
     setErrors(err);
@@ -153,26 +168,39 @@ export const StockAdjustModal = () => {
           </div>
         )}
 
-        {/* 1. Pilih Bahan Baku */}
-        <div className="blue-input-group">
+        {/* 1. Pilih Bahan Baku (Search & Select) */}
+        <div className="blue-input-group" style={{ position: 'relative', zIndex: 30 }}>
           <label className="blue-label">
             Nama Bahan Baku <span style={{ color: 'var(--red-500)' }}>*</span>
           </label>
-          <select
+          <SearchSelect
+            options={rawMaterials.map(m => {
+              const sisa = Number(m.stock ?? m.currentStock ?? 0);
+              const uName = m.unitName || m.unit_name || 'Unit';
+              return {
+                value: m.id,
+                label: m.name,
+                sublabel: `(Sisa: ${sisa} ${uName})`,
+                badge: `Sisa: ${sisa} ${uName}`
+              };
+            })}
             value={selectedMaterialId}
-            onChange={(e) => {
-              setSelectedMaterialId(e.target.value);
+            onChange={(val) => {
+              setSelectedMaterialId(val);
               setErrors(prev => ({ ...prev, material: '', amount: '' }));
             }}
-            className="blue-input"
-            style={{ height: '42px', cursor: 'pointer', fontWeight: 600 }}
-          >
-            {rawMaterials.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.name} (Sisa: {Number(m.stock ?? m.currentStock ?? 0)} {m.unitName})
-              </option>
-            ))}
-          </select>
+            placeholder="Pilih atau cari bahan baku..."
+            searchPlaceholder="Ketik nama bahan baku..."
+            icon={Package}
+            showSublabelInTrigger={true}
+            clearable={false}
+            error={Boolean(errors.material)}
+          />
+          {errors.material && (
+            <span style={{ color: 'var(--red-500)', fontSize: '0.75rem', marginTop: '4px', fontWeight: 500 }}>
+              {errors.material}
+            </span>
+          )}
         </div>
 
         {/* 2. Jenis Perubahan */}
@@ -250,7 +278,7 @@ export const StockAdjustModal = () => {
                 }}
               >
                 <RefreshCw size={15} />
-                <span>Opname Fisik (=)</span>
+                <span>Ubah Sisa Stok (=)</span>
               </button>
             </div>
           )}
@@ -261,8 +289,10 @@ export const StockAdjustModal = () => {
           <Input
             label={
               (!isCashier && adjustType === 'ADJUST')
-                ? `Jumlah Stok Fisik Riil (${unitName})`
-                : `Jumlah Penambahan Masuk (${unitName})`
+                ? `Jumlah Sisa Stok Baru (${unitName})`
+                : (!isCashier && adjustType === 'OUT')
+                  ? `Jumlah Pengurangan Keluar (${unitName})`
+                  : `Jumlah Penambahan Masuk (${unitName})`
             }
             type="number"
             min="0"
@@ -282,7 +312,13 @@ export const StockAdjustModal = () => {
           {currentMaterial && amount !== '' && !isNaN(Number(amount)) && (
             <div style={styles.projectionBox}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.813rem' }}>
-                <span style={{ color: 'var(--neutral-600)' }}>Alur Penambahan:</span>
+                <span style={{ color: 'var(--neutral-600)' }}>
+                  {adjustType === 'ADJUST' 
+                    ? 'Alur Koreksi Sisa Stok:' 
+                    : adjustType === 'OUT' 
+                      ? 'Alur Pengurangan Stok:' 
+                      : 'Alur Penambahan Stok:'}
+                </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ color: 'var(--neutral-500)', fontWeight: 600 }}>
                     {currentStock} {unitName}
@@ -290,7 +326,11 @@ export const StockAdjustModal = () => {
                   <span style={{ color: 'var(--neutral-400)' }}>➔</span>
                   <span style={{ 
                     fontWeight: 800, 
-                    color: 'var(--green-700)' 
+                    color: adjustType === 'OUT' 
+                      ? '#dc2626' 
+                      : adjustType === 'ADJUST' 
+                        ? 'var(--blue-600)' 
+                        : 'var(--green-700)' 
                   }}>
                     {projectedStock} {unitName}
                   </span>
