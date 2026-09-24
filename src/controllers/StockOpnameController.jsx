@@ -16,7 +16,18 @@ export const useStockOpname = () => {
   return context;
 };
 
-export const canKasirEditReport = (opnameDate) => {
+export const canKasirEditReport = (opnameDateOrReport, optionalReport) => {
+  const report = (typeof opnameDateOrReport === 'object' && opnameDateOrReport !== null) ? opnameDateOrReport : optionalReport;
+  const opnameDate = typeof opnameDateOrReport === 'string' ? opnameDateOrReport : (report?.opnameDate || report?.date);
+
+  // If report is applied/locked by Admin -> Kasir CANNOT edit
+  if (report && (report.isApplied || report.status === 'APPLIED' || report.appliedAt || report.isLockedForKasir || report.needsReapply)) {
+    return false;
+  }
+  if (report && report.status === 'VOID') {
+    return false;
+  }
+
   if (!opnameDate) return false;
   const today = getLocalDateStr();
   if (opnameDate === today) return true;
@@ -28,7 +39,7 @@ export const canKasirEditReport = (opnameDate) => {
 };
 
 export const StockOpnameProvider = ({ children }) => {
-  const { rawMaterials = [] } = useRawMaterial();
+  const { rawMaterials = [], applyOpnameReportToStock, refetch: refetchRawMaterials } = useRawMaterial();
   const { currentUser, storeName = 'XCrepes POS' } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin';
 
@@ -232,6 +243,10 @@ export const StockOpnameProvider = ({ children }) => {
   // Start or open existing report for editing
   const startEditingReport = useCallback((report) => {
     if (!report) return;
+    if (!isSuperAdmin && (report.isApplied || report.status === 'APPLIED')) {
+      toast.error('Laporan ini telah disetujui & diterapkan oleh Admin. Laporan sudah dikunci dan tidak dapat diubah lagi.');
+      return;
+    }
     setEditingReportId(report.id);
     setActiveDate(report.opnameDate || report.date);
 
@@ -250,7 +265,7 @@ export const StockOpnameProvider = ({ children }) => {
     setDraftStocks(stocks);
     setDraftNotes(notes);
     setKasirStep('INPUT');
-  }, []);
+  }, [isSuperAdmin]);
 
   // Cancel edit mode and reset draft
   const cancelEditMode = useCallback(() => {
@@ -293,9 +308,20 @@ export const StockOpnameProvider = ({ children }) => {
       if (isNew) {
         const conflict = reports.find(r => (r.opnameDate === targetDate || r.date === targetDate) && r.status !== 'VOID');
         if (conflict) {
+          if (conflict.isApplied || conflict.status === 'APPLIED') {
+            toast.error(`Laporan Stock Opname untuk tanggal ${targetDate} sudah diterapkan oleh Admin dan tidak dapat diubah.`);
+            setIsSubmitting(false);
+            return { success: false, locked: true };
+          }
           toast.error(`Laporan Stock Opname untuk tanggal ${targetDate} sudah ada.`);
           setIsSubmitting(false);
           return { success: false, conflict: true, existingReport: conflict };
+        }
+      } else {
+        if (!isSuperAdmin && (existing?.isApplied || existing?.status === 'APPLIED')) {
+          toast.error(`Laporan Stock Opname tanggal ${targetDate} sudah diterapkan oleh Admin dan tidak dapat diubah lagi.`);
+          setIsSubmitting(false);
+          return { success: false, locked: true };
         }
       }
 
@@ -505,9 +531,32 @@ export const StockOpnameProvider = ({ children }) => {
         }))
       };
 
+      const wasApplied = Boolean(report.isApplied || report.status === 'APPLIED' || report.appliedAt || report.isLockedForKasir);
+
+      const previousSnapshot = report.appliedSnapshot || (wasApplied ? {
+        items: report.items,
+        summary: report.summary,
+        version: report.version,
+        appliedAt: report.appliedAt,
+        appliedBy: report.appliedBy,
+        appliedNotes: report.appliedNotes
+      } : null);
+
+      const previousDraftSnapshot = report.previousDraftSnapshot || (!wasApplied ? {
+        items: report.items,
+        summary: report.summary,
+        version: report.version
+      } : null);
+
       const correctedReport = {
         ...report,
         version: nextVersion,
+        isApplied: false,
+        needsReapply: wasApplied,
+        isLockedForKasir: true,
+        appliedSnapshot: previousSnapshot,
+        previousDraftSnapshot: previousDraftSnapshot,
+        status: wasApplied ? 'NEEDS_REAPPLY' : (report.status === 'APPLIED' ? 'SUBMITTED' : report.status),
         lastModifiedBy: adminUserObj,
         lastModifiedAt: now,
         items: updatedItems,
@@ -529,7 +578,11 @@ export const StockOpnameProvider = ({ children }) => {
         return { success: false, error };
       }
 
-      toast.success('Koreksi stok berhasil disimpan dan dicatat ke Audit Trail.');
+      if (wasApplied) {
+        toast.info('Perubahan disimpan. Silakan klik tombol "Terapkan Ulang ke Stok Sistem" untuk memperbarui saldo inventaris!');
+      } else {
+        toast.success('Koreksi stok berhasil disimpan dan dicatat ke Audit Trail.');
+      }
       fetchReports();
       setSelectedReportForDetail(correctedReport);
       return { success: true, report: correctedReport };
@@ -541,6 +594,227 @@ export const StockOpnameProvider = ({ children }) => {
       setIsSubmitting(false);
     }
   }, [reports, currentUser, fetchReports]);
+
+  // Helper for Kasir permission check
+  const canKasirEdit = useCallback((opnameDateOrReport, optionalReport) => {
+    const report = (typeof opnameDateOrReport === 'object' && opnameDateOrReport !== null) 
+      ? opnameDateOrReport 
+      : (optionalReport || reports.find(r => (r.opnameDate === opnameDateOrReport || r.date === opnameDateOrReport) && r.status !== 'VOID'));
+    return canKasirEditReport(opnameDateOrReport, report);
+  }, [reports]);
+
+  // Admin Apply Stock Opname to Inventory (Commit actual stock & lock report permanently)
+  const applyOpnameToInventory = useCallback(async (reportId, { notes = '' } = {}) => {
+    if (!isSuperAdmin) {
+      toast.error('Akses Ditolak: Hanya Super Admin yang berhak menerapkan penyesuaian stok sistem.');
+      return { success: false, error: 'Akses Ditolak' };
+    }
+
+    const report = reports.find(r => r.id === reportId);
+    if (!report) {
+      toast.error('Laporan tidak ditemukan.');
+      return { success: false, error: 'Laporan tidak ditemukan' };
+    }
+
+    if ((report.isApplied || report.status === 'APPLIED') && !report.needsReapply) {
+      toast.info('Laporan stock opname ini sudah pernah diterapkan ke sistem.');
+      return { success: false, error: 'Already applied' };
+    }
+
+    setIsSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      const adminUserObj = {
+        id: currentUser?.id || 'usr_superadmin',
+        name: currentUser?.nama || 'Super Admin',
+        role: currentUser?.role || 'superadmin'
+      };
+
+      // 1. Update physical counts into rawMaterials and generate stock logs (ADJUST)
+      if (applyOpnameReportToStock) {
+        const stockRes = await applyOpnameReportToStock(report, notes, adminUserObj);
+        if (!stockRes.success) {
+          throw new Error(stockRes.error || 'Gagal memperbarui stok di inventaris');
+        }
+      }
+
+      // 2. Audit Trail Entry
+      const isReapply = Boolean(report.needsReapply);
+      const auditEntry = {
+        id: `audit_apply_${Date.now()}`,
+        timestamp: now,
+        user: adminUserObj.name,
+        role: adminUserObj.role,
+        action: isReapply ? 'REAPPLY_TO_INVENTORY' : 'APPLY_TO_INVENTORY',
+        field: 'status',
+        oldValue: report.status,
+        newValue: 'APPLIED',
+        reason: notes || (isReapply ? 'Penerapan ulang stok aktual setelah revisi admin' : 'Penerapan stok aktual ke sistem'),
+        summary: isReapply
+          ? `Perubahan stok aktual diterapkan ulang ke saldo sistem oleh ${adminUserObj.name}. Laporan tetap terkunci bagi kasir.`
+          : `Stok aktual diterapkan ke saldo sistem oleh ${adminUserObj.name}. Laporan dikunci secara permanen.`
+      };
+
+      // 3. Mark report as APPLIED and permanently locked
+      const appliedReport = {
+        ...report,
+        status: 'APPLIED',
+        isApplied: true,
+        needsReapply: false,
+        isLockedForKasir: true,
+        appliedAt: now,
+        appliedBy: adminUserObj,
+        appliedNotes: notes || '',
+        appliedSnapshot: {
+          items: report.items,
+          summary: report.summary,
+          version: report.version,
+          appliedAt: now,
+          appliedBy: adminUserObj,
+          appliedNotes: notes || ''
+        },
+        lastModifiedBy: adminUserObj,
+        lastModifiedAt: now,
+        auditTrail: [...(report.auditTrail || []), auditEntry]
+      };
+
+      // 4. Save updated report in Supabase / service
+      await opnameReportsService.saveOpnameReport(appliedReport, false);
+
+      // 5. Clear draft for that date so kasir cannot edit
+      const reportDate = report.opnameDate || report.date;
+      try {
+        localStorage.removeItem(`pos_opname_draft_${reportDate}`);
+        localStorage.removeItem('xcrepes_stock_opname_draft');
+      } catch (e) {}
+
+      // 6. Refresh reports and detail view if open
+      await fetchReports();
+      if (selectedReportForDetail?.id === reportId) {
+        setSelectedReportForDetail(appliedReport);
+      }
+      if (refetchRawMaterials) {
+        await refetchRawMaterials();
+      }
+
+      toast.success(isReapply
+        ? `Perubahan stok aktual berhasil diterapkan ulang ke inventaris sistem!`
+        : `Stok aktual berhasil diterapkan ke sistem & laporan tanggal ${report.displayDate || reportDate} telah dikunci!`
+      );
+      return { success: true, report: appliedReport };
+    } catch (err) {
+      console.error('applyOpnameToInventory error:', err);
+      toast.error(`Gagal menerapkan stok: ${err.message || 'Kesalahan sistem'}`);
+      return { success: false, error: err };
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isSuperAdmin, reports, currentUser, applyOpnameReportToStock, opnameReportsService, fetchReports, selectedReportForDetail, refetchRawMaterials]);
+
+  // Admin Cancel Revision (Revert to previous applied or draft snapshot)
+  const cancelAdminCorrection = useCallback(async (reportId) => {
+    if (!isSuperAdmin) {
+      toast.error('Akses Ditolak: Hanya Super Admin yang dapat membatalkan perubahan.');
+      return { success: false, error: 'Akses Ditolak' };
+    }
+
+    const report = reports.find(r => r.id === reportId);
+    if (!report) {
+      toast.error('Laporan tidak ditemukan.');
+      return { success: false, error: 'Laporan tidak ditemukan' };
+    }
+
+    setIsSubmitting(true);
+    try {
+      const now = new Date().toISOString();
+      const adminUserObj = {
+        id: currentUser?.id || 'usr_superadmin',
+        name: currentUser?.nama || 'Super Admin',
+        role: currentUser?.role || 'superadmin'
+      };
+
+      let revertedItems = null;
+      let revertedSummary = null;
+      let revertedIsApplied = false;
+      let revertedStatus = 'SUBMITTED';
+
+      if (report.appliedSnapshot) {
+        revertedItems = report.appliedSnapshot.items;
+        revertedSummary = report.appliedSnapshot.summary;
+        revertedIsApplied = true;
+        revertedStatus = 'APPLIED';
+      } else if (report.previousDraftSnapshot) {
+        revertedItems = report.previousDraftSnapshot.items;
+        revertedSummary = report.previousDraftSnapshot.summary;
+        revertedIsApplied = false;
+        revertedStatus = 'SUBMITTED';
+      } else if (report.versions && report.versions.length > 1) {
+        const prevVer = report.versions[report.versions.length - 2];
+        if (prevVer?.itemsSnapshot) {
+          revertedItems = (report.items || []).map(cur => {
+            const prevItem = prevVer.itemsSnapshot.find(pi => (pi.rawMaterialId || pi.id) === (cur.rawMaterialId || cur.id));
+            if (prevItem) {
+              return {
+                ...cur,
+                actualStock: prevItem.actualStock,
+                difference: prevItem.difference,
+                status: prevItem.status
+              };
+            }
+            return cur;
+          });
+        }
+        revertedIsApplied = Boolean(report.appliedAt);
+        revertedStatus = revertedIsApplied ? 'APPLIED' : 'SUBMITTED';
+      }
+
+      if (!revertedItems) {
+        toast.error('Data versi sebelumnya tidak ditemukan.');
+        return { success: false, error: 'Snapshot not found' };
+      }
+
+      const auditEntry = {
+        id: `audit_cancel_${Date.now()}`,
+        timestamp: now,
+        user: adminUserObj.name,
+        role: adminUserObj.role,
+        action: 'CANCEL_CORRECTION',
+        field: 'items',
+        oldValue: 'Revisi Admin',
+        newValue: revertedIsApplied ? 'Versi Diterapkan' : 'Versi Sebelumnya',
+        reason: 'Pembatalan perubahan laporan oleh Admin',
+        summary: `Perubahan laporan dibatalkan oleh ${adminUserObj.name}. Data dikembalikan ke ${revertedIsApplied ? 'stok yang diterapkan sebelumnya' : 'versi sebelumnya'}.`
+      };
+
+      const revertedReport = {
+        ...report,
+        items: revertedItems,
+        summary: revertedSummary || report.summary,
+        isApplied: revertedIsApplied,
+        needsReapply: false,
+        isLockedForKasir: true,
+        status: revertedStatus,
+        lastModifiedBy: adminUserObj,
+        lastModifiedAt: now,
+        auditTrail: [...(report.auditTrail || []), auditEntry]
+      };
+
+      await opnameReportsService.saveOpnameReport(revertedReport, false);
+      await fetchReports();
+      if (selectedReportForDetail?.id === reportId) {
+        setSelectedReportForDetail(revertedReport);
+      }
+
+      toast.success('Perubahan laporan berhasil dibatalkan.');
+      return { success: true, report: revertedReport };
+    } catch (err) {
+      console.error('cancelAdminCorrection error:', err);
+      toast.error(`Gagal membatalkan perubahan: ${err.message || 'Kesalahan sistem'}`);
+      return { success: false, error: err };
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isSuperAdmin, reports, currentUser, fetchReports, selectedReportForDetail]);
 
   // Admin Void Report
   const voidReport = useCallback(async (reportId, reason) => {
@@ -691,9 +965,11 @@ export const StockOpnameProvider = ({ children }) => {
     cancelEditMode,
     submitOpnameReport,
     submitAdminCorrection,
+    cancelAdminCorrection,
+    applyOpnameToInventory,
     voidReport,
     fetchReports,
-    canKasirEdit: canKasirEditReport
+    canKasirEdit
   };
 
   return (

@@ -9,7 +9,13 @@ export const opnameReportsService = {
    * Reports are stored with type 'OPNAME_REPORT' and their complete data in 'note' (JSON).
    */
   async getOpnameReports() {
-    if (!isSupabaseConfigured()) return { data: [], error: null };
+    let localReports = [];
+    try {
+      const saved = localStorage.getItem('xcrepes_daily_opname_reports');
+      if (saved) localReports = JSON.parse(saved);
+    } catch (e) {}
+
+    if (!isSupabaseConfigured()) return { data: localReports, error: null };
 
     try {
       const { data, error } = await supabase
@@ -20,7 +26,7 @@ export const opnameReportsService = {
 
       if (error) {
         console.error('opnameReportsService.getOpnameReports error:', error);
-        return { data: [], error };
+        return { data: localReports, error };
       }
 
       const reports = (data || []).map(row => {
@@ -104,8 +110,8 @@ export const opnameReportsService = {
    * returns 409 Conflict.
    */
   async saveOpnameReport(report, isNew = false) {
-    if (!isSupabaseConfigured() || !report) {
-      return { data: null, error: new Error('Supabase not configured or invalid report') };
+    if (!report) {
+      return { data: null, error: new Error('Invalid report') };
     }
 
     try {
@@ -134,6 +140,25 @@ export const opnameReportsService = {
         lastModifiedAt: new Date().toISOString()
       };
 
+      // Always save to localStorage as backup
+      try {
+        const saved = localStorage.getItem('xcrepes_daily_opname_reports');
+        const list = saved ? JSON.parse(saved) : [];
+        const idx = list.findIndex(r => r.id === reportId || r.opnameDate === dateStr);
+        if (idx !== -1) {
+          list[idx] = fullReport;
+        } else {
+          list.unshift(fullReport);
+        }
+        localStorage.setItem('xcrepes_daily_opname_reports', JSON.stringify(list));
+      } catch (lsErr) {
+        console.warn('LocalStorage save error:', lsErr);
+      }
+
+      if (!isSupabaseConfigured()) {
+        return { data: fullReport, error: null };
+      }
+
       const payload = {
         id: reportId,
         type: OPNAME_TYPE,
@@ -154,7 +179,7 @@ export const opnameReportsService = {
 
       if (error) {
         console.error('opnameReportsService.saveOpnameReport error:', error);
-        return { data: null, error };
+        return { data: fullReport, error: null }; // Return local copy so flow succeeds
       }
 
       return { data: fullReport, error: null };

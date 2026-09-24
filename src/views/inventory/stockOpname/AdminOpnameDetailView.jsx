@@ -14,14 +14,17 @@ import {
   Calendar, 
   User, 
   Clock,
-  RotateCcw
+  RotateCcw,
+  Lock,
+  FileText
 } from 'lucide-react';
 import { formatDateIndonesian, formatDateTimeIndonesian } from '../../../utils/dateUtils';
 import { toast } from '../../components/Toast';
+import { exportSingleOpnameReportToPDF } from '../../../utils/reportExportUtils';
 
 export const AdminOpnameDetailView = ({ report, onBack }) => {
   const { currentUser } = useAuth();
-  const { reports = [], submitAdminCorrection, isSubmitting } = useStockOpname();
+  const { reports = [], submitAdminCorrection, cancelAdminCorrection, applyOpnameToInventory, isSubmitting } = useStockOpname();
 
   // Always use the freshest report from controller state
   const activeReport = useMemo(() => {
@@ -31,14 +34,24 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
   // Active Report Data
   const reportDate = activeReport?.opnameDate || activeReport?.date;
   const displayDate = useMemo(() => formatDateIndonesian(reportDate), [reportDate]);
+  const isApplied = Boolean(activeReport?.isApplied || activeReport?.status === 'APPLIED');
+  const needsReapply = Boolean(activeReport?.needsReapply || (activeReport?.appliedAt && !activeReport?.isApplied));
+  const isVoid = activeReport?.status === 'VOID';
 
   // Filter State: 'ALL' | 'MATCH' | 'DISCREPANCY' (Section 9)
   const [filterMode, setFilterMode] = useState('ALL');
+
+  // Apply Modal State
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [applyNotes, setApplyNotes] = useState('');
 
   // Edit Modal State (Section 11 & 12)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editValues, setEditValues] = useState({}); // { [matId]: number | string }
   const [editReason, setEditReason] = useState('');
+
+  // Cancel Confirm Modal State
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   // History Modal State (Section 13)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -122,6 +135,21 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
     }
   };
 
+  // Unduh Laporan PDF
+  const handleDownloadPDF = () => {
+    try {
+      exportSingleOpnameReportToPDF({
+        report: activeReport,
+        storeName: 'XCrepes',
+        isCashier: false
+      });
+      toast.success('Laporan Stock Opname berhasil diunduh (PDF)!');
+    } catch (err) {
+      console.error('Download PDF error:', err);
+      toast.error('Gagal mengunduh file PDF: ' + (err.message || 'Terjadi kesalahan'));
+    }
+  };
+
   return (
     <div className="stock-opname-detail-page animate-fade-in" style={styles.container}>
       {/* Top Navigation */}
@@ -137,9 +165,23 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <h1 style={styles.title}>Stock Opname</h1>
             <span style={styles.dateBadge}>{displayDate}</span>
-            <span style={styles.statusBadge}>
-              <CheckCircle2 size={12} /> Selesai
-            </span>
+            {needsReapply ? (
+              <span style={styles.statusBadgeWarning}>
+                <AlertTriangle size={12} /> Perubahan Belum Diterapkan ke Sistem
+              </span>
+            ) : isApplied ? (
+              <span style={styles.statusBadgeApplied}>
+                <CheckCircle2 size={12} /> Diterapkan ke Stok (Terkunci Kasir)
+              </span>
+            ) : isVoid ? (
+              <span style={styles.statusBadgeVoid}>
+                <X size={12} /> Dibatalkan
+              </span>
+            ) : (
+              <span style={styles.statusBadgePending}>
+                <Clock size={12} /> Menunggu Penerapan
+              </span>
+            )}
           </div>
 
           {/* Creator & Last Modifier (Section 14) */}
@@ -170,30 +212,94 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
                 )}
               </div>
             )}
+
+            {isApplied && (
+              <div style={styles.metaRow}>
+                <span style={styles.metaLabel}>Diterapkan ke sistem:</span>
+                <strong style={{ color: '#059669' }}>
+                  {activeReport.appliedBy?.name || 'Super Admin'}
+                </strong>
+                {activeReport.appliedAt && (
+                  <span style={{ fontSize: '11.5px', color: 'var(--neutral-400)' }}>
+                    ({formatDateTimeIndonesian(activeReport.appliedAt)})
+                  </span>
+                )}
+                {activeReport.appliedNotes && (
+                  <span style={{ fontSize: '11.5px', color: 'var(--neutral-500)', fontStyle: 'italic', marginLeft: '4px' }}>
+                    — "{activeReport.appliedNotes}"
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div style={styles.headerActions}>
+        <div className="admin-detail-header-actions" style={styles.headerActions}>
           {(activeReport.auditTrail || []).length > 1 && (
             <Button
               variant="secondary"
               icon={History}
               onClick={() => setIsHistoryModalOpen(true)}
-              size="sm"
+              style={{ height: '42px' }}
             >
               Lihat Riwayat ({activeReport.auditTrail.length})
             </Button>
           )}
 
           <Button
-            variant="primary"
-            icon={Edit3}
-            onClick={handleOpenEditModal}
-            size="sm"
+            variant="outline"
+            icon={FileText}
+            onClick={handleDownloadPDF}
+            className="opname-btn-pdf"
+            style={{
+              height: '42px',
+              backgroundColor: '#FEF2F2',
+              borderColor: '#FECACA',
+              color: '#B91C1C',
+              fontWeight: 600
+            }}
           >
-            Edit Laporan
+            Unduh PDF
           </Button>
+
+          {!isVoid && (
+            <Button
+              variant="outline"
+              icon={Edit3}
+              onClick={handleOpenEditModal}
+              style={{ height: '42px' }}
+            >
+              Edit Laporan
+            </Button>
+          )}
+
+          {needsReapply && !isVoid && (
+            <Button
+              variant="outline"
+              icon={RotateCcw}
+              onClick={() => setIsCancelConfirmOpen(true)}
+              disabled={isSubmitting}
+              style={{ height: '42px', borderColor: '#fcd34d', color: '#92400e', backgroundColor: '#fffbeb' }}
+            >
+              Batalkan Perubahan
+            </Button>
+          )}
+
+          {(!isApplied || needsReapply) && !isVoid && (
+            <Button
+              variant="primary"
+              icon={CheckCircle2}
+              onClick={() => {
+                setApplyNotes('');
+                setIsApplyModalOpen(true);
+              }}
+              disabled={isSubmitting}
+              style={{ height: '42px', backgroundColor: '#059669', borderColor: '#059669', color: '#fff' }}
+            >
+              {needsReapply ? 'Terapkan Ulang ke Stok Sistem' : 'Terapkan ke Stok Sistem'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -201,9 +307,10 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
       <div className="stock-opname-table-card" style={styles.tableCard}>
         {/* Filter Pills Header (Section 9) */}
         <div style={styles.tableCardHeader}>
-          <div style={styles.pillGroup}>
+          <div className="stock-opname-pill-group" style={styles.pillGroup}>
             <button
               type="button"
+              className="stock-opname-pill-btn"
               onClick={() => setFilterMode('ALL')}
               style={{
                 ...styles.pillBtn,
@@ -214,6 +321,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
             </button>
             <button
               type="button"
+              className="stock-opname-pill-btn"
               onClick={() => setFilterMode('MATCH')}
               style={{
                 ...styles.pillBtn,
@@ -224,6 +332,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
             </button>
             <button
               type="button"
+              className="stock-opname-pill-btn"
               onClick={() => setFilterMode('DISCREPANCY')}
               style={{
                 ...styles.pillBtn,
@@ -239,8 +348,8 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
           </div>
         </div>
 
-        {/* Comparison Table (Section 7) */}
-        <div style={styles.tableResponsive}>
+        {/* Desktop Comparison Table (Section 7) */}
+        <div className="admin-detail-desktop-table" style={styles.tableResponsive}>
           <table style={styles.table}>
             <thead>
               <tr style={styles.tableHeaderRow}>
@@ -313,13 +422,110 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Cards View (Same as Kasir Stock Opname Mobile Cards) */}
+        <div className="admin-detail-mobile-cards">
+          {displayedItems.length === 0 ? (
+            <div style={styles.mobileEmptyCard}>
+              <p style={{ margin: 0, color: 'var(--neutral-500)', fontSize: '13px' }}>
+                Tidak ada bahan baku yang cocok dengan filter yang dipilih.
+              </p>
+            </div>
+          ) : (
+            displayedItems.map((item, index) => {
+              const isMatch = item.isMatch;
+              const diff = item.difference;
+              const borderLeftColor = isMatch ? '#10b981' : diff < 0 ? '#ef4444' : '#3b82f6';
+              const hasValidCategory = item.categoryName && item.categoryName.trim() !== '-' && item.categoryName.trim() !== '';
+
+              return (
+                <div
+                  key={item.rawMaterialId || index}
+                  className="admin-detail-item-card"
+                  style={{
+                    ...styles.mobileItemCard,
+                    borderLeft: `4px solid ${borderLeftColor}`
+                  }}
+                >
+                  {/* Top Header: #No tag, Material Name, and Category Badge */}
+                  <div style={styles.mobileItemHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <span style={styles.rowNumberTag}>
+                        #{index + 1}
+                      </span>
+                      <span style={styles.mobileItemName}>
+                        {item.name}
+                      </span>
+                    </div>
+                    {hasValidCategory && (
+                      <span style={styles.categoryBadge}>
+                        {item.categoryName}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 3-Column Metrics Grid */}
+                  <div style={styles.mobileItemMetricsGrid}>
+                    <div style={styles.mobileMetricCol}>
+                      <span style={styles.mobileMetricLabel}>Stok Sistem</span>
+                      <span style={styles.mobileMetricValSystem}>
+                        {item.systemStock} {item.unitName}
+                      </span>
+                    </div>
+                    <div style={styles.mobileMetricCol}>
+                      <span style={styles.mobileMetricLabel}>Stok Aktual</span>
+                      <span style={styles.mobileMetricValActual}>
+                        {item.actualStock} {item.unitName}
+                      </span>
+                    </div>
+                    <div style={styles.mobileMetricCol}>
+                      <span style={styles.mobileMetricLabel}>Selisih</span>
+                      <span style={{
+                        ...styles.mobileMetricValDiff,
+                        color: isMatch ? '#059669' : diff < 0 ? '#dc2626' : '#2563eb'
+                      }}>
+                        {isMatch ? '0 ' + item.unitName : `${diff > 0 ? '+' : ''}${diff} ${item.unitName}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Status Pill */}
+                  <div style={styles.mobileItemStatusRow}>
+                    {isMatch ? (
+                      <span style={styles.statusPillMatch}>
+                        <CheckCircle2 size={12} /> Stok Cocok (Sesuai)
+                      </span>
+                    ) : diff < 0 ? (
+                      <span style={styles.statusPillDeficit}>
+                        <AlertTriangle size={12} /> Selisih Kurang ({diff} {item.unitName})
+                      </span>
+                    ) : (
+                      <span style={styles.statusPillSurplus}>
+                        <AlertTriangle size={12} /> Selisih Lebih (+{diff} {item.unitName})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* EDIT MODAL (Section 11 & 12) */}
       {isEditModalOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <div style={styles.modalHeader}>
+        <div 
+          className="admin-opname-modal-overlay" 
+          style={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditModalOpen(false);
+          }}
+        >
+          <div className="admin-opname-modal-card" style={styles.modalCard}>
+            <div className="bottom-sheet-handle-wrapper" aria-hidden="true">
+              <div className="bottom-sheet-handle-bar" />
+            </div>
+            <div className="admin-opname-modal-header" style={styles.modalHeader}>
               <div>
                 <h3 style={styles.modalTitle}>Edit Laporan Stock Opname</h3>
                 <p style={styles.modalSubtitle}>Koreksi stok aktual jika ditemukan kesalahan hitung fisik.</p>
@@ -333,7 +539,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
               </button>
             </div>
 
-            <div style={styles.modalBody}>
+            <div className="admin-opname-modal-body" style={styles.modalBody}>
               {/* Diff Preview if there are changes (Section 12) */}
               {changedItems.length > 0 && (
                 <div style={styles.diffAlertBox}>
@@ -414,7 +620,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
               </div>
             </div>
 
-            <div style={styles.modalFooter}>
+            <div className="admin-opname-modal-footer" style={styles.modalFooter}>
               <Button
                 variant="secondary"
                 onClick={() => setIsEditModalOpen(false)}
@@ -437,11 +643,20 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
 
       {/* RIWAYAT PERUBAHAN MODAL (Section 13) */}
       {isHistoryModalOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCardSmall}>
-            <div style={styles.modalHeader}>
+        <div 
+          className="admin-opname-modal-overlay" 
+          style={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsHistoryModalOpen(false);
+          }}
+        >
+          <div className="admin-opname-modal-card" style={styles.modalCardSmall}>
+            <div className="bottom-sheet-handle-wrapper" aria-hidden="true">
+              <div className="bottom-sheet-handle-bar" />
+            </div>
+            <div className="admin-opname-modal-header" style={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <History size={18} color="var(--primary-600)" />
+                <History size={18} color="var(--blue-600, #005BC6)" />
                 <h3 style={styles.modalTitle}>Riwayat Perubahan Laporan</h3>
               </div>
               <button
@@ -453,7 +668,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
               </button>
             </div>
 
-            <div style={styles.modalBody}>
+            <div className="admin-opname-modal-body" style={styles.modalBody}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {(activeReport.auditTrail || []).map((log, idx) => {
                   return (
@@ -485,7 +700,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
               </div>
             </div>
 
-            <div style={styles.modalFooter}>
+            <div className="admin-opname-modal-footer" style={styles.modalFooter}>
               <Button variant="secondary" onClick={() => setIsHistoryModalOpen(false)}>
                 Tutup
               </Button>
@@ -494,9 +709,331 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
         </div>
       )}
 
+      {/* MODAL TERAPKAN STOK KE SISTEM */}
+      {isApplyModalOpen && (
+        <div 
+          className="admin-opname-modal-overlay" 
+          style={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsApplyModalOpen(false);
+          }}
+        >
+          <div className="admin-opname-modal-card" style={styles.modalCard}>
+            <div className="bottom-sheet-handle-wrapper" aria-hidden="true">
+              <div className="bottom-sheet-handle-bar" />
+            </div>
+            <div className="admin-opname-modal-header" style={styles.modalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={20} color="#059669" />
+                <div>
+                  <h3 style={styles.modalTitle}>
+                    {needsReapply ? 'Terapkan Ulang Stok Aktual ke Sistem' : 'Terapkan Stok Aktual ke Sistem'}
+                  </h3>
+                  <p style={styles.modalSubtitle}>
+                    {needsReapply
+                      ? `Sinkronkan koreksi hasil edit admin ke master stok bahan baku tanggal ${displayDate}`
+                      : `Perbarui saldo stok bahan baku master data sesuai hasil fisik tanggal ${displayDate}`
+                    }
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsApplyModalOpen(false)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="admin-opname-modal-body" style={styles.modalBody}>
+              {/* Summary Stats Cards */}
+              <div style={styles.applyStatsGrid}>
+                <div style={styles.applyStatBox}>
+                  <span style={styles.applyStatLabel}>Total Bahan Baku</span>
+                  <strong style={styles.applyStatVal}>{stats.total}</strong>
+                </div>
+                <div style={{ ...styles.applyStatBox, borderColor: '#a7f3d0', backgroundColor: '#ecfdf5' }}>
+                  <span style={{ ...styles.applyStatLabel, color: '#065f46' }}>Stok Cocok</span>
+                  <strong style={{ ...styles.applyStatVal, color: '#059669' }}>{stats.match}</strong>
+                </div>
+                <div style={{ ...styles.applyStatBox, borderColor: stats.discrepancy > 0 ? '#fecaca' : '#e5e7eb', backgroundColor: stats.discrepancy > 0 ? '#fff1f2' : '#f9fafb' }}>
+                  <span style={{ ...styles.applyStatLabel, color: stats.discrepancy > 0 ? '#991b1b' : '#6b7280' }}>Ada Selisih</span>
+                  <strong style={{ ...styles.applyStatVal, color: stats.discrepancy > 0 ? '#dc2626' : '#374151' }}>{stats.discrepancy}</strong>
+                </div>
+              </div>
+
+              {/* Warning Callout Box */}
+              <div style={styles.applyWarningBox}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <AlertTriangle size={18} color="#b45309" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '12.5px', color: '#78350f', lineHeight: 1.5 }}>
+                    <strong>PENTING:</strong>
+                    <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px' }}>
+                      <li>Saldo stok bahan baku di sistem akan langsung <strong>diperbarui mengikuti stok fisik aktual</strong>.</li>
+                      <li>Selisih stok akan otomatis dicatat sebagai <strong>Log Mutasi Stok (ADJUST)</strong>.</li>
+                      <li>Laporan stock opname hari ini akan <strong>DIKUNCI SECARA PERMANEN</strong>, sehingga kasir tidak dapat lagi mengubah data laporan ini.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Differences if any */}
+              {stats.discrepancy > 0 && (
+                <div style={{ marginTop: '14px', marginBottom: '14px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--neutral-700)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '6px' }}>
+                    Daftar Penyesuaian Selisih ({stats.discrepancy} Bahan):
+                  </label>
+                  <div style={styles.discrepancyListWrap}>
+                    {items.filter(i => !i.isMatch).map(item => {
+                      const isNegative = item.difference < 0;
+                      return (
+                        <div key={item.rawMaterialId || item.id} style={styles.discrepancyRow}>
+                          <div>
+                            <strong style={{ fontSize: '13px', color: 'var(--neutral-900)' }}>{item.name}</strong>
+                            <div style={{ fontSize: '11.5px', color: 'var(--neutral-500)' }}>
+                              Stok Sistem: {item.systemStock} {item.unitName} → Aktual: <strong>{item.actualStock} {item.unitName}</strong>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: isNegative ? '#fee2e2' : '#dcfce7',
+                            color: isNegative ? '#dc2626' : '#16a34a'
+                          }}>
+                            {item.difference > 0 ? `+${item.difference}` : item.difference} {item.unitName}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Notes */}
+              <div style={{ marginTop: '12px' }}>
+                <label style={styles.reasonLabel}>
+                  Catatan Penerapan (Opsional):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Misal: Penyesuaian stok opname shift sore telah diverifikasi..."
+                  value={applyNotes}
+                  onChange={(e) => setApplyNotes(e.target.value)}
+                  style={styles.reasonInput}
+                />
+              </div>
+            </div>
+
+            <div className="admin-opname-modal-footer" style={styles.modalFooter}>
+              <Button
+                variant="secondary"
+                onClick={() => setIsApplyModalOpen(false)}
+                disabled={isSubmitting}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  const res = await applyOpnameToInventory(activeReport.id, { notes: applyNotes });
+                  if (res?.success) {
+                    setIsApplyModalOpen(false);
+                  }
+                }}
+                disabled={isSubmitting}
+                style={{ backgroundColor: '#059669', borderColor: '#059669', color: '#fff' }}
+              >
+                {isSubmitting ? 'Menerapkan...' : needsReapply ? 'Ya, Terapkan Ulang ke Sistem' : 'Ya, Terapkan & Kunci Laporan'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI BATALKAN PERUBAHAN */}
+      {isCancelConfirmOpen && (
+        <div 
+          className="admin-opname-modal-overlay" 
+          style={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsCancelConfirmOpen(false);
+          }}
+        >
+          <div className="admin-opname-modal-card" style={styles.modalCardSmall}>
+            <div className="bottom-sheet-handle-wrapper" aria-hidden="true">
+              <div className="bottom-sheet-handle-bar" />
+            </div>
+            <div className="admin-opname-modal-header" style={styles.modalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <RotateCcw size={18} color="#d97706" />
+                <h3 style={styles.modalTitle}>Batalkan Perubahan Laporan?</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCancelConfirmOpen(false)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="admin-opname-modal-body" style={styles.modalBody}>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--neutral-600)', lineHeight: 1.5, textAlign: 'left' }}>
+                Nilai stok fisik yang baru saja Anda edit akan dibatalkan dan dikembalikan ke data versi sebelumnya.
+              </p>
+            </div>
+
+            <div className="admin-opname-modal-footer" style={styles.modalFooter}>
+              <Button
+                variant="secondary"
+                onClick={() => setIsCancelConfirmOpen(false)}
+                disabled={isSubmitting}
+              >
+                Kembali
+              </Button>
+              <Button
+                variant="danger"
+                icon={RotateCcw}
+                onClick={async () => {
+                  const res = await cancelAdminCorrection(activeReport.id);
+                  if (res?.success) {
+                    setIsCancelConfirmOpen(false);
+                  }
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Membatalkan...' : 'Ya, Batalkan Perubahan'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Embedded Mobile Responsive Styles (16px spacing rules) */}
       <style>{`
+        @keyframes opnameBottomSheetSlideUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0.6;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        .bottom-sheet-handle-wrapper {
+          display: none;
+        }
+
+        .admin-detail-desktop-table {
+          display: block;
+          width: 100%;
+          overflow-x: auto;
+        }
+        .admin-detail-mobile-cards {
+          display: none;
+        }
+        .admin-detail-header-actions button,
+        .admin-detail-header-actions > button {
+          height: 42px !important;
+          box-sizing: border-box !important;
+        }
+        .opname-btn-pdf {
+          height: 42px !important;
+          background-color: #FEF2F2 !important;
+          border-color: #FECACA !important;
+          color: #B91C1C !important;
+          font-weight: 600 !important;
+          transition: all 0.2s ease !important;
+          box-sizing: border-box !important;
+        }
+        .opname-btn-pdf:hover {
+          background-color: #FEE2E2 !important;
+          border-color: #FCA5A5 !important;
+          color: #991B1B !important;
+        }
+
         @media (max-width: 768px) {
+          .bottom-sheet-handle-wrapper {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px 0 4px 0;
+            background-color: #FFFFFF;
+            border-radius: 20px 20px 0 0;
+            user-select: none;
+            touch-action: none;
+          }
+
+          .bottom-sheet-handle-bar {
+            display: block !important;
+            width: 44px;
+            height: 5px;
+            background-color: var(--neutral-300, #cbd5e1);
+            border-radius: 9999px;
+          }
+
+          .admin-opname-modal-overlay {
+            padding: 0 !important;
+            align-items: flex-end !important;
+            justify-content: center !important;
+            background-color: rgba(8, 33, 66, 0.55) !important;
+          }
+
+          .admin-opname-modal-card {
+            max-width: 100% !important;
+            width: 100% !important;
+            border-radius: 20px 20px 0 0 !important;
+            max-height: 85vh !important;
+            margin: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            border-top: 1px solid var(--border-subtle, #e2e8f0) !important;
+            animation: opnameBottomSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+            box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.25) !important;
+          }
+
+          .admin-opname-modal-header {
+            padding: 8px 16px 12px 16px !important;
+            flex-shrink: 0 !important;
+          }
+
+          .admin-opname-modal-body {
+            padding: 14px 16px !important;
+            flex: 1 1 auto !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            max-height: calc(85vh - 145px) !important;
+          }
+
+          .admin-opname-modal-footer {
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+            flex-shrink: 0 !important;
+            background-color: #FFFFFF !important;
+            border-top: 1px solid var(--border-color, #e2e8f0) !important;
+            display: flex !important;
+            gap: 10px !important;
+          }
+
+          .admin-opname-modal-footer > button {
+            flex: 1 !important;
+            height: 42px !important;
+          }
+          .admin-detail-desktop-table {
+            display: none !important;
+          }
+          .admin-detail-mobile-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 0 !important;
+          }
           .stock-opname-detail-page {
             padding: 0 0 100px 0 !important;
             margin: 0 !important;
@@ -508,7 +1045,31 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
           .stock-opname-table-card {
             margin-bottom: 16px !important;
             padding: 16px !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
+          }
+          .admin-detail-header-actions {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .admin-detail-header-actions > button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .stock-opname-pill-group {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 6px !important;
+            width: 100% !important;
+          }
+          .stock-opname-pill-btn {
+            padding: 8px 6px !important;
+            font-size: 11.5px !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
           }
         }
       `}</style>
@@ -570,6 +1131,108 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '4px'
+  },
+  statusBadgeApplied: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#065f46',
+    backgroundColor: '#d1fae5',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    border: '1px solid #a7f3d0'
+  },
+  statusBadgeWarning: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#b45309',
+    backgroundColor: '#fffbeb',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    border: '1px solid #fde68a'
+  },
+  statusBadgePending: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#b45309',
+    backgroundColor: '#fef3c7',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    border: '1px solid #fde68a'
+  },
+  statusBadgeVoid: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#b91c1c',
+    backgroundColor: '#fee2e2',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    border: '1px solid #fecaca'
+  },
+  applyStatsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '10px',
+    marginBottom: '14px'
+  },
+  applyStatBox: {
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color)',
+    backgroundColor: 'var(--neutral-50)',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px'
+  },
+  applyStatLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--neutral-500)',
+    textTransform: 'uppercase'
+  },
+  applyStatVal: {
+    fontSize: '18px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)'
+  },
+  applyWarningBox: {
+    padding: '12px 14px',
+    borderRadius: '8px',
+    backgroundColor: '#fffbeb',
+    border: '1px solid #fde68a',
+    marginBottom: '14px'
+  },
+  discrepancyListWrap: {
+    maxHeight: '180px',
+    overflowY: 'auto',
+    border: '1px solid var(--border-color)',
+    borderRadius: '8px',
+    padding: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    backgroundColor: '#f8fafc'
+  },
+  discrepancyRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 10px',
+    borderRadius: '6px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #e2e8f0'
   },
   creatorMeta: {
     display: 'flex',
@@ -850,5 +1513,136 @@ const styles = {
     fontSize: '11.5px',
     color: 'var(--blue-700)',
     marginTop: '2px'
+  },
+
+  // Mobile Card Styles (Matching Kasir stock opname)
+  rowNumberTag: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: 'var(--neutral-600)',
+    backgroundColor: 'var(--neutral-100)',
+    padding: '2px 7px',
+    borderRadius: '6px',
+    flexShrink: 0
+  },
+  categoryBadge: {
+    fontSize: '10.5px',
+    fontWeight: 600,
+    color: 'var(--neutral-500)',
+    backgroundColor: 'var(--neutral-100)',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    flexShrink: 0
+  },
+  mobileItemCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--border-color)',
+    borderRadius: '12px',
+    padding: '14px 16px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    boxSizing: 'border-box'
+  },
+  mobileItemHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px'
+  },
+  mobileItemName: {
+    fontSize: '0.938rem',
+    fontWeight: 700,
+    color: 'var(--neutral-900)',
+    wordBreak: 'break-word',
+    lineHeight: 1.25
+  },
+  mobileItemMetricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '8px',
+    backgroundColor: 'var(--neutral-50)',
+    borderRadius: '8px',
+    padding: '10px 12px',
+    border: '1px solid var(--border-subtle, #f1f5f9)'
+  },
+  mobileMetricCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    minWidth: 0
+  },
+  mobileMetricLabel: {
+    fontSize: '10.5px',
+    fontWeight: 600,
+    color: 'var(--neutral-500)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.02em',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  },
+  mobileMetricValSystem: {
+    fontSize: '12.5px',
+    fontWeight: 600,
+    color: 'var(--neutral-700)'
+  },
+  mobileMetricValActual: {
+    fontSize: '13.5px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)'
+  },
+  mobileMetricValDiff: {
+    fontSize: '13px',
+    fontWeight: 800
+  },
+  mobileItemStatusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-start'
+  },
+  statusPillMatch: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#065f46',
+    backgroundColor: '#d1fae5',
+    padding: '3px 8px',
+    borderRadius: '6px',
+    border: '1px solid #a7f3d0'
+  },
+  statusPillDeficit: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#991b1b',
+    backgroundColor: '#fee2e2',
+    padding: '3px 8px',
+    borderRadius: '6px',
+    border: '1px solid #fecaca'
+  },
+  statusPillSurplus: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#1e40af',
+    backgroundColor: '#dbeafe',
+    padding: '3px 8px',
+    borderRadius: '6px',
+    border: '1px solid #bfdbfe'
+  },
+  mobileEmptyCard: {
+    padding: '32px 16px',
+    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '12px',
+    border: '1px solid var(--border-color)'
   }
 };

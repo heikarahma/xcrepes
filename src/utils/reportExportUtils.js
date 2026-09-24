@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDateIndonesian, formatDateTimeIndonesian } from './dateUtils';
 
 /**
  * Format currency helper
@@ -122,9 +123,11 @@ const drawPDFHeader = (doc, title, subtitle, metaItems = [], storeName = 'XCrepe
   });
 
   // Divider line
+  const dividerY = Math.max(68, rightY + 4);
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(1);
-  doc.line(36, 68, pageWidth - 36, 68);
+  doc.line(36, dividerY, pageWidth - 36, dividerY);
+  return dividerY;
 };
 
 const setupPDFFooter = (doc, storeName = 'XCrepes POS') => {
@@ -1272,12 +1275,20 @@ export const exportMaterialUsageToPDF = ({
  * Export Stock Opname to Excel Spreadsheet
  */
 export const exportStockOpnameToExcel = ({
+  report = null,
   items = [],
-  summary = {},
+  summary = null,
   storeName = 'XCrepes POS',
-  conductedBy = 'Admin',
+  conductedBy = null,
   isCashier = false
 }) => {
+  const sourceItems = (report?.items && Array.isArray(report.items) && report.items.length > 0)
+    ? report.items
+    : (Array.isArray(items) ? items : []);
+
+  const rawDate = report?.opnameDate || report?.date;
+  const displayDateStr = report?.displayDate || (rawDate ? formatDateIndonesian(rawDate) : null);
+
   const currentDateStr = new Date().toLocaleDateString('id-ID', {
     day: '2-digit',
     month: 'long',
@@ -1286,13 +1297,86 @@ export const exportStockOpnameToExcel = ({
     minute: '2-digit'
   });
 
+  const reporterName = report?.createdBy?.name || report?.submittedBy?.name || conductedBy || 'Kasir';
+  const reportId = report?.id || '-';
+
+  const isVoid = report?.status === 'VOID';
+  const isApplied = Boolean(report?.isApplied || report?.status === 'APPLIED');
+  const needsReapply = Boolean(report?.needsReapply || (report?.appliedAt && !report?.isApplied));
+
+  let statusText = 'Menunggu Penerapan';
+  if (isVoid) statusText = 'Dibatalkan (VOID)';
+  else if (needsReapply) statusText = 'Perubahan Belum Diterapkan';
+  else if (isApplied) statusText = 'Diterapkan ke Stok Sistem';
+
+  let totalNetDiff = 0;
+  let totalDiffVal = 0;
+  let calcMatch = 0;
+  let calcDeficit = 0;
+  let calcSurplus = 0;
+
+  const mappedRows = [];
+  sourceItems.forEach((item, idx) => {
+    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
+    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
+    const actStock = hasActual ? Number(item.actualStock) : '-';
+    const diff = hasActual ? Math.round((Number(item.actualStock) - sysStock) * 1000) / 1000 : '-';
+
+    let statusLabel = 'Belum Dihitung';
+    if (hasActual) {
+      if (diff === 0) {
+        statusLabel = 'Sesuai (Match)';
+        calcMatch++;
+      } else if (diff > 0) {
+        statusLabel = `Lebih (Surplus +${diff})`;
+        calcSurplus++;
+      } else {
+        statusLabel = `Kurang (Defisit ${diff})`;
+        calcDeficit++;
+      }
+      totalNetDiff += diff;
+    }
+
+    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
+    const diffValue = hasActual && typeof diff === 'number' ? Math.round(diff * price) : 0;
+    totalDiffVal += diffValue;
+
+    const row = [
+      idx + 1,
+      item.id || item.rawMaterialId || '-',
+      item.name || item.rawMaterialName || '-',
+      item.categoryName || '-',
+      item.unitName || item.unit || 'Unit',
+      sysStock,
+      actStock,
+      hasActual && typeof diff === 'number' ? (diff > 0 ? `+${diff}` : diff) : '-',
+      statusLabel
+    ];
+
+    if (!isCashier) {
+      row.push(price, hasActual ? diffValue : '-');
+    }
+    row.push(item.adminNote || item.note || item.notes || item.reason || '-');
+
+    mappedRows.push(row);
+  });
+
+  const totalMaterials = sourceItems.length;
+  const matchCount = summary?.matchCount ?? calcMatch;
+  const deficitCount = summary?.deficitCount ?? calcDeficit;
+  const surplusCount = summary?.surplusCount ?? calcSurplus;
+  const finalDiffVal = summary?.totalDifferenceValue ?? totalDiffVal;
+
   const rows = [
     [storeName.toUpperCase()],
     ['LAPORAN STOCK OPNAME FISIK BAHAN BAKU'],
-    [`Tanggal Pelaksanaan : ${currentDateStr} WIB`],
-    [`Petugas Pemeriksa    : ${conductedBy}`],
-    [`Total Bahan Dihitung : ${summary.totalCounted || 0} dari ${items.length} Bahan`],
-    [`Ringkasan Hasil      : Sesuai (${summary.matchCount || 0}), Kurang/Defisit (${summary.deficitCount || 0}), Lebih/Surplus (${summary.surplusCount || 0})`],
+    [`Tanggal Opname       : ${displayDateStr || currentDateStr}`],
+    [`No. Laporan          : ${reportId}`],
+    [`Status Laporan       : ${statusText}`],
+    [`Petugas Pemeriksa    : ${reporterName}`],
+    [`Total Bahan Dihitung : ${totalMaterials} Bahan`],
+    [`Ringkasan Hasil      : Sesuai (${matchCount}), Kurang/Defisit (${deficitCount}), Lebih/Surplus (${surplusCount})`],
+    [`Valuasi Total Selisih: ${formatIDR(finalDiffVal)}`],
     []
   ];
 
@@ -1314,42 +1398,7 @@ export const exportStockOpnameToExcel = ({
   headerRow.push('Catatan / Keterangan');
 
   rows.push(headerRow);
-
-  items.forEach((item, idx) => {
-    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
-    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
-    const actStock = hasActual ? Number(item.actualStock) : '-';
-    const diff = hasActual ? (Number(item.actualStock) - sysStock) : '-';
-    
-    let statusLabel = 'Belum Dihitung';
-    if (hasActual) {
-      if (diff === 0) statusLabel = 'Sesuai (Match)';
-      else if (diff > 0) statusLabel = 'Lebih (Surplus)';
-      else statusLabel = 'Kurang (Defisit)';
-    }
-
-    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
-    const diffValue = hasActual ? (diff * price) : 0;
-
-    const row = [
-      idx + 1,
-      item.id,
-      item.name || item.rawMaterialName,
-      item.categoryName || '-',
-      item.unitName || 'Unit',
-      sysStock,
-      actStock,
-      hasActual ? (diff > 0 ? `+${diff}` : diff) : '-',
-      statusLabel
-    ];
-
-    if (!isCashier) {
-      row.push(price, hasActual ? diffValue : '-');
-    }
-    row.push(item.adminNote || item.note || '-');
-
-    rows.push(row);
-  });
+  mappedRows.forEach(r => rows.push(r));
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
 
@@ -1372,21 +1421,32 @@ export const exportStockOpnameToExcel = ({
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Stock Opname');
 
-  const filename = `Laporan_Stock_Opname_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const cleanDateStr = (rawDate || new Date().toISOString().slice(0, 10)).replace(/[^0-9-]/g, '');
+  const cleanIdStr = reportId !== '-' ? `_${reportId.replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+  const filename = `Stock_Opname_${cleanDateStr}${cleanIdStr}.xlsx`;
   XLSX.writeFile(wb, filename);
 };
 
 /**
  * Export Stock Opname to PDF Document (Landscape A4)
+ * Supports passing either a complete `report` object, or individual parameters `{ items, summary, storeName, conductedBy, isCashier }`.
  */
 export const exportStockOpnameToPDF = ({
+  report = null,
   items = [],
-  summary = {},
+  summary = null,
   storeName = 'XCrepes POS',
-  conductedBy = 'Admin',
+  conductedBy = null,
   isCashier = false
 }) => {
   const doc = new jsPDF('landscape', 'pt', 'a4');
+
+  const sourceItems = (report?.items && Array.isArray(report.items) && report.items.length > 0)
+    ? report.items
+    : (Array.isArray(items) ? items : []);
+
+  const rawDate = report?.opnameDate || report?.date;
+  const displayDateStr = report?.displayDate || (rawDate ? formatDateIndonesian(rawDate) : null);
 
   const currentDateStr = new Date().toLocaleDateString('id-ID', {
     day: '2-digit',
@@ -1396,16 +1456,94 @@ export const exportStockOpnameToPDF = ({
     minute: '2-digit'
   });
 
-  drawPDFHeader(
+  const reporterName = report?.createdBy?.name || report?.submittedBy?.name || conductedBy || 'Kasir';
+  const reportId = report?.id || '-';
+
+  const isVoid = report?.status === 'VOID';
+  const isApplied = Boolean(report?.isApplied || report?.status === 'APPLIED');
+  const needsReapply = Boolean(report?.needsReapply || (report?.appliedAt && !report?.isApplied));
+
+  let statusText = 'Menunggu Penerapan';
+  if (isVoid) statusText = 'Dibatalkan (VOID)';
+  else if (needsReapply) statusText = 'Perubahan Belum Diterapkan';
+  else if (isApplied) statusText = 'Diterapkan ke Stok Sistem';
+
+  let totalNetDiff = 0;
+  let totalDiffVal = 0;
+  let calcMatch = 0;
+  let calcDeficit = 0;
+  let calcSurplus = 0;
+
+  const tableBody = sourceItems.map((item, idx) => {
+    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
+    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
+    const actStock = hasActual ? Number(item.actualStock) : null;
+    const diff = hasActual ? Math.round((actStock - sysStock) * 1000) / 1000 : null;
+
+    let statusLabel = 'Belum Dihitung';
+    if (hasActual) {
+      if (diff === 0) {
+        statusLabel = 'Cocok';
+        calcMatch++;
+      } else if (diff > 0) {
+        statusLabel = `Lebih (+${diff})`;
+        calcSurplus++;
+      } else {
+        statusLabel = `Kurang (${diff})`;
+        calcDeficit++;
+      }
+      totalNetDiff += diff;
+    }
+
+    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
+    const itemDiffVal = hasActual && diff !== null ? Math.round(diff * price) : 0;
+    totalDiffVal += itemDiffVal;
+
+    const row = [
+      (idx + 1).toString(),
+      item.name || item.rawMaterialName || '-',
+      item.categoryName || '-',
+      item.unitName || item.unit || 'Unit',
+      formatNumber(sysStock),
+      hasActual ? formatNumber(actStock) : '-',
+      hasActual ? (diff > 0 ? `+${formatNumber(diff)}` : formatNumber(diff)) : '-',
+      statusLabel
+    ];
+
+    if (!isCashier) {
+      row.push(hasActual ? (itemDiffVal === 0 ? 'Rp 0' : formatIDR(itemDiffVal)) : '-');
+    }
+    row.push(item.adminNote || item.note || item.notes || item.reason || '-');
+
+    return row;
+  });
+
+  const totalMaterials = sourceItems.length;
+  const matchCount = summary?.matchCount ?? calcMatch;
+  const deficitCount = summary?.deficitCount ?? calcDeficit;
+  const surplusCount = summary?.surplusCount ?? calcSurplus;
+  const finalDiffVal = summary?.totalDifferenceValue ?? totalDiffVal;
+
+  const metaItems = [
+    { label: 'Tanggal Opname', value: displayDateStr || currentDateStr },
+    { label: 'No. Laporan', value: reportId },
+    { label: 'Petugas Kasir', value: reporterName },
+    { label: 'Status Laporan', value: statusText }
+  ];
+
+  if (isApplied && report?.appliedBy?.name) {
+    const appliedTime = report.appliedAt ? formatDateTimeIndonesian(report.appliedAt) : '';
+    metaItems.push({
+      label: 'Diterapkan Oleh',
+      value: `${report.appliedBy.name}${appliedTime ? ` (${appliedTime})` : ''}`
+    });
+  }
+
+  const dividerY = drawPDFHeader(
     doc,
     'Laporan Hasil Stock Opname Fisik Bahan Baku',
     'Rekapitulasi Hasil Audit Perbandingan Stok Sistem vs Fisik Aktual',
-    [
-      { label: 'Waktu Opname', value: `${currentDateStr} WIB` },
-      { label: 'Petugas', value: conductedBy },
-      { label: 'Total Bahan', value: `${summary.totalCounted || 0} / ${items.length} Dihitung` },
-      { label: 'Ringkasan', value: `Sesuai: ${summary.matchCount || 0} | Kurang: ${summary.deficitCount || 0} | Lebih: ${summary.surplusCount || 0}` }
-    ],
+    metaItems,
     storeName
   );
 
@@ -1425,50 +1563,32 @@ export const exportStockOpnameToPDF = ({
   }
   headRow.push('Catatan');
 
-  const tableBody = items.map((item, idx) => {
-    const sysStock = Number(item.systemStock ?? item.stock ?? 0);
-    const hasActual = item.actualStock !== '' && item.actualStock !== undefined && item.actualStock !== null;
-    const actStock = hasActual ? Number(item.actualStock) : null;
-    const diff = hasActual ? (actStock - sysStock) : null;
+  // Summary footer row
+  const footRow = [
+    'TOTAL',
+    `Total: ${totalMaterials} Bahan Baku`,
+    '-',
+    '-',
+    '-',
+    '-',
+    (totalNetDiff > 0 ? `+${formatNumber(totalNetDiff)}` : formatNumber(totalNetDiff)),
+    `Cocok: ${matchCount} | Kurang: ${deficitCount} | Lebih: ${surplusCount}`
+  ];
 
-    let statusLabel = 'Belum Dihitung';
-    if (hasActual) {
-      if (diff === 0) statusLabel = 'Cocok (0)';
-      else if (diff > 0) statusLabel = `Lebih (+${diff})`;
-      else statusLabel = `Kurang (${diff})`;
-    }
-
-    const price = Number(item.pricePerUnit || item.price_per_unit || 0);
-    const diffVal = hasActual ? (diff * price) : 0;
-
-    const row = [
-      (idx + 1).toString(),
-      item.name || item.rawMaterialName,
-      item.categoryName || '-',
-      item.unitName || 'Unit',
-      formatNumber(sysStock),
-      hasActual ? formatNumber(actStock) : '-',
-      hasActual ? (diff > 0 ? `+${formatNumber(diff)}` : formatNumber(diff)) : '-',
-      statusLabel
-    ];
-
-    if (!isCashier) {
-      row.push(hasActual ? (diffVal === 0 ? 'Rp 0' : formatIDR(diffVal)) : '-');
-    }
-    row.push(item.adminNote || item.note || '-');
-
-    return row;
-  });
+  if (!isCashier) {
+    footRow.push(formatIDR(finalDiffVal));
+  }
+  footRow.push('-');
 
   const columnStyles = {
     0: { halign: 'center', cellWidth: 26 },
     1: { halign: 'left', fontStyle: 'bold', cellWidth: 140 },
-    2: { halign: 'left', cellWidth: 90 },
-    3: { halign: 'center', cellWidth: 50 },
+    2: { halign: 'left', cellWidth: 85 },
+    3: { halign: 'center', cellWidth: 45 },
     4: { halign: 'right', cellWidth: 65 },
     5: { halign: 'right', fontStyle: 'bold', cellWidth: 65 },
     6: { halign: 'right', fontStyle: 'bold', cellWidth: 65 },
-    7: { halign: 'center', cellWidth: 80 }
+    7: { halign: 'center', cellWidth: 75 }
   };
 
   if (!isCashier) {
@@ -1479,9 +1599,10 @@ export const exportStockOpnameToPDF = ({
   }
 
   autoTable(doc, {
-    startY: 78,
+    startY: Math.max(78, (dividerY || 68) + 10),
     head: [headRow],
     body: tableBody,
+    foot: [footRow],
     theme: 'grid',
     styles: {
       fontSize: 8,
@@ -1495,18 +1616,55 @@ export const exportStockOpnameToPDF = ({
       fontStyle: 'bold',
       fontSize: 8.5
     },
+    footStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      fontSize: 8
+    },
     alternateRowStyles: {
       fillColor: [248, 250, 252]
     },
     columnStyles,
+    didParseCell: (data) => {
+      // Color coding for Selisih column (column index 6)
+      if (data.section === 'body' && data.column.index === 6) {
+        const val = String(data.cell.raw || '');
+        if (val.startsWith('+')) {
+          data.cell.styles.textColor = [37, 99, 235]; // Blue
+        } else if (val.startsWith('-')) {
+          data.cell.styles.textColor = [220, 38, 38]; // Red
+        } else if (val === '0' || val.startsWith('0')) {
+          data.cell.styles.textColor = [5, 150, 105]; // Green
+        }
+      }
+      // Color coding for Status column (column index 7)
+      if (data.section === 'body' && data.column.index === 7) {
+        const val = String(data.cell.raw || '');
+        if (val.includes('Cocok')) {
+          data.cell.styles.textColor = [5, 150, 105]; // Green
+          data.cell.styles.fontStyle = 'bold';
+        } else if (val.includes('Kurang')) {
+          data.cell.styles.textColor = [220, 38, 38]; // Red
+          data.cell.styles.fontStyle = 'bold';
+        } else if (val.includes('Lebih')) {
+          data.cell.styles.textColor = [37, 99, 235]; // Blue
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
     margin: { left: 36, right: 36 }
   });
 
   setupPDFFooter(doc, storeName);
 
-  const filename = `Laporan_Stock_Opname_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const cleanDateStr = (rawDate || new Date().toISOString().slice(0, 10)).replace(/[^0-9-]/g, '');
+  const cleanIdStr = reportId !== '-' ? `_${reportId.replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
+  const filename = `Stock_Opname_${cleanDateStr}${cleanIdStr}.pdf`;
   doc.save(filename);
 };
+
+export const exportSingleOpnameReportToPDF = exportStockOpnameToPDF;
 
 /**
  * Export Summary of Multiple Stock Opname Reports to Excel

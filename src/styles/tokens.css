@@ -15,6 +15,18 @@
   --blue-800: #003570;
   --blue-900: #082142;
 
+  /* Primary Brand Aliases */
+  --primary-50: var(--blue-50);
+  --primary-100: var(--blue-100);
+  --primary-200: var(--blue-200);
+  --primary-300: var(--blue-300);
+  --primary-400: var(--blue-400);
+  --primary-500: var(--blue-500);
+  --primary-600: var(--blue-600);
+  --primary-700: var(--blue-700);
+  --primary-800: var(--blue-800);
+  --primary-900: var(--blue-900);
+
   /* Accent & Secondary */
   --orange-50: #FFF6EB;
   --orange-100: #FFEAD1;

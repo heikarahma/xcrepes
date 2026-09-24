@@ -1223,6 +1223,98 @@ export const RawMaterialProvider = ({ children }) => {
     }
   };
 
+  const applyOpnameReportToStock = async (report, notes = '', adminUser = null) => {
+    if (isCashier) {
+      showToast('Akses Ditolak: Hanya Super Admin yang berhak menerapkan penyesuaian stok sistem.', 'error', 'Akses Ditolak');
+      return { success: false, error: 'Akses Ditolak' };
+    }
+
+    if (!report || !report.items || report.items.length === 0) {
+      showToast('Laporan tidak memiliki item bahan baku yang valid.', 'error', 'Data Kosong');
+      return { success: false, error: 'Data Kosong' };
+    }
+
+    setIsSubmitting(true);
+    try {
+      const stockUpdates = [];
+      const newLogs = [];
+      let updatedMaterials = [...rawMaterials];
+      const now = new Date().toISOString();
+      const userName = adminUser?.name || currentUser?.nama || 'Super Admin';
+
+      report.items.forEach(item => {
+        const matId = item.rawMaterialId || item.id;
+        if (item.actualStock !== null && item.actualStock !== undefined && item.actualStock !== '') {
+          const actStock = Number(item.actualStock);
+          const matIndex = updatedMaterials.findIndex(r => r.id === matId);
+          const sysStock = matIndex !== -1 
+            ? Number(updatedMaterials[matIndex].stock ?? updatedMaterials[matIndex].currentStock ?? 0)
+            : Number(item.systemStock ?? 0);
+          
+          const diff = Math.round((actStock - sysStock) * 1000) / 1000;
+
+          if (matIndex !== -1) {
+            updatedMaterials[matIndex] = {
+              ...updatedMaterials[matIndex],
+              stock: actStock,
+              currentStock: actStock,
+              updatedAt: now
+            };
+          }
+
+          stockUpdates.push({ id: matId, stock: actStock });
+
+          if (diff !== 0) {
+            newLogs.push({
+              id: `LOG-OPNAME-${Date.now()}-${matId}`,
+              rawMaterialId: matId,
+              rawMaterialName: item.name || (matIndex !== -1 ? updatedMaterials[matIndex].name : 'Bahan Baku'),
+              unitName: item.unitName || (matIndex !== -1 ? updatedMaterials[matIndex].unitName : 'Unit'),
+              type: 'ADJUST',
+              amount: Math.abs(diff),
+              previousStock: sysStock,
+              currentStock: actStock,
+              reason: `Penerapan Stock Opname (${report.displayDate || report.opnameDate || report.date})`,
+              note: notes || `Penyesuaian stok opname fisik oleh ${userName}. Selisih: ${diff > 0 ? '+' : ''}${diff} ${item.unitName || ''}`,
+              user: userName,
+              createdAt: now
+            });
+          }
+        }
+      });
+
+      // Update Supabase in batch if configured
+      if (stockUpdates.length > 0) {
+        await rawMaterialsService.updateStocksBatch(stockUpdates).catch(e => console.warn('Supabase stock update error:', e));
+      }
+      if (newLogs.length > 0) {
+        await stockLogsService.createStockLogsBatch(newLogs).catch(e => console.warn('Supabase stock logs error:', e));
+      }
+
+      setRawMaterials(updatedMaterials);
+      if (newLogs.length > 0) {
+        setStockLogs(prev => [...newLogs, ...prev]);
+      }
+
+      // Update dailyOpnameReports in state & localStorage if found
+      setDailyOpnameReports(prev => {
+        const updated = prev.map(r => r.id === report.id ? { ...r, isApplied: true, status: 'APPLIED', appliedAt: now, appliedBy: { name: userName } } : r);
+        try {
+          localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      return { success: true, updatedCount: stockUpdates.length, logsCount: newLogs.length };
+    } catch (err) {
+      console.error('applyOpnameReportToStock error:', err);
+      showToast(`Gagal memperbarui stok: ${err.message}`, 'error', 'Error Sistem');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const applyStockOpname = async ({ notes = '', user = 'Super Admin' } = {}) => {
     if (isCashier) {
       showToast('Akses Ditolak: Hanya Super Admin yang berhak menerapkan penyesuaian stok sistem.', 'error', 'Akses Ditolak');
@@ -1713,6 +1805,7 @@ export const RawMaterialProvider = ({ children }) => {
         reopenStoreClosing,
         applyReportToInventory,
         applyStockOpname,
+        applyOpnameReportToStock,
         enrichedOpnameList,
         filteredOpnameList,
         opnameSummary

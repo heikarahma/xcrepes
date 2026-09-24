@@ -17,13 +17,16 @@ import {
   X,
   User,
   Check,
-  Ban
+  Ban,
+  FileText
 } from 'lucide-react';
 import { formatDateIndonesian, formatDateTimeIndonesian } from '../../../utils/dateUtils';
+import { exportSingleOpnameReportToPDF } from '../../../utils/reportExportUtils';
 
 export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport }) => {
   const { reports, canKasirEdit } = useStockOpname();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDetailReport, setSelectedDetailReport] = useState(null);
 
   const filteredReports = reports.filter(r => {
     if (!searchQuery.trim()) return true;
@@ -129,7 +132,8 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                   </thead>
                   <tbody>
                     {filteredReports.map((report) => {
-                      const editable = canKasirEdit(report.opnameDate || report.date);
+                      const isApplied = Boolean(report.isApplied || report.status === 'APPLIED' || report.appliedAt || report.isLockedForKasir || report.needsReapply);
+                      const editable = !isApplied && canKasirEdit(report.opnameDate || report.date, report);
                       const isVoid = report.status === 'VOID';
                       const discrepancyCount = (report.summary?.deficitCount || 0) + (report.summary?.surplusCount || 0);
 
@@ -149,6 +153,10 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                                 {isVoid ? (
                                   <span style={styles.statusVoidBadge}>
                                     <Ban size={10} /> DIBATALKAN
+                                  </span>
+                                ) : isApplied ? (
+                                  <span style={styles.statusAppliedBadge}>
+                                    <Lock size={10} /> DITERAPKAN
                                   </span>
                                 ) : (
                                   <span style={styles.statusSubmittedBadge}>
@@ -214,6 +222,10 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                               <span style={styles.statusVoidBadge}>
                                 <Ban size={10} /> Dibatalkan
                               </span>
+                            ) : isApplied ? (
+                              <span style={styles.statusAppliedBadge}>
+                                <Lock size={10} /> Diterapkan (Terkunci)
+                              </span>
                             ) : editable ? (
                               <span style={styles.statusEditableBadge}>
                                 <Clock size={10} /> Dapat Diedit
@@ -230,7 +242,10 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                               <button
                                 type="button"
-                                onClick={() => onViewDetail && onViewDetail(report)}
+                                onClick={() => {
+                                  if (onViewDetail) onViewDetail(report);
+                                  setSelectedDetailReport(report);
+                                }}
                                 style={styles.actionBtn}
                                 title="Lihat Detail Laporan"
                               >
@@ -238,7 +253,7 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                                 <span>Detail</span>
                               </button>
 
-                              {editable && !isVoid && (
+                              {editable && !isVoid && !isApplied && (
                                 <button
                                   type="button"
                                   onClick={() => onEditReport && onEditReport(report)}
@@ -266,10 +281,11 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
               {/* Mobile Cards View */}
               <div className="transaction-mobile-cards">
                 {filteredReports.map((report) => {
-                  const editable = canKasirEdit(report.opnameDate || report.date);
+                  const isApplied = Boolean(report.isApplied || report.status === 'APPLIED' || report.appliedAt || report.isLockedForKasir || report.needsReapply);
+                  const editable = !isApplied && canKasirEdit(report.opnameDate || report.date, report);
                   const isVoid = report.status === 'VOID';
                   const discrepancyCount = (report.summary?.deficitCount || 0) + (report.summary?.surplusCount || 0);
-                  const borderLeftColor = isVoid ? '#ef4444' : discrepancyCount > 0 ? '#f59e0b' : 'var(--blue-600)';
+                  const borderLeftColor = isVoid ? '#ef4444' : isApplied ? '#059669' : discrepancyCount > 0 ? '#f59e0b' : 'var(--blue-600)';
 
                   return (
                     <div
@@ -287,6 +303,10 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                           {isVoid ? (
                             <span style={styles.statusVoidBadge}>
                               <Ban size={10} /> DIBATALKAN
+                            </span>
+                          ) : isApplied ? (
+                            <span style={styles.statusAppliedBadge}>
+                              <Lock size={10} /> DITERAPKAN
                             </span>
                           ) : (
                             <span style={styles.statusSubmittedBadge}>
@@ -329,6 +349,8 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                         <div>
                           {isVoid ? (
                             <span style={styles.statusVoidBadge}>Dibatalkan</span>
+                          ) : isApplied ? (
+                            <span style={styles.statusAppliedBadge}><Lock size={10} /> Diterapkan (Terkunci)</span>
                           ) : editable ? (
                             <span style={styles.statusEditableBadge}><Clock size={10} /> Dapat Diedit</span>
                           ) : (
@@ -341,13 +363,16 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                       <div style={styles.mobileCardActions}>
                         <button
                           type="button"
-                          onClick={() => onViewDetail && onViewDetail(report)}
+                          onClick={() => {
+                            if (onViewDetail) onViewDetail(report);
+                            setSelectedDetailReport(report);
+                          }}
                           style={{ ...styles.actionBtn, flex: 1, justifyContent: 'center' }}
                         >
                           <Eye size={13} />
                           <span>Detail</span>
                         </button>
-                        {editable && !isVoid && (
+                        {editable && !isVoid && !isApplied && (
                           <button
                             type="button"
                             onClick={() => onEditReport && onEditReport(report)}
@@ -374,7 +399,120 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
         </div>
       </div>
 
+      {/* Modal Rincian Laporan Arsip Kasir */}
+      {selectedDetailReport && (
+        <div 
+          className="admin-opname-modal-overlay" 
+          style={styles.modalOverlay}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedDetailReport(null);
+          }}
+        >
+          <div className="admin-opname-modal-card" style={styles.modalCard}>
+            <div className="bottom-sheet-handle-wrapper" aria-hidden="true">
+              <div className="bottom-sheet-handle-bar" />
+            </div>
+            <div className="admin-opname-modal-header" style={styles.modalHeader}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={styles.modalTitle}>Rincian Stock Opname</h3>
+                  <span style={styles.invoiceBadge}>{selectedDetailReport.id}</span>
+                  {Boolean(selectedDetailReport.isApplied || selectedDetailReport.status === 'APPLIED' || selectedDetailReport.appliedAt || selectedDetailReport.isLockedForKasir || selectedDetailReport.needsReapply) ? (
+                    <span style={styles.statusAppliedBadge}><Lock size={10} /> Diterapkan (Terkunci)</span>
+                  ) : (
+                    <span style={styles.statusSubmittedBadge}><Check size={10} /> Terkirim</span>
+                  )}
+                </div>
+                <p style={styles.modalSubtitle}>
+                  {formatDateIndonesian(selectedDetailReport.opnameDate || selectedDetailReport.date)} • Petugas: {selectedDetailReport.createdBy?.name || selectedDetailReport.submittedBy?.name || 'Kasir'}
+                </p>
+                {Boolean(selectedDetailReport.isApplied || selectedDetailReport.status === 'APPLIED' || selectedDetailReport.appliedAt || selectedDetailReport.isLockedForKasir || selectedDetailReport.needsReapply) && (
+                  <div style={{ marginTop: '8px', padding: '8px 12px', backgroundColor: '#ecfdf5', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#047857', fontWeight: 600 }}>
+                      ✓ Laporan telah disetujui & diterapkan oleh {selectedDetailReport.appliedBy?.name || 'Admin'} ke saldo stok bahan baku. Laporan ini telah dikunci permanen bagi kasir.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDetailReport(null)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="admin-opname-modal-body" style={styles.modalBody}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(selectedDetailReport.items || []).map((item, idx) => (
+                  <div key={item.rawMaterialId || idx} style={styles.modalItemRow}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--neutral-900)' }}>
+                        {item.name}
+                      </div>
+                      {item.categoryName && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--neutral-400)' }}>
+                          {item.categoryName}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--neutral-900)' }}>
+                        {item.actualStock} {item.unitName}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-opname-modal-footer" style={styles.modalFooter}>
+              <Button 
+                variant="outline" 
+                icon={FileText}
+                className="opname-btn-pdf"
+                style={{
+                  height: '42px',
+                  backgroundColor: '#FEF2F2',
+                  borderColor: '#FECACA',
+                  color: '#B91C1C',
+                  fontWeight: 600
+                }}
+                onClick={() => {
+                  exportSingleOpnameReportToPDF({
+                    report: selectedDetailReport,
+                    storeName: 'XCrepes',
+                    isCashier: true
+                  });
+                }}
+              >
+                Unduh PDF
+              </Button>
+              <Button variant="secondary" onClick={() => setSelectedDetailReport(null)} style={{ height: '42px' }}>
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
+        @keyframes opnameBottomSheetSlideUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0.6;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        .bottom-sheet-handle-wrapper {
+          display: none;
+        }
+
         .transaction-desktop-table {
           display: block;
           width: 100%;
@@ -382,6 +520,88 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
         }
         .transaction-mobile-cards {
           display: none;
+        }
+        .opname-btn-pdf {
+          background-color: #FEF2F2 !important;
+          border-color: #FECACA !important;
+          color: #B91C1C !important;
+          font-weight: 600 !important;
+          transition: all 0.2s ease !important;
+        }
+        .opname-btn-pdf:hover {
+          background-color: #FEE2E2 !important;
+          border-color: #FCA5A5 !important;
+          color: #991B1B !important;
+        }
+
+        @media (max-width: 768px) {
+          .bottom-sheet-handle-wrapper {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px 0 4px 0;
+            background-color: #FFFFFF;
+            border-radius: 20px 20px 0 0;
+            user-select: none;
+            touch-action: none;
+          }
+
+          .bottom-sheet-handle-bar {
+            display: block !important;
+            width: 44px;
+            height: 5px;
+            background-color: var(--neutral-300, #cbd5e1);
+            border-radius: 9999px;
+          }
+
+          .admin-opname-modal-overlay {
+            padding: 0 !important;
+            align-items: flex-end !important;
+            justify-content: center !important;
+            background-color: rgba(8, 33, 66, 0.55) !important;
+          }
+
+          .admin-opname-modal-card {
+            max-width: 100% !important;
+            width: 100% !important;
+            border-radius: 20px 20px 0 0 !important;
+            max-height: 85vh !important;
+            margin: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            border-top: 1px solid var(--border-subtle, #e2e8f0) !important;
+            animation: opnameBottomSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+            box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.25) !important;
+          }
+
+          .admin-opname-modal-header {
+            padding: 8px 16px 12px 16px !important;
+            flex-shrink: 0 !important;
+          }
+
+          .admin-opname-modal-body {
+            padding: 14px 16px !important;
+            flex: 1 1 auto !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            max-height: calc(85vh - 145px) !important;
+          }
+
+          .admin-opname-modal-footer {
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+            flex-shrink: 0 !important;
+            background-color: #FFFFFF !important;
+            border-top: 1px solid var(--border-color, #e2e8f0) !important;
+            display: flex !important;
+            gap: 10px !important;
+          }
+
+          .admin-opname-modal-footer > button {
+            flex: 1 !important;
+            height: 42px !important;
+          }
         }
 
         @media (max-width: 1024px) {
@@ -621,6 +841,18 @@ const styles = {
     alignItems: 'center',
     gap: '3px'
   },
+  statusAppliedBadge: {
+    fontSize: '0.688rem',
+    fontWeight: 700,
+    color: '#065f46',
+    backgroundColor: '#d1fae5',
+    border: '1px solid #a7f3d0',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px'
+  },
   statusEditableBadge: {
     fontSize: '0.688rem',
     fontWeight: 700,
@@ -713,5 +945,75 @@ const styles = {
     gap: '8px',
     paddingTop: '6px',
     borderTop: '1px solid var(--neutral-100)'
+  },
+
+  // Modal styles
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '16px'
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: '14px',
+    maxWidth: '540px',
+    width: '100%',
+    maxHeight: '85vh',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: 'var(--shadow-lg)'
+  },
+  modalHeader: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: '18px 20px',
+    borderBottom: '1px solid var(--border-color)'
+  },
+  modalTitle: {
+    fontSize: '16px',
+    fontWeight: 700,
+    color: 'var(--neutral-900)',
+    margin: 0
+  },
+  modalSubtitle: {
+    fontSize: '12.5px',
+    color: 'var(--neutral-500)',
+    margin: '4px 0 0 0'
+  },
+  modalCloseBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--neutral-400)',
+    padding: '4px',
+    borderRadius: '4px'
+  },
+  modalBody: {
+    padding: '18px 20px',
+    overflowY: 'auto',
+    flex: 1
+  },
+  modalItemRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 12px',
+    backgroundColor: 'var(--neutral-50)',
+    borderRadius: '8px'
+  },
+  modalFooter: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: '14px 20px',
+    borderTop: '1px solid var(--border-color)'
   }
 };

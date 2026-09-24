@@ -16,10 +16,12 @@ import {
   ArrowLeft,
   RotateCcw,
   Eye,
-  Edit3
+  Edit3,
+  Lock
 } from 'lucide-react';
 import { formatDateIndonesian, getLocalDateStr } from '../../../utils/dateUtils';
 import { toast } from '../../components/Toast';
+import { KasirOpnameHistory } from './KasirOpnameHistory';
 
 export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
   const { currentUser } = useAuth();
@@ -39,6 +41,7 @@ export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
   const displayDate = useMemo(() => formatDateIndonesian(todayStr), [todayStr]);
 
   // UI state
+  const [viewMode, setViewMode] = useState('FORM'); // 'FORM' | 'HISTORY'
   const [filterMode, setFilterMode] = useState('ALL'); // 'ALL' | 'UNCOUNTED' | 'COUNTED'
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditingSubmitted, setIsEditingSubmitted] = useState(false);
@@ -91,6 +94,22 @@ export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
     }
   };
 
+  const isTodayApplied = Boolean(todayReport?.isApplied || todayReport?.status === 'APPLIED' || todayReport?.appliedAt || todayReport?.isLockedForKasir || todayReport?.needsReapply);
+
+  // Switch to History View
+  if (viewMode === 'HISTORY') {
+    return (
+      <KasirOpnameHistory
+        onBackToForm={() => setViewMode('FORM')}
+        onEditReport={(report) => {
+          startEditingReport(report);
+          setIsEditingSubmitted(true);
+          setViewMode('FORM');
+        }}
+      />
+    );
+  }
+
   // If already submitted and user is just viewing today's report
   if (isAlreadySubmitted && todayReport) {
     const isVoid = todayReport.status === 'VOID';
@@ -107,26 +126,55 @@ export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
             </div>
             <p style={styles.subtitle}>{displayDate}</p>
           </div>
-          {onBack && (
-            <Button variant="secondary" icon={ArrowLeft} onClick={onBack} size="sm">
-              Kembali
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button
+              variant="outline"
+              icon={ClipboardCheck}
+              onClick={() => setViewMode('HISTORY')}
+              size="sm"
+            >
+              Riwayat Laporan
             </Button>
-          )}
+            {onBack && (
+              <Button variant="secondary" icon={ArrowLeft} onClick={onBack} size="sm">
+                Kembali
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Submitted Status Card */}
         <div className="stock-opname-submitted-card" style={styles.submittedCard}>
           <div style={styles.submittedIconWrap}>
-            <CheckCircle2 size={36} color="#059669" />
+            {isTodayApplied ? (
+              <div style={{ backgroundColor: '#d1fae5', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Lock size={30} color="#059669" />
+              </div>
+            ) : (
+              <CheckCircle2 size={36} color="#059669" />
+            )}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={styles.submittedTitle}>Stock Opname Hari Ini Sudah Dikirim</h3>
-              <span style={styles.submittedBadge}>TERKIRIM</span>
+              <h3 style={styles.submittedTitle}>
+                {isTodayApplied ? 'Stock Opname Hari Ini Telah Diterapkan & Dikunci' : 'Stock Opname Hari Ini Sudah Dikirim'}
+              </h3>
+              {isTodayApplied ? (
+                <span style={styles.appliedLockedBadge}>
+                  <Lock size={11} /> DITERAPKAN (TERKUNCI)
+                </span>
+              ) : (
+                <span style={styles.submittedBadge}>TERKIRIM</span>
+              )}
             </div>
             <p style={styles.submittedMeta}>
               Dibuat oleh: <strong>{todayReport.createdBy?.name || 'Kasir'}</strong> • Waktu: {todayReport.submittedAt ? new Date(todayReport.submittedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
             </p>
+            {isTodayApplied && (
+              <p style={{ margin: '6px 0 2px 0', fontSize: '12.5px', color: '#047857', fontWeight: 600 }}>
+                ✓ Laporan telah disetujui & diterapkan oleh Admin ke saldo stok bahan baku. Laporan ini telah dikunci permanen dan tidak dapat diubah lagi oleh kasir.
+              </p>
+            )}
             <div style={styles.submittedStats}>
               <span>Total <strong>{todayReport.summary?.totalMaterials || todayReport.items?.length || 0}</strong> bahan tercatat</span>
             </div>
@@ -141,17 +189,19 @@ export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
             >
               Lihat Rincian
             </Button>
-            <Button
-              variant="primary"
-              icon={Edit3}
-              onClick={() => {
-                startEditingReport(todayReport);
-                setIsEditingSubmitted(true);
-              }}
-              size="sm"
-            >
-              Edit Laporan
-            </Button>
+            {!isTodayApplied && (
+              <Button
+                variant="primary"
+                icon={Edit3}
+                onClick={() => {
+                  startEditingReport(todayReport);
+                  setIsEditingSubmitted(true);
+                }}
+                size="sm"
+              >
+                Edit Laporan
+              </Button>
+            )}
           </div>
         </div>
 
@@ -227,11 +277,21 @@ export const KasirStockOpnameView = ({ onBack, isAdminCreating = false }) => {
           <p style={styles.subtitle}>{displayDate} • Cek dan masukkan kuantitas fisik aktual</p>
         </div>
 
-        {onBack && (
-          <Button variant="secondary" icon={ArrowLeft} onClick={onBack} size="sm">
-            Kembali
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Button
+            variant="outline"
+            icon={ClipboardCheck}
+            onClick={() => setViewMode('HISTORY')}
+            size="sm"
+          >
+            Riwayat Laporan
           </Button>
-        )}
+          {onBack && (
+            <Button variant="secondary" icon={ArrowLeft} onClick={onBack} size="sm">
+              Kembali
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Progress & Validation Card (Section 4 & 5) */}
@@ -1058,6 +1118,18 @@ const styles = {
     backgroundColor: '#d1fae5',
     padding: '2px 6px',
     borderRadius: '4px'
+  },
+  appliedLockedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#065f46',
+    backgroundColor: '#d1fae5',
+    border: '1px solid #a7f3d0',
+    padding: '3px 8px',
+    borderRadius: '6px'
   },
   submittedMeta: {
     fontSize: '12.5px',
