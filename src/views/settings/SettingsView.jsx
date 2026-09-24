@@ -15,7 +15,9 @@ import {
   MapPin, 
   Mail, 
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 export const SettingsView = () => {
