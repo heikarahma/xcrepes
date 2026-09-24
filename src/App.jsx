@@ -56,9 +56,10 @@ import { RawMaterialDeleteModal } from './views/inventory/rawMaterial/RawMateria
 import { StockAdjustModal } from './views/inventory/rawMaterial/StockAdjustModal';
 import { WasteRecordModal } from './views/inventory/rawMaterial/WasteRecordModal';
 
-// Views [V] - Retur Pesanan POS & Preview Foto
+// Views [V] - Retur Pesanan POS & Preview Foto & Revisi
 import { OrderReturnModal } from './views/pos/OrderReturnModal';
 import { OrderCancelModal } from './views/pos/OrderCancelModal';
+import { OrderRevisionModal } from './views/pos/OrderRevisionModal';
 import { ReturnsManagementView } from './views/returns/ReturnsManagementView';
 import { ImagePreviewModal } from './views/components/ImagePreviewModal';
 import { useRawMaterial } from './controllers/RawMaterialController';
@@ -176,12 +177,13 @@ function MainLayout() {
       <StockAdjustModal />
       <WasteRecordModal />
 
-      {/* Modals for Kasir POS & Retur Pesanan & Pembatalan */}
+      {/* Modals for Kasir POS & Retur Pesanan & Pembatalan & Revisi */}
       <ToppingSelectionModal />
       <PaymentModal />
       <ReceiptModal />
       <OrderReturnModal />
       <OrderCancelModal />
+      <OrderRevisionModal />
 
       {/* Modal Zoom / Preview Bukti Foto */}
       <ImagePreviewModal

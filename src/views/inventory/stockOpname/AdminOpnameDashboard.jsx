@@ -215,7 +215,7 @@ export const AdminOpnameDashboard = ({
                 onClick={onCreateTodayOpname}
                 size="sm"
               >
-                + Buat Stock Opname
+                Stock Opname
               </Button>
             )}
           </div>
@@ -238,7 +238,7 @@ export const AdminOpnameDashboard = ({
               title="Tidak ada riwayat stock opname"
               description="Belum ada laporan stock opname pada periode waktu atau filter pencarian yang dipilih."
               icon={ClipboardCheck}
-              actionLabel={!todayReport ? "+ Buat Stock Opname" : undefined}
+              actionLabel={!todayReport ? "Stock Opname" : undefined}
               onAction={!todayReport ? onCreateTodayOpname : undefined}
             />
           ) : (

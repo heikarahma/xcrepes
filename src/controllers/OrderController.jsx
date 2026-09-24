@@ -97,6 +97,12 @@ export const OrderProvider = ({ children }) => {
     order: null
   });
 
+  // Order Revision Modal State (Edit Pesanan Terdaftar)
+  const [orderRevisionModalState, setOrderRevisionModalState] = useState({
+    isOpen: false,
+    order: null
+  });
+
   // Sync active cart with local device storage
   useEffect(() => {
     try {
@@ -627,6 +633,165 @@ export const OrderProvider = ({ children }) => {
     setOrderCancelModalState({ isOpen: false, order: null });
   };
 
+  // Revision Order Modal Controls & Execution
+  const openOrderRevisionModal = (order) => {
+    setOrderRevisionModalState({ isOpen: true, order });
+  };
+
+  const closeOrderRevisionModal = () => {
+    setOrderRevisionModalState({ isOpen: false, order: null });
+  };
+
+  const reviseOrder = async ({ orderId, updatedItems, reason = '', actor = 'Kasir' }) => {
+    const originalOrder = orders.find(o => o.id === orderId);
+    if (!originalOrder) {
+      showToast('Data transaksi tidak ditemukan.', 'error', 'Error');
+      return { success: false, error: 'Order not found' };
+    }
+
+    if (!Array.isArray(updatedItems) || updatedItems.length === 0) {
+      showToast('Pesanan tidak boleh kosong. Gunakan fitur Batalkan jika ingin membatalkan semua menu.', 'error', 'Peringatan');
+      return { success: false, error: 'Cannot revise order to 0 items' };
+    }
+
+    setIsSubmitting(true);
+    try {
+      // 1. Calculate new totals
+      let subtotal = 0;
+      let itemsDiscountTotal = 0;
+      let totalItemsCount = 0;
+
+      const sanitizedItems = updatedItems.map((item, idx) => {
+        const qty = Math.max(1, Number(item.quantity) || 1);
+        totalItemsCount += qty;
+
+        const basePrice = Number(item.basePrice ?? item.unitPrice ?? 0);
+        const toppings = Array.isArray(item.toppings) ? item.toppings : [];
+        const toppingsTotal = toppings.reduce((sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 0);
+        const unitPrice = basePrice + toppingsTotal;
+        const lineSubtotal = unitPrice * qty;
+        subtotal += lineSubtotal;
+
+        const discType = item.itemDiscountType || 'none';
+        const discVal = Number(item.itemDiscountValue) || 0;
+        const discAmt = calculateItemDiscount(unitPrice, qty, discType, discVal);
+        itemsDiscountTotal += discAmt;
+
+        return {
+          ...item,
+          cartItemId: item.cartItemId || `REV-${Date.now()}-${idx}`,
+          quantity: qty,
+          basePrice,
+          toppings,
+          toppingsTotal,
+          unitPrice,
+          itemDiscountType: discType,
+          itemDiscountValue: discVal,
+          itemDiscountAmount: discAmt
+        };
+      });
+
+      // Order discount calculation
+      const orderDiscountType = originalOrder.orderDiscountType || 'none';
+      const orderDiscountValue = Number(originalOrder.orderDiscountValue) || 0;
+      const netSubtotalAfterItems = Math.max(0, subtotal - itemsDiscountTotal);
+      let orderDiscountAmount = 0;
+      if (orderDiscountType === 'percent') {
+        orderDiscountAmount = Math.round((netSubtotalAfterItems * orderDiscountValue) / 100);
+      } else if (orderDiscountType === 'fixed') {
+        orderDiscountAmount = Math.min(netSubtotalAfterItems, orderDiscountValue);
+      }
+      const totalDiscount = itemsDiscountTotal + orderDiscountAmount;
+      const totalAmount = Math.max(0, subtotal - totalDiscount);
+
+      const revisionNote = reason ? `[REVISI] ${reason} (oleh ${actor})` : `[REVISI] oleh ${actor}`;
+      const combinedNotes = originalOrder.returnNote 
+        ? `${originalOrder.returnNote} | ${revisionNote}` 
+        : revisionNote;
+
+      const payload = {
+        items: sanitizedItems,
+        subtotal,
+        items_discount_total: itemsDiscountTotal,
+        order_discount_type: orderDiscountType,
+        order_discount_value: orderDiscountValue,
+        order_discount_amount: orderDiscountAmount,
+        discount: totalDiscount,
+        total_amount: totalAmount,
+        total_items_count: totalItemsCount,
+        return_note: combinedNotes
+      };
+
+      // 2. Update in Supabase
+      const { error: updateErr } = await ordersService.updateOrder(originalOrder.id, payload);
+      if (updateErr) {
+        showToast(`Gagal merevisi transaksi di database: ${updateErr.message}`, 'error', 'Error Database');
+        return { success: false, error: updateErr.message };
+      }
+
+      // 3. Stock reconciliation: Restore old order, deduct new order
+      try {
+        if (typeof restoreMaterialsForOrder === 'function') {
+          await restoreMaterialsForOrder(
+            originalOrder,
+            productMenus,
+            toppings,
+            `Restorasi Bahan untuk Revisi Transaksi #${originalOrder.invoiceNumber}`,
+            actor
+          );
+        }
+        if (typeof deductMaterialsForOrder === 'function') {
+          const tempRevisedOrder = {
+            ...originalOrder,
+            items: sanitizedItems,
+            invoiceNumber: originalOrder.invoiceNumber,
+            date: new Date().toISOString(),
+            cashierName: actor
+          };
+          await deductMaterialsForOrder(tempRevisedOrder, productMenus, toppings, actor);
+        }
+      } catch (stockErr) {
+        console.error('Error reconciling stock for revised order:', stockErr);
+      }
+
+      // 4. Update local state
+      const updatedOrder = {
+        ...originalOrder,
+        items: sanitizedItems,
+        subtotal,
+        itemsDiscountTotal,
+        orderDiscountType,
+        orderDiscountValue,
+        orderDiscountAmount,
+        discount: totalDiscount,
+        totalAmount,
+        totalItemsCount,
+        returnNote: combinedNotes,
+        isRevised: true
+      };
+
+      setOrders(prev => prev.map(o => o.id === originalOrder.id ? updatedOrder : o));
+
+      showToast(
+        `Transaksi #${originalOrder.invoiceNumber} berhasil direvisi & struk baru siap dicetak.`,
+        'success',
+        'Revisi Berhasil'
+      );
+
+      closeOrderRevisionModal();
+
+      // 5. Open updated receipt for printing immediately!
+      openReceiptModal(updatedOrder);
+
+      return { success: true, updatedOrder };
+    } catch (err) {
+      showToast(err.message, 'error', 'Error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const cancelOrder = async ({ orderId, reason, note = '', restoreStock = true, user }) => {
     const targetOrder = orders.find(o => o.id === orderId);
     if (!targetOrder) {
@@ -750,6 +915,10 @@ export const OrderProvider = ({ children }) => {
         orderCancelModalState,
         openOrderCancelModal,
         closeOrderCancelModal,
+        orderRevisionModalState,
+        openOrderRevisionModal,
+        closeOrderRevisionModal,
+        reviseOrder,
         cancelOrder,
         completeOrder,
         recordOrderReturn

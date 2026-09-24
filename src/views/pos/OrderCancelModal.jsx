@@ -5,25 +5,9 @@ import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
 import { 
   Ban, 
-  AlertTriangle, 
-  ShoppingBag, 
-  Clock, 
   User, 
-  FileText, 
-  RotateCcw,
-  Check,
-  Calendar,
-  Layers
+  FileText
 } from 'lucide-react';
-
-const CANCELLATION_PRESETS = [
-  'Kesalahan Input Kasir / Salah Menu',
-  'Pelanggan Membatalkan Pesanan',
-  'Bahan Baku Habis / Kendala Teknis',
-  'Pembayaran Gagal / Dibatalkan',
-  'Pesanan Duplikat',
-  'Lainnya'
-];
 
 export const OrderCancelModal = () => {
   const { 
@@ -36,9 +20,7 @@ export const OrderCancelModal = () => {
 
   const { isOpen, order } = orderCancelModalState;
 
-  const [selectedPreset, setSelectedPreset] = useState(CANCELLATION_PRESETS[0]);
-  const [cancelNote, setCancelNote] = useState('');
-  const [restoreStock, setRestoreStock] = useState(true);
+  const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -52,9 +34,7 @@ export const OrderCancelModal = () => {
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedPreset(CANCELLATION_PRESETS[0]);
-      setCancelNote('');
-      setRestoreStock(true);
+      setReason('');
       setIsSubmitting(false);
       setErrorMsg('');
     }
@@ -90,8 +70,8 @@ export const OrderCancelModal = () => {
     if (e) e.preventDefault();
     if (isSubmitting) return;
 
-    if (!selectedPreset) {
-      setErrorMsg('Silakan pilih alasan pembatalan transaksi.');
+    if (!reason.trim()) {
+      setErrorMsg('Silakan isi alasan pembatalan transaksi.');
       return;
     }
 
@@ -101,9 +81,9 @@ export const OrderCancelModal = () => {
     try {
       const res = await cancelOrder({
         orderId: order.id,
-        reason: selectedPreset,
-        note: cancelNote.trim(),
-        restoreStock,
+        reason: reason.trim(),
+        note: '',
+        restoreStock: true, // Otomatis mengembalikan stok bahan baku ke dapur
         user: currentUser?.nama || currentUser?.name || currentUser?.username || 'Super Admin'
       });
 
@@ -147,14 +127,6 @@ export const OrderCancelModal = () => {
       }
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Warning Alert Banner */}
-        <div style={styles.warningBanner}>
-          <AlertTriangle size={18} color="#b91c1c" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <div style={{ fontSize: '0.813rem', color: '#7f1d1d', lineHeight: 1.45 }}>
-            <strong>Perhatian Hak Akses Admin:</strong> Tindakan ini akan menandai transaksi invoice <strong>#{order.invoiceNumber}</strong> sebagai <strong>DIBATALKAN</strong> dan mengecualikannya dari laporan omset/laba penjualan.
-          </div>
-        </div>
-
         {errorMsg && (
           <div style={styles.errorAlert}>
             {errorMsg}
@@ -212,70 +184,22 @@ export const OrderCancelModal = () => {
           </div>
         </div>
 
-        {/* Reason Presets */}
+        {/* Alasan Pembatalan Input (Single Clean Input) */}
         <div className="blue-input-group">
           <label className="blue-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <FileText size={14} color="var(--blue-600)" />
             <span>Alasan Pembatalan <span style={{ color: 'var(--red-500)' }}>*</span></span>
           </label>
-          <div style={styles.presetChipsGrid}>
-            {CANCELLATION_PRESETS.map((preset) => {
-              const isSelected = selectedPreset === preset;
-              return (
-                <button
-                  type="button"
-                  key={preset}
-                  onClick={() => setSelectedPreset(preset)}
-                  style={{
-                    ...styles.presetChip,
-                    borderColor: isSelected ? 'var(--blue-600)' : 'var(--border-color)',
-                    backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                    color: isSelected ? 'var(--blue-700)' : 'var(--neutral-700)',
-                    fontWeight: isSelected ? 700 : 500
-                  }}
-                >
-                  {isSelected && <Check size={13} color="var(--blue-600)" />}
-                  <span>{preset}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Additional Note */}
-        <div className="blue-input-group">
-          <label className="blue-label">Catatan Tambahan (Opsional)</label>
           <input
             type="text"
             className="blue-input"
-            value={cancelNote}
-            onChange={(e) => setCancelNote(e.target.value)}
-            placeholder="Contoh: Kasir salah klik menu / pelanggan buru-buru keluar..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Contoh: Kesalahan input kasir / pelanggan batal beli / salah menu..."
             style={{ height: '40px', fontSize: '0.844rem' }}
+            required
+            autoFocus
           />
-        </div>
-
-        {/* Restock Raw Materials Checkbox */}
-        <div style={styles.restockCard}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={restoreStock}
-              onChange={(e) => setRestoreStock(e.target.checked)}
-              style={styles.checkboxInput}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <RotateCcw size={14} color={restoreStock ? 'var(--blue-600)' : 'var(--neutral-400)'} />
-                <span style={{ fontSize: '0.844rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
-                  Kembalikan bahan baku ke stok dapur (Restock)
-                </span>
-              </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', lineHeight: 1.4 }}>
-                Bahan baku adonan & extra topping pada pesanan ini akan otomatis dikembalikan ke inventori serta dicatat pada log mutasi bahan (tipe: IN).
-              </span>
-            </div>
-          </label>
         </div>
       </form>
     </Modal>
@@ -283,15 +207,6 @@ export const OrderCancelModal = () => {
 };
 
 const styles = {
-  warningBanner: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-    padding: '10px 14px',
-    borderRadius: '8px',
-    backgroundColor: '#fff1f2',
-    border: '1px solid #fecdd3'
-  },
   errorAlert: {
     padding: '8px 12px',
     borderRadius: '6px',
@@ -339,44 +254,5 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: '2px'
-  },
-  presetChipsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-    gap: '8px',
-    marginTop: '4px'
-  },
-  presetChip: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '7px 10px',
-    borderRadius: '6px',
-    border: '1px solid',
-    fontSize: '0.781rem',
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'all 0.15s ease',
-    outline: 'none'
-  },
-  restockCard: {
-    padding: '12px 14px',
-    backgroundColor: '#f0fdf4',
-    border: '1px solid #bbf7d0',
-    borderRadius: '8px'
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '10px',
-    cursor: 'pointer',
-    userSelect: 'none'
-  },
-  checkboxInput: {
-    marginTop: '3px',
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
-    accentColor: 'var(--blue-600)'
   }
 };

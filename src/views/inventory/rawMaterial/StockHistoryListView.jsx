@@ -119,7 +119,9 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
               <History size={16} />
             </div>
           </div>
-          <div style={styles.statValue}>{stockLogStats.total}</div>
+          <div style={{ ...styles.statValue, color: 'var(--neutral-900)' }}>
+            {stockLogStats?.total ?? stockLogs?.length ?? 0}
+          </div>
           <span style={styles.statSub}>Semua riwayat perubahan</span>
         </div>
 
@@ -312,15 +314,17 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
                   <td colSpan={isCashier ? 6 : 9} style={{ padding: 0 }}>
                     <EmptyState
                       icon={History}
-                      title={logSearchTerm ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
+                      title={logSearchTerm || logTypeFilter !== 'ALL' ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
                       description={
                         logSearchTerm
                           ? `Tidak ada catatan riwayat dengan kata kunci "${logSearchTerm}".`
+                          : logTypeFilter !== 'ALL'
+                          ? 'Tidak ada catatan riwayat untuk filter kategori yang dipilih.'
                           : 'Setiap penambahan, pengurangan, atau bahan rusak akan otomatis tercatat di sini.'
                       }
-                      actionLabel={logSearchTerm ? 'Reset Filter' : 'Catat Bahan Rusak'}
+                      actionLabel={logSearchTerm || logTypeFilter !== 'ALL' ? 'Reset Filter' : 'Catat Bahan Rusak'}
                       onAction={
-                        logSearchTerm 
+                        (logSearchTerm || logTypeFilter !== 'ALL')
                           ? () => { setLogSearchTerm(''); setLogTypeFilter('ALL'); } 
                           : () => openWasteModal(rawMaterials[0] || null)
                       }
@@ -464,15 +468,17 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
           {paginatedStockLogs.length === 0 ? (
             <EmptyState
               icon={History}
-              title={logSearchTerm ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat'}
+              title={logSearchTerm || logTypeFilter !== 'ALL' ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat'}
               description={
                 logSearchTerm
                   ? `Tidak ada riwayat untuk "${logSearchTerm}".`
+                  : logTypeFilter !== 'ALL'
+                  ? 'Tidak ada catatan riwayat untuk filter ini.'
                   : 'Catat perubahan stok bahan untuk melihat log.'
               }
-              actionLabel={logSearchTerm ? 'Reset Filter' : 'Catat Stok'}
+              actionLabel={logSearchTerm || logTypeFilter !== 'ALL' ? 'Reset Filter' : 'Catat Stok'}
               onAction={
-                logSearchTerm 
+                (logSearchTerm || logTypeFilter !== 'ALL')
                   ? () => { setLogSearchTerm(''); setLogTypeFilter('ALL'); } 
                   : () => openWasteModal(rawMaterials[0] || null)
               }

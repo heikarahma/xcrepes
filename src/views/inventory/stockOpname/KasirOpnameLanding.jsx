@@ -213,7 +213,7 @@ export const KasirOpnameLanding = ({
               size="md"
               onClick={onCreateOpname}
             >
-              + Buat Stock Opname
+              Stock Opname
             </Button>
           </div>
         )}

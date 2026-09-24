@@ -47,10 +47,20 @@ export const RawMaterialProvider = ({ children }) => {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // 6. Search, Filter & Pagination for Stock History Logs
-  const [logSearchTerm, setLogSearchTerm] = useState('');
-  const [logTypeFilter, setLogTypeFilter] = useState('ALL'); // 'ALL' | 'IN' | 'OUT' | 'ADJUST'
+  const [logSearchTerm, setLogSearchTermState] = useState('');
+  const [logTypeFilter, setLogTypeFilterState] = useState('ALL'); // 'ALL' | 'IN' | 'OUT' | 'ADJUST' | 'WASTE'
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [logItemsPerPage, setLogItemsPerPage] = useState(8);
+
+  const setLogTypeFilter = (filter) => {
+    setLogTypeFilterState(filter);
+    setLogCurrentPage(1);
+  };
+
+  const setLogSearchTerm = (term) => {
+    setLogSearchTermState(term);
+    setLogCurrentPage(1);
+  };
 
   // 7. Modals State
   const [formModalState, setFormModalState] = useState({
@@ -1496,7 +1506,11 @@ export const RawMaterialProvider = ({ children }) => {
     }
 
     if (logTypeFilter !== 'ALL') {
-      result = result.filter(log => log.type === logTypeFilter);
+      if (logTypeFilter === 'WASTE') {
+        result = result.filter(log => log.type === 'WASTE' || log.type === 'RETURN_ORDER');
+      } else {
+        result = result.filter(log => log.type === logTypeFilter);
+      }
     }
 
     return result;
@@ -1541,11 +1555,14 @@ export const RawMaterialProvider = ({ children }) => {
 
   // Stock Logs Statistics
   const stockLogStats = useMemo(() => {
-    const totalIn = (stockLogs || []).filter(l => l.type === 'IN').length;
-    const totalOut = (stockLogs || []).filter(l => l.type === 'OUT').length;
-    const totalAdjust = (stockLogs || []).filter(l => l.type === 'ADJUST').length;
-    const wasteCount = (stockLogs || []).filter(l => l.type === 'WASTE' || l.type === 'RETURN_ORDER').length;
+    const logs = stockLogs || [];
+    const total = logs.length;
+    const totalIn = logs.filter(l => l.type === 'IN').length;
+    const totalOut = logs.filter(l => l.type === 'OUT').length;
+    const totalAdjust = logs.filter(l => l.type === 'ADJUST').length;
+    const wasteCount = logs.filter(l => l.type === 'WASTE' || l.type === 'RETURN_ORDER').length;
     return {
+      total,
       totalIn,
       totalOut,
       totalAdjust,

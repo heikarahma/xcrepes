@@ -163,5 +163,22 @@ export const ordersService = {
     }
 
     return { data, error: null };
+  },
+
+  async updateOrder(id, payload) {
+    if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('ordersService.updateOrder error:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
   }
 };

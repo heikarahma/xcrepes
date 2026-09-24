@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useOrder } from '../../controllers/OrderController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
 import { useAuth } from '../../controllers/AuthController';
+import { TransactionDetailPage } from './TransactionDetailPage';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
@@ -32,7 +33,8 @@ import {
   PieChart,
   User,
   Ban,
-  Clock
+  Clock,
+  Edit3
 } from 'lucide-react';
 
 export const SalesReportTab = () => {
@@ -49,7 +51,7 @@ export const SalesReportTab = () => {
     setActiveSalesSection
   } = useReport();
 
-  const { openReceiptModal, openOrderReturnModal, openOrderCancelModal } = useOrder();
+  const { openReceiptModal, openOrderReturnModal, openOrderCancelModal, openOrderRevisionModal } = useOrder();
   const { openPhotoPreviewModal } = useRawMaterial();
   const { currentUser } = useAuth();
 
@@ -59,6 +61,19 @@ export const SalesReportTab = () => {
   // Local independent search states for both sub-menus
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
   const [transactionSearchTerm, setTransactionSearchTerm] = useState('');
+
+  // Selected Order for Detail View
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
+
+  // Reset detail view when switching between summary and transactions
+  useEffect(() => {
+    setSelectedOrderDetailId(null);
+  }, [activeSalesSection]);
+
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderDetailId) return null;
+    return (enrichedOrders || []).find(o => o.id === selectedOrderDetailId) || null;
+  }, [selectedOrderDetailId, enrichedOrders]);
 
   // Modal State
   const [selectedMenuForToppingDetail, setSelectedMenuForToppingDetail] = useState(null);
@@ -628,6 +643,22 @@ export const SalesReportTab = () => {
             </div>
           )}
         </div>
+      ) : selectedOrder ? (
+        /* =========================================================================
+           SUB-VIEW: DETAIL TRANSAKSI & AKSI TERPUSAT
+           ========================================================================= */
+        <TransactionDetailPage
+          order={selectedOrder}
+          onBack={() => setSelectedOrderDetailId(null)}
+          onOpenReceipt={openReceiptModal}
+          onOpenRevision={openOrderRevisionModal}
+          onOpenReturn={openOrderReturnModal}
+          onOpenCancel={openOrderCancelModal}
+          onOpenPhoto={openPhotoPreviewModal}
+          isSuperAdmin={isSuperAdmin}
+          formatIDR={formatIDR}
+          formatDate={formatDate}
+        />
       ) : (
         /* =========================================================================
            SUB-MENU 2: RIWAYAT TRANSAKSI PENJUALAN
@@ -718,7 +749,7 @@ export const SalesReportTab = () => {
                       <th style={styles.th}>Rincian Menu & Topping</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Total Bayar & Metode</th>
                       {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi Laba</th>}
-                      <th style={{ ...styles.th, textAlign: 'center', width: '130px' }}>Aksi</th>
+                      <th style={{ ...styles.th, textAlign: 'center', width: '90px' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -731,7 +762,13 @@ export const SalesReportTab = () => {
                           <td style={styles.td}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span style={styles.invoiceBadge}>{order.invoiceNumber}</span>
+                                <span 
+                                  style={{ ...styles.invoiceBadge, cursor: 'pointer' }}
+                                  onClick={() => setSelectedOrderDetailId(order.id)}
+                                  title="Klik untuk membuka detail & aksi transaksi"
+                                >
+                                  {order.invoiceNumber}
+                                </span>
                                 {isCancelled && (
                                   <span style={{
                                     fontSize: '0.656rem',
@@ -871,72 +908,25 @@ export const SalesReportTab = () => {
                             </td>
                           )}
 
-                          {/* 7. Aksi */}
+                          {/* 7. Aksi: Buka Halaman Detail Terpusat */}
                           <td style={{ ...styles.td, textAlign: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                              {order.returnPhoto && (
-                                <button
-                                  onClick={() => openPhotoPreviewModal(order.returnPhoto, `Bukti Retur: #${order.invoiceNumber}`, {
-                                    orderInvoice: order.invoiceNumber,
-                                    reason: order.returnReason,
-                                    note: order.returnNote,
-                                    user: order.returnBy,
-                                    createdAt: formatDate(order.returnedAt || order.date)
-                                  })}
-                                  style={{
-                                    ...styles.actionBtn,
-                                    color: '#dc2626',
-                                    borderColor: '#fca5a5',
-                                    backgroundColor: '#fef2f2'
-                                  }}
-                                  title="Lihat Bukti Foto Retur"
-                                >
-                                  <Camera size={13} />
-                                  <span>Foto</span>
-                                </button>
-                              )}
-
-                              {!isReturned && !isCancelled && isSuperAdmin && (
-                                <button
-                                  onClick={() => openOrderCancelModal(order)}
-                                  style={{
-                                    ...styles.actionBtn,
-                                    color: '#dc2626',
-                                    borderColor: '#fca5a5',
-                                    backgroundColor: '#fef2f2'
-                                  }}
-                                  title="Batalkan Transaksi (Super Admin)"
-                                >
-                                  <Ban size={13} />
-                                  <span>Batalkan</span>
-                                </button>
-                              )}
-
-                              {!isReturned && !isCancelled && isSuperAdmin && (
-                                <button
-                                  onClick={() => openOrderReturnModal(order)}
-                                  style={{
-                                    ...styles.actionBtn,
-                                    color: '#b91c1c',
-                                    borderColor: '#fecdd3',
-                                    backgroundColor: '#fff1f2'
-                                  }}
-                                  title="Catat Retur / Gagal Pembuatan"
-                                >
-                                  <RotateCcw size={13} />
-                                  <span>Retur</span>
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => openReceiptModal(order)}
-                                style={styles.actionBtn}
-                                title="Lihat & Cetak Struk"
-                              >
-                                <Receipt size={14} />
-                                <span>Struk</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrderDetailId(order.id)}
+                              style={{
+                                ...styles.actionBtn,
+                                color: 'var(--blue-700)',
+                                borderColor: 'var(--blue-200)',
+                                backgroundColor: 'var(--blue-50)',
+                                fontWeight: 600,
+                                padding: '6px 12px',
+                                gap: '6px'
+                              }}
+                              title="Buka Halaman Detail & Aksi Transaksi"
+                            >
+                              <Eye size={13} />
+                              <span>Detail</span>
+                            </button>
                           </td>
                         </tr>
                       );
@@ -964,7 +954,13 @@ export const SalesReportTab = () => {
                       {/* 1. Header Row: Invoice Badge & Status, Date on Right */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={styles.invoiceBadge}>{order.invoiceNumber}</span>
+                          <span 
+                            style={{ ...styles.invoiceBadge, cursor: 'pointer' }}
+                            onClick={() => setSelectedOrderDetailId(order.id)}
+                            title="Klik untuk membuka detail & aksi transaksi"
+                          >
+                            {order.invoiceNumber}
+                          </span>
                           {isCancelled && (
                             <span style={{
                               fontSize: '0.656rem',
@@ -1123,56 +1119,25 @@ export const SalesReportTab = () => {
                       </div>
 
                       {/* 5. Actions Footer */}
-                      <div className="transaction-mobile-card-actions">
-                        {order.returnPhoto && (
-                          <button
-                            type="button"
-                            onClick={() => openPhotoPreviewModal(order.returnPhoto, `Bukti Retur: #${order.invoiceNumber}`, {
-                              orderInvoice: order.invoiceNumber,
-                              reason: order.returnReason,
-                              note: order.returnNote,
-                              user: order.returnBy,
-                              createdAt: formatDate(order.returnedAt || order.date)
-                            })}
-                            className="transaction-mobile-action-btn"
-                            style={{ color: '#dc2626', borderColor: '#fca5a5', backgroundColor: '#fef2f2' }}
-                          >
-                            <Camera size={16} />
-                            <span>Foto</span>
-                          </button>
-                        )}
-
-                        {!isReturned && !isCancelled && isSuperAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => openOrderCancelModal(order)}
-                            className="transaction-mobile-action-btn"
-                            style={{ color: '#dc2626', borderColor: '#fca5a5', backgroundColor: '#fef2f2' }}
-                          >
-                            <Ban size={16} />
-                            <span>Batalkan</span>
-                          </button>
-                        )}
-
-                        {!isReturned && !isCancelled && isSuperAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => openOrderReturnModal(order)}
-                            className="transaction-mobile-action-btn"
-                            style={{ color: '#b91c1c', borderColor: '#fecdd3', backgroundColor: '#fff1f2' }}
-                          >
-                            <RotateCcw size={16} />
-                            <span>Retur</span>
-                          </button>
-                        )}
-
+                      <div className="transaction-mobile-card-actions" style={{ paddingTop: '8px' }}>
                         <button
                           type="button"
-                          onClick={() => openReceiptModal(order)}
+                          onClick={() => setSelectedOrderDetailId(order.id)}
                           className="transaction-mobile-action-btn"
+                          style={{
+                            width: '100%',
+                            justifyContent: 'center',
+                            backgroundColor: 'var(--blue-50)',
+                            borderColor: 'var(--blue-200)',
+                            color: 'var(--blue-700)',
+                            fontWeight: 700,
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            gap: '8px'
+                          }}
                         >
-                          <Receipt size={16} />
-                          <span>Struk</span>
+                          <Eye size={16} />
+                          <span>Lihat Detail & Aksi Transaksi</span>
                         </button>
                       </div>
                     </div>

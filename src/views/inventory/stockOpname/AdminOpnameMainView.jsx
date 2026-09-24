@@ -119,7 +119,7 @@ export const AdminOpnameMainView = ({
                   onClick={onCreateTodayOpname}
                   size="md"
                 >
-                  + Buat Stock Opname
+                  Stock Opname
                 </Button>
               </div>
             </div>
