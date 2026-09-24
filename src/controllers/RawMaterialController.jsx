@@ -1426,15 +1426,6 @@ export const RawMaterialProvider = ({ children }) => {
   const filteredRawMaterials = useMemo(() => {
     let result = [...rawMaterials];
 
-    // Khusus untuk Kasir: hanya tampilkan bahan baku yang stok menipis atau stok habis
-    if (isCashier) {
-      result = result.filter(r => {
-        const s = Number(r.stock ?? r.currentStock ?? 0);
-        const min = Number(r.minStock ?? r.min_stock) || 10;
-        return s <= min;
-      });
-    }
-
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim();
       result = result.filter(r => 
@@ -1453,7 +1444,7 @@ export const RawMaterialProvider = ({ children }) => {
           const min = Number(r.minStock ?? r.min_stock) || 10;
           return s > 0 && s <= min;
         });
-      } else if (stockStatusFilter === 'safe' && !isCashier) {
+      } else if (stockStatusFilter === 'safe') {
         result = result.filter(r => {
           const s = Number(r.stock ?? r.currentStock) || 0;
           const min = Number(r.minStock ?? r.min_stock) || 10;
@@ -1479,7 +1470,7 @@ export const RawMaterialProvider = ({ children }) => {
     });
 
     return result;
-  }, [rawMaterials, searchTerm, sortBy, stockStatusFilter, isCashier]);
+  }, [rawMaterials, searchTerm, sortBy, stockStatusFilter]);
 
   // Paginated Raw Materials
   const paginatedRawMaterials = useMemo(() => {

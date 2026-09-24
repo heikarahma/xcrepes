@@ -7,7 +7,6 @@ import { useProductMenu } from '../../controllers/ProductMenuController';
 import { useSettings } from '../../controllers/SettingsController';
 import { useReport } from '../../controllers/ReportController';
 import { useAuth } from '../../controllers/AuthController';
-import { useOrder } from '../../controllers/OrderController';
 import { 
   Ruler, 
   Layers, 
@@ -40,10 +39,9 @@ export const Sidebar = () => {
   } = useUnit();
 
   const { totalAllCategories } = useCategory();
-  const { totalAllRawMaterials, stockLogs = [], opnameSummary } = useRawMaterial();
+  const { totalAllRawMaterials, opnameSummary } = useRawMaterial();
   const { totalAllToppings } = useTopping();
   const { totalAllMenus } = useProductMenu();
-  const { orders = [] } = useOrder();
   const { settings } = useSettings();
   const { activeReportTab, setActiveReportTab, activeSalesSection, setActiveSalesSection } = useReport();
   const { currentUser, hasPermission, logout, cashiers, openProfileModal } = useAuth();
@@ -55,10 +53,6 @@ export const Sidebar = () => {
   const hasReturns = hasPermission('returns');
   const hasReports = hasPermission('reports');
   const hasSettingsGroup = hasPermission('settings') || isSuperAdmin;
-
-  const returnedOrdersCount = orders.filter(o => o.status === 'returned').length;
-  const wasteLogsCount = stockLogs.filter(l => l.type === 'WASTE').length;
-  const totalAllReturns = returnedOrdersCount + wasteLogsCount;
 
   const isReportsActive = activeMenu === 'reports' || 
                           activeMenu === 'reports-sales' || 
@@ -292,11 +286,6 @@ export const Sidebar = () => {
                     <RotateCcw size={18} color={activeMenu === 'returns' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
                     <span style={{ fontWeight: activeMenu === 'returns' ? 700 : 500 }}>Retur & Kerusakan</span>
                   </div>
-                  {totalAllReturns > 0 && (
-                    <span style={activeMenu === 'returns' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
-                      {totalAllReturns}
-                    </span>
-                  )}
                 </button>
               </div>
             </>

@@ -132,7 +132,7 @@ export const RawMaterialListView = () => {
           </div>
           <p className="raw-material-subtitle" style={styles.pageSubtitle}>
             {isCashier
-              ? 'Pantau sisa stok bahan baku yang menipis atau habis untuk kesiapan operasional kasir.'
+              ? 'Pantau ketersediaan seluruh stok bahan baku untuk kesiapan operasional kasir.'
               : 'Pantau sisa stok fisik, harga beli bahan baku dapur, dan riwayat mutasi stok.'}
           </p>
         </div>
@@ -315,13 +315,9 @@ export const RawMaterialListView = () => {
                     style={{ ...styles.filterSelect, fontWeight: 600, color: 'var(--neutral-700)' }}
                   >
                     <option value="all">
-                      {isCashier 
-                        ? `Semua Bahan Kritis (${summary.lowCount + summary.emptyCount})` 
-                        : `Semua Status Bahan (${totalAllRawMaterials})`}
+                      Semua Bahan ({totalAllRawMaterials})
                     </option>
-                    {!isCashier && (
-                      <option value="safe">Stok Aman ({summary.safeCount})</option>
-                    )}
+                    <option value="safe">Stok Aman ({summary.safeCount})</option>
                     <option value="low">Stok Menipis ({summary.lowCount})</option>
                     <option value="empty">Stok Habis ({summary.emptyCount})</option>
                   </select>
@@ -431,15 +427,15 @@ export const RawMaterialListView = () => {
                         title={
                           searchTerm 
                             ? 'Bahan Baku Tidak Ditemukan' 
-                            : isCashier 
-                              ? 'Semua Stok Bahan Aman' 
+                            : stockStatusFilter !== 'all'
+                              ? 'Tidak Ada Bahan dengan Status Tersebut'
                               : 'Belum Ada Bahan Baku'
                         }
                         description={
                           searchTerm
                             ? `Tidak ditemukan bahan baku dengan kata kunci "${searchTerm}".`
-                            : isCashier
-                              ? 'Saat ini tidak ada bahan baku yang berstatus menipis atau habis. Semua stok dapur aman.'
+                            : stockStatusFilter !== 'all'
+                              ? 'Tidak ada bahan baku yang sesuai dengan filter status yang dipilih.'
                               : 'Belum ada data bahan baku dalam sistem.'
                         }
                         actionLabel={searchTerm ? 'Reset Pencarian' : (!isCashier ? 'Tambah Bahan' : undefined)}
@@ -562,15 +558,15 @@ export const RawMaterialListView = () => {
                 title={
                   searchTerm 
                     ? 'Bahan Tidak Ditemukan' 
-                    : isCashier 
-                      ? 'Semua Stok Bahan Aman' 
+                    : stockStatusFilter !== 'all'
+                      ? 'Tidak Ada Bahan dengan Status Tersebut'
                       : 'Belum Ada Bahan Baku'
                 }
                 description={
                   searchTerm
                     ? `Tidak ada hasil untuk "${searchTerm}".`
-                    : isCashier
-                      ? 'Saat ini tidak ada bahan baku yang berstatus menipis atau habis. Semua stok dapur aman.'
+                    : stockStatusFilter !== 'all'
+                      ? 'Tidak ada bahan baku yang sesuai dengan filter status yang dipilih.'
                       : 'Belum ada data bahan baku.'
                 }
                 actionLabel={searchTerm ? 'Reset Pencarian' : (!isCashier ? 'Tambah Bahan' : undefined)}
