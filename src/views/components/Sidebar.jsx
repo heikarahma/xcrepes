@@ -51,15 +51,19 @@ export const Sidebar = () => {
   const hasMasterData = hasPermission('unit') || hasPermission('category') || hasPermission('topping') || hasPermission('product-menu');
   const hasInventory = hasPermission('raw-material') || hasPermission('stock-opname');
   const hasReturns = hasPermission('returns');
-  const hasReports = hasPermission('reports');
+  const hasReports = hasPermission('reports') || hasPermission('reports-sales') || hasPermission('reports-materials');
   const hasSettingsGroup = hasPermission('settings') || isSuperAdmin;
 
-  const isReportsActive = activeMenu === 'reports' || 
-                          activeMenu === 'reports-sales' || 
-                          activeMenu === 'reports-sales-summary' || 
-                          activeMenu === 'reports-sales-transactions' || 
-                          activeMenu === 'reports-materials';
-  const [isReportsSubmenuOpen, setIsReportsSubmenuOpen] = useState(true);
+  const isSummaryActive = activeMenu === 'reports-sales-summary' || 
+                          (activeMenu === 'reports-sales' && activeSalesSection === 'products') || 
+                          (activeMenu === 'reports' && (activeReportTab === 'sales' ? activeSalesSection === 'products' : false));
+
+  const isTransactionsActive = activeMenu === 'reports-sales-transactions' || 
+                              (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || 
+                              (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions');
+
+  const isMaterialsActive = activeMenu === 'reports-materials' || 
+                            (activeMenu === 'reports' && activeReportTab === 'materials');
 
   const handleSelectMenu = (menuKey) => {
     setActiveMenu(menuKey);
@@ -128,10 +132,13 @@ export const Sidebar = () => {
                     ...(activeMenu === 'kasir' ? styles.navButtonActive : {})
                   }}
                   onClick={() => handleSelectMenu('kasir')}
+                  title="Kasir POS"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <ShoppingBag size={18} color={activeMenu === 'kasir' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                    <span style={{ fontWeight: activeMenu === 'kasir' ? 700 : 600 }}>Kasir POS</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                    <ShoppingBag size={18} color={activeMenu === 'kasir' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: activeMenu === 'kasir' ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                      Kasir POS
+                    </span>
                   </div>
                 </button>
               </div>
@@ -152,12 +159,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'unit' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('unit')}
+                    title="Satuan Ukur"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Ruler size={18} color={activeMenu === 'unit' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Satuan Ukur</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Ruler size={18} color={activeMenu === 'unit' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Satuan Ukur
+                      </span>
                     </div>
-                    <span style={activeMenu === 'unit' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'unit' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {totalAllUnits}
                     </span>
                   </button>
@@ -172,12 +182,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'category' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('category')}
+                    title="Kategori Produk"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Layers size={18} color={activeMenu === 'category' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Kategori Produk</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Layers size={18} color={activeMenu === 'category' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Kategori Produk
+                      </span>
                     </div>
-                    <span style={activeMenu === 'category' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'category' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {totalAllCategories}
                     </span>
                   </button>
@@ -192,12 +205,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'topping' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('topping')}
+                    title="Data Topping"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Sparkles size={18} color={activeMenu === 'topping' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Data Topping</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Sparkles size={18} color={activeMenu === 'topping' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Data Topping
+                      </span>
                     </div>
-                    <span style={activeMenu === 'topping' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'topping' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {totalAllToppings}
                     </span>
                   </button>
@@ -212,12 +228,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'product-menu' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('product-menu')}
+                    title="Menu Produk"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Cookie size={18} color={activeMenu === 'product-menu' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Menu Produk</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Cookie size={18} color={activeMenu === 'product-menu' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Menu Produk
+                      </span>
                     </div>
-                    <span style={activeMenu === 'product-menu' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'product-menu' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {totalAllMenus}
                     </span>
                   </button>
@@ -239,12 +258,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'raw-material' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('raw-material')}
+                    title="Stok Bahan Baku"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Package size={18} color={activeMenu === 'raw-material' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span>Stok Bahan Baku</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Package size={18} color={activeMenu === 'raw-material' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Stok Bahan Baku
+                      </span>
                     </div>
-                    <span style={activeMenu === 'raw-material' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'raw-material' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {totalAllRawMaterials}
                     </span>
                   </button>
@@ -258,10 +280,13 @@ export const Sidebar = () => {
                       ...(activeMenu === 'stock-opname' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('stock-opname')}
+                    title="Stock Opname"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <ClipboardCheck size={18} color={activeMenu === 'stock-opname' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span style={{ fontWeight: activeMenu === 'stock-opname' ? 700 : 500 }}>Stock Opname</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <ClipboardCheck size={18} color={activeMenu === 'stock-opname' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: activeMenu === 'stock-opname' ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Stock Opname
+                      </span>
                     </div>
                   </button>
                 )}
@@ -281,10 +306,13 @@ export const Sidebar = () => {
                     ...(activeMenu === 'returns' ? styles.navButtonActive : {})
                   }}
                   onClick={() => handleSelectMenu('returns')}
+                  title="Retur & Kerusakan"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <RotateCcw size={18} color={activeMenu === 'returns' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                    <span style={{ fontWeight: activeMenu === 'returns' ? 700 : 500 }}>Retur & Kerusakan</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                    <RotateCcw size={18} color={activeMenu === 'returns' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                    <span style={{ fontWeight: activeMenu === 'returns' ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                      Retur & Kerusakan
+                    </span>
                   </div>
                 </button>
               </div>
@@ -296,121 +324,111 @@ export const Sidebar = () => {
             <>
               <div style={{ ...styles.navGroupLabel, marginTop: '20px' }}>LAPORAN & ANALITIK</div>
               <div style={styles.navList}>
-                {/* Main Menu Button: Laporan & Analitik */}
-                <button
-                  className={`sidebar-nav-btn ${isReportsActive ? 'is-active' : ''}`}
-                  style={{
-                    ...styles.navButton,
-                    ...(isReportsActive ? styles.navButtonActive : {}),
-                    justifyContent: 'space-between'
-                  }}
-                  onClick={() => {
-                    if (!isReportsActive) {
-                      const targetSub = hasPermission('reports-sales') ? 'reports-sales-summary' : 'reports-materials';
-                      handleSelectMenu(targetSub);
-                      setActiveReportTab(hasPermission('reports-sales') ? 'sales' : 'materials');
-                      setActiveSalesSection('products');
-                    }
-                    setIsReportsSubmenuOpen(prev => !prev);
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <BarChart3 size={18} color={isReportsActive ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                    <span style={{ fontWeight: isReportsActive ? 700 : 500 }}>Laporan & Analitik</span>
-                  </div>
-                  <ChevronDown
-                    size={15}
-                    color={isReportsActive ? 'var(--blue-500)' : 'var(--neutral-400)'}
+                {/* 1. Summary Penjualan Menu & Topping */}
+                {hasPermission('reports-sales') && (
+                  <button
+                    className={`sidebar-nav-btn ${isSummaryActive ? 'is-active' : ''}`}
                     style={{
-                      transform: isReportsSubmenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s ease'
+                      ...styles.navButton,
+                      ...(isSummaryActive ? styles.navButtonActive : {})
                     }}
-                  />
-                </button>
-
-                {/* Sub-menu: 1. Summary Menu & Topping, 2. Riwayat Transaksi, 3. Pengurangan Bahan Baku */}
-                {isReportsSubmenuOpen && (
-                  <div style={styles.submenuContainer}>
-                    {/* 1. Submenu: Summary Penjualan Menu & Topping */}
-                    {hasPermission('reports-sales') && (
-                      <button
-                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? 'is-sub-active' : ''}`}
+                    onClick={() => {
+                      handleSelectMenu('reports-sales-summary');
+                      setActiveReportTab('sales');
+                      setActiveSalesSection('products');
+                    }}
+                    title="Summary Menu & Topping"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Cookie
+                        size={18}
+                        color={isSummaryActive ? 'var(--blue-500)' : 'var(--neutral-500)'}
+                        style={{ flexShrink: 0 }}
+                      />
+                      <span
                         style={{
-                          ...styles.subnavButton,
-                          ...((activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? styles.subnavButtonActive : {})
-                        }}
-                        onClick={() => {
-                          handleSelectMenu('reports-sales-summary');
-                          setActiveReportTab('sales');
-                          setActiveSalesSection('products');
+                          fontWeight: isSummaryActive ? 700 : 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          minWidth: 0
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                          <Cookie
-                            size={14}
-                            color={(activeMenu === 'reports-sales-summary' || (activeMenu === 'reports-sales' && activeSalesSection === 'products') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'products')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
-                            style={{ flexShrink: 0 }}
-                          />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Summary Menu & Topping
-                          </span>
-                        </div>
-                      </button>
-                    )}
+                        Summary Menu & Topping
+                      </span>
+                    </div>
+                  </button>
+                )}
 
-                    {/* 2. Submenu: Riwayat Transaksi Penjualan */}
-                    {hasPermission('reports-sales') && (
-                      <button
-                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? 'is-sub-active' : ''}`}
+                {/* 2. Riwayat Transaksi Penjualan */}
+                {hasPermission('reports-sales') && (
+                  <button
+                    className={`sidebar-nav-btn ${isTransactionsActive ? 'is-active' : ''}`}
+                    style={{
+                      ...styles.navButton,
+                      ...(isTransactionsActive ? styles.navButtonActive : {})
+                    }}
+                    onClick={() => {
+                      handleSelectMenu('reports-sales-transactions');
+                      setActiveReportTab('sales');
+                      setActiveSalesSection('transactions');
+                    }}
+                    title="Riwayat Transaksi"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Receipt
+                        size={18}
+                        color={isTransactionsActive ? 'var(--blue-500)' : 'var(--neutral-500)'}
+                        style={{ flexShrink: 0 }}
+                      />
+                      <span
                         style={{
-                          ...styles.subnavButton,
-                          ...((activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? styles.subnavButtonActive : {})
-                        }}
-                        onClick={() => {
-                          handleSelectMenu('reports-sales-transactions');
-                          setActiveReportTab('sales');
-                          setActiveSalesSection('transactions');
+                          fontWeight: isTransactionsActive ? 700 : 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          minWidth: 0
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                          <Receipt
-                            size={14}
-                            color={(activeMenu === 'reports-sales-transactions' || (activeMenu === 'reports-sales' && activeSalesSection === 'transactions') || (activeMenu === 'reports' && activeReportTab === 'sales' && activeSalesSection === 'transactions')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
-                            style={{ flexShrink: 0 }}
-                          />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Riwayat Transaksi
-                          </span>
-                        </div>
-                      </button>
-                    )}
+                        Riwayat Transaksi
+                      </span>
+                    </div>
+                  </button>
+                )}
 
-                    {/* 2. Submenu: Laporan Pengurangan Bahan Baku */}
-                    {hasPermission('reports-materials') && (
-                      <button
-                        className={`sidebar-subnav-btn ${(activeMenu === 'reports-materials' || (activeMenu === 'reports' && activeReportTab === 'materials')) ? 'is-sub-active' : ''}`}
+                {/* 3. Laporan Pengurangan Bahan Baku */}
+                {hasPermission('reports-materials') && (
+                  <button
+                    className={`sidebar-nav-btn ${isMaterialsActive ? 'is-active' : ''}`}
+                    style={{
+                      ...styles.navButton,
+                      ...(isMaterialsActive ? styles.navButtonActive : {})
+                    }}
+                    onClick={() => {
+                      handleSelectMenu('reports-materials');
+                      setActiveReportTab('materials');
+                    }}
+                    title="Pengurangan Bahan Baku"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Package
+                        size={18}
+                        color={isMaterialsActive ? 'var(--blue-500)' : 'var(--neutral-500)'}
+                        style={{ flexShrink: 0 }}
+                      />
+                      <span
                         style={{
-                          ...styles.subnavButton,
-                          ...((activeMenu === 'reports-materials' || (activeMenu === 'reports' && activeReportTab === 'materials')) ? styles.subnavButtonActive : {})
-                        }}
-                        onClick={() => {
-                          handleSelectMenu('reports-materials');
-                          setActiveReportTab('materials');
+                          fontWeight: isMaterialsActive ? 700 : 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          minWidth: 0
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
-                          <Package
-                            size={14}
-                            color={(activeMenu === 'reports-materials' || (activeMenu === 'reports' && activeReportTab === 'materials')) ? 'var(--blue-600)' : 'var(--neutral-400)'}
-                            style={{ flexShrink: 0 }}
-                          />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Pengurangan Bahan Baku
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                  </div>
+                        Pengurangan Bahan Baku
+                      </span>
+                    </div>
+                  </button>
                 )}
               </div>
             </>
@@ -429,10 +447,13 @@ export const Sidebar = () => {
                       ...(activeMenu === 'settings' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('settings')}
+                    title="Pengaturan Struk & Toko"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Sliders size={18} color={activeMenu === 'settings' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span style={{ fontWeight: activeMenu === 'settings' ? 700 : 500 }}>Pengaturan Struk & Toko</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Sliders size={18} color={activeMenu === 'settings' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: activeMenu === 'settings' ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Pengaturan Struk & Toko
+                      </span>
                     </div>
                   </button>
                 )}
@@ -446,12 +467,15 @@ export const Sidebar = () => {
                       ...(activeMenu === 'cashier-management' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('cashier-management')}
+                    title="Kelola Akun Kasir"
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <Users size={18} color={activeMenu === 'cashier-management' ? 'var(--blue-500)' : 'var(--neutral-500)'} />
-                      <span style={{ fontWeight: activeMenu === 'cashier-management' ? 700 : 600 }}>Kelola Akun Kasir</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Users size={18} color={activeMenu === 'cashier-management' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: activeMenu === 'cashier-management' ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Kelola Akun Kasir
+                      </span>
                     </div>
-                    <span style={activeMenu === 'cashier-management' ? styles.activeCounterBadge : styles.inactiveCounterBadge}>
+                    <span style={{ ...(activeMenu === 'cashier-management' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
                       {cashiers.length}
                     </span>
                   </button>

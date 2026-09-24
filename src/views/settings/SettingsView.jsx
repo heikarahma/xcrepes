@@ -9,50 +9,22 @@ import {
   UploadCloud, 
   Trash2, 
   Save, 
-  RotateCcw, 
   CheckCircle2, 
   Printer, 
   Phone, 
   MapPin, 
   Mail, 
-  Check, 
-  Sliders,
-  FileText,
   Eye,
-  ShieldCheck,
-  Sparkles,
-  Database,
-  Download,
-  RefreshCw,
-  Layers,
-  Box,
-  ShoppingBag,
-  Coffee,
-  Copy,
-  AlertCircle
+  ShieldCheck
 } from 'lucide-react';
-import {
-  DUMMY_RAW_MATERIALS,
-  DUMMY_PRODUCT_MENUS,
-  DUMMY_TOPPINGS,
-  DUMMY_CATEGORIES,
-  DUMMY_UNITS,
-  DUMMY_CASHIERS,
-  DUMMY_ORDERS,
-  DUMMY_STOCK_LOGS,
-  injectDummyDataToStorage,
-  clearAllDataFromStorage
-} from '../../utils/dummyData';
 
 export const SettingsView = () => {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { showToast } = useUnit();
   const { currentUser, openProfileModal } = useAuth();
 
-  // Active Tab: 'store' | 'receipt' | 'database'
+  // Active Tab: 'store' | 'receipt'
   const [activeTab, setActiveTab] = useState('store');
-  const [isCopied, setIsCopied] = useState(false);
-  const [isInjecting, setIsInjecting] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({ ...settings });
@@ -129,97 +101,6 @@ export const SettingsView = () => {
     }
   };
 
-  // Handle Inject Dummy Data
-  const handleInjectDummyData = () => {
-    if (window.confirm('Suntikkan data dummy komprehensif (42 bahan baku, 37 menu, 30 topping, pesanan multi-status & riwayat stok) ke database lokal?')) {
-      setIsInjecting(true);
-      const res = injectDummyDataToStorage();
-      setTimeout(() => {
-        setIsInjecting(false);
-        if (res.success) {
-          showToast(res.message, 'success', 'Data Dummy Disuntikkan');
-        } else {
-          showToast(res.message, 'error', 'Gagal Injeksi');
-        }
-      }, 400);
-    }
-  };
-
-  // Handle Download Full Backup JSON
-  const handleDownloadBackup = () => {
-    try {
-      const backupData = {
-        meta: {
-          system: 'XCrepes POS & Inventory Management System',
-          exportedAt: new Date().toISOString(),
-          version: '1.0.0',
-          counts: {
-            rawMaterials: DUMMY_RAW_MATERIALS.length,
-            productMenus: DUMMY_PRODUCT_MENUS.length,
-            toppings: DUMMY_TOPPINGS.length,
-            categories: DUMMY_CATEGORIES.length,
-            units: DUMMY_UNITS.length,
-            cashiers: DUMMY_CASHIERS.length,
-            orders: DUMMY_ORDERS.length,
-            stockLogs: DUMMY_STOCK_LOGS.length
-          }
-        },
-        rawMaterials: DUMMY_RAW_MATERIALS,
-        productMenus: DUMMY_PRODUCT_MENUS,
-        toppings: DUMMY_TOPPINGS,
-        categories: DUMMY_CATEGORIES,
-        units: DUMMY_UNITS,
-        cashiers: DUMMY_CASHIERS,
-        settings: formData,
-        orders: DUMMY_ORDERS,
-        stockLogs: DUMMY_STOCK_LOGS
-      };
-
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `xcrepes_system_dummy_data_${new Date().toISOString().slice(0, 10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      showToast('File backup JSON sistem berhasil diunduh.', 'success', 'Download Sukses');
-    } catch (err) {
-      console.error(err);
-      showToast('Gagal mengunduh berkas backup JSON', 'error', 'Error Download');
-    }
-  };
-
-  // Handle Copy JSON Summary
-  const handleCopySummary = () => {
-    const summary = {
-      rawMaterials: DUMMY_RAW_MATERIALS.length,
-      productMenus: DUMMY_PRODUCT_MENUS.length,
-      toppings: DUMMY_TOPPINGS.length,
-      categories: DUMMY_CATEGORIES.length,
-      units: DUMMY_UNITS.length,
-      cashiers: DUMMY_CASHIERS.length,
-      orders: DUMMY_ORDERS.length,
-      stockLogs: DUMMY_STOCK_LOGS.length
-    };
-    navigator.clipboard.writeText(JSON.stringify(summary, null, 2));
-    setIsCopied(true);
-    showToast('Ringkasan statistik data berhasil disalin ke papan klip.', 'success', 'Tersalin');
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  // Handle Clear Local Transactions
-  const handleClearDemoData = () => {
-    if (window.confirm('Apakah Anda yakin ingin mengosongkan riwayat pesanan & mutasi stok lokal? Data master tidak akan terhapus.')) {
-      try {
-        localStorage.setItem('pos_orders', '[]');
-        localStorage.setItem('inventory_stock_logs', '[]');
-        localStorage.setItem('pos_cart', '[]');
-        showToast('Riwayat pesanan dan log mutasi lokal berhasil dikosongkan.', 'info', 'Data Dibersihkan');
-      } catch (e) {
-        showToast(e.message, 'error', 'Gagal');
-      }
-    }
-  };
 
   // Test Print receipt function
   const handleTestPrint = () => {
@@ -327,18 +208,6 @@ export const SettingsView = () => {
             >
               <Receipt size={16} />
               <span>Pengaturan Struk Kasir</span>
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${activeTab === 'database' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('database')}
-              style={{
-                ...styles.tabBtn,
-                ...(activeTab === 'database' ? styles.tabBtnActive : {})
-              }}
-            >
-              <Database size={16} />
-              <span>Data Dummy & Database</span>
             </button>
           </div>
 
@@ -728,346 +597,27 @@ export const SettingsView = () => {
             </div>
           )}
 
-          {/* TAB 3: DATA DUMMY & DATABASE */}
-          {activeTab === 'database' && (
-            <div className="blue-card settings-card" style={styles.card}>
-              <div className="settings-card-header" style={styles.cardHeader}>
-                <div style={styles.cardIconBox}>
-                  <Database size={20} color="var(--blue-600)" />
-                </div>
-                <div>
-                  <h2 style={styles.cardTitle}>Data Dummy & Manajemen Database</h2>
-                  <p style={styles.cardSubtitle}>
-                    Data dummy komprehensif diekstrak langsung dari data asli sistem (42 Bahan, 37 Menu, 30 Topping, 6 Kasir) dan mencakup seluruh fitur transaksi & mutasi.
-                  </p>
-                </div>
-              </div>
-
-              <div style={styles.formBody}>
-                {/* Status Master Data Counter Cards */}
-                <div>
-                  <label style={styles.fieldLabel}>RINGKASAN DATA ASLI SISTEM</label>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                    gap: '10px',
-                    marginTop: '8px'
-                  }}>
-                    <div style={{
-                      backgroundColor: 'var(--neutral-50)',
-                      border: '1px solid var(--neutral-200)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-600)' }}>
-                        {DUMMY_RAW_MATERIALS.length}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-700)', marginTop: '2px' }}>
-                        Bahan Baku
-                      </div>
-                      <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>Tepung, Saus, Keju, dll.</div>
-                    </div>
-
-                    <div style={{
-                      backgroundColor: 'var(--neutral-50)',
-                      border: '1px solid var(--neutral-200)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-600)' }}>
-                        {DUMMY_PRODUCT_MENUS.length}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-700)', marginTop: '2px' }}>
-                        Menu Produk
-                      </div>
-                      <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>Manis, Asin, Mini, Cake</div>
-                    </div>
-
-                    <div style={{
-                      backgroundColor: 'var(--neutral-50)',
-                      border: '1px solid var(--neutral-200)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-600)' }}>
-                        {DUMMY_TOPPINGS.length}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-700)', marginTop: '2px' }}>
-                        Topping Ekstra
-                      </div>
-                      <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>Meses, Keju, Oreo, Daging</div>
-                    </div>
-
-                    <div style={{
-                      backgroundColor: 'var(--neutral-50)',
-                      border: '1px solid var(--neutral-200)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-600)' }}>
-                        {DUMMY_CATEGORIES.length}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-700)', marginTop: '2px' }}>
-                        Kategori Menu
-                      </div>
-                      <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>5 Kategori Terstruktur</div>
-                    </div>
-
-                    <div style={{
-                      backgroundColor: 'var(--neutral-50)',
-                      border: '1px solid var(--neutral-200)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-600)' }}>
-                        {DUMMY_CASHIERS.length}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--neutral-700)', marginTop: '2px' }}>
-                        Akun Kasir
-                      </div>
-                      <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>Admin, Deri, Fitri, dll.</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cakupan Semua Fitur */}
-                <div style={{ marginTop: '16px' }}>
-                  <label style={styles.fieldLabel}>CAKUPAN FITUR PADA DATA DUMMY</label>
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    marginTop: '8px',
-                    backgroundColor: 'var(--neutral-50)',
-                    padding: '14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--neutral-200)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                      <CheckCircle2 size={18} color="var(--success-600, #16a34a)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ fontSize: '0.813rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>Transaksi Penjualan Multi-Status:</span>
-                        <div style={{ color: 'var(--neutral-600)', marginTop: '2px' }}>
-                          Mencakup transaksi <strong>Selesai</strong> (Tunai, QRIS, Kartu EDC), transaksi <strong>Direvisi</strong> (dengan catatan & selisih bayar), transaksi <strong>Diretur</strong> (alasan, foto bukti, dan pencatatan waste bahan), serta pesanan <strong>Dibatalkan</strong> (alasan pembatalan & pengembalian stok).
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                      <CheckCircle2 size={18} color="var(--success-600, #16a34a)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ fontSize: '0.813rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>Sistem Diskon Lengkap:</span>
-                        <div style={{ color: 'var(--neutral-600)', marginTop: '2px' }}>
-                          Tersedia pesanan dengan diskon per-item menu, diskon transaksi nominal tetap (Rp), dan diskon transaksi persentase (%).
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                      <CheckCircle2 size={18} color="var(--success-600, #16a34a)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ fontSize: '0.813rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>Semua 5 Tipe Mutasi Stok Bahan Baku:</span>
-                        <div style={{ color: 'var(--neutral-600)', marginTop: '2px' }}>
-                          Mencakup <code>IN</code> (Barang Masuk Supplier), <code>OUT</code> (Konsumsi Penjualan Kasir), <code>WASTE</code> (Bahan Rusak/Basi), <code>RETURN_ORDER</code> (Pengembalian Retur), dan <code>ADJUST</code> (Penyesuaian Opname Fisik).
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Data Actions */}
-                <div style={{ marginTop: '20px' }}>
-                  <label style={styles.fieldLabel}>AKSI DATA & DUMMY SEEDER</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      backgroundColor: 'var(--blue-50)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--blue-200)',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--blue-900)' }}>
-                          Suntikkan Data Dummy Lengkap
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--blue-700)' }}>
-                          Memasukkan data dummy ke penyimpanan lokal untuk pengujian instan seluruh fitur.
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="primary"
-                        icon={RefreshCw}
-                        size="sm"
-                        disabled={isInjecting}
-                        onClick={handleInjectDummyData}
-                      >
-                        {isInjecting ? 'Menyuntikkan...' : 'Suntikkan Data Dummy'}
-                      </Button>
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      backgroundColor: 'var(--neutral-50)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--neutral-200)',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
-                          Unduh Cadangan JSON (Backup Lengkap)
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-                          Unduh berkas JSON berisi seluruh data master, resep, menu, topping, dan transaksi.
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          icon={Copy}
-                          size="sm"
-                          onClick={handleCopySummary}
-                        >
-                          {isCopied ? 'Tersalin!' : 'Salin Info'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          icon={Download}
-                          size="sm"
-                          onClick={handleDownloadBackup}
-                        >
-                          Unduh JSON
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      backgroundColor: 'var(--neutral-50)',
-                      borderRadius: '8px',
-                      border: '1px solid var(--neutral-200)',
-                      flexWrap: 'wrap',
-                      gap: '12px'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--danger-700, #b91c1c)' }}>
-                          Kosongkan Riwayat Transaksi Lokal
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-                          Menghapus daftar transaksi dan log mutasi lokal (data master produk tetap aman).
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        icon={Trash2}
-                        size="sm"
-                        onClick={handleClearDemoData}
-                      >
-                        Bersihkan Riwayat
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Action Footer Bar */}
-          {activeTab !== 'database' && (
-            <div className="settings-action-card" style={styles.actionCard}>
-              <div className="settings-save-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Button
-                  type="button"
-                  variant="primary"
-                  icon={isSaved ? CheckCircle2 : Save}
-                  onClick={handleSave}
-                  size="md"
-                  className="settings-save-btn"
-                >
-                  {isSaved ? 'Perubahan Tersimpan' : 'Simpan Semua Konfigurasi'}
-                </Button>
-              </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-                Perubahan langsung diterapkan ke menu kasir dan struk cetak.
-              </span>
+          <div className="settings-action-card" style={styles.actionCard}>
+            <div className="settings-save-btn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button
+                type="button"
+                variant="primary"
+                icon={isSaved ? CheckCircle2 : Save}
+                onClick={handleSave}
+                size="md"
+                className="settings-save-btn"
+              >
+                {isSaved ? 'Perubahan Tersimpan' : 'Simpan Semua Konfigurasi'}
+              </Button>
             </div>
-          )}
+            <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
+              Perubahan langsung diterapkan ke menu kasir dan struk cetak.
+            </span>
+          </div>
         </div>
 
-        {/* Right Column: Database Schema Inspector OR Live Interactive Thermal Receipt Preview */}
-        {activeTab === 'database' ? (
-          <div className="settings-preview-column" style={styles.previewColumn}>
-            <div style={styles.previewHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sliders size={16} color="var(--blue-600)" />
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--neutral-800)' }}>
-                  Struktur & Skema Data Dummy
-                </span>
-              </div>
-              <span style={styles.paperBadge}>
-                JSON Snapshot
-              </span>
-            </div>
-
-            <p style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginBottom: '14px' }}>
-              Snapshot dataset dummy valid yang terhubung dengan modul POS, Stok Opname, Bahan Baku, dan Laporan.
-            </p>
-
-            <div style={{
-              backgroundColor: '#0f172a',
-              borderRadius: '8px',
-              padding: '14px',
-              color: '#38bdf8',
-              fontFamily: 'monospace',
-              fontSize: '0.75rem',
-              maxHeight: '520px',
-              overflowY: 'auto',
-              border: '1px solid #1e293b'
-            }}>
-              <div style={{ color: '#94a3b8', marginBottom: '8px' }}>// Ringkasan Dataset Aktif Sistem:</div>
-              <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#f1f5f9' }}>
-{JSON.stringify({
-  system: "XCrepes POS & Inventory",
-  masterEntities: {
-    rawMaterials: `${DUMMY_RAW_MATERIALS.length} items (Tepung, Margarin, Sosis, Keju, Susu, Mika, Paperbag, dll)`,
-    productMenus: `${DUMMY_PRODUCT_MENUS.length} items (Crepes Manis, Asin, Mini, Cake)`,
-    toppings: `${DUMMY_TOPPINGS.length} items (Ekstra Keju, Meses, Oreo, dll)`,
-    categories: `${DUMMY_CATEGORIES.length} items (Crepes Manis, Crepes Asin, Mini, Packaging, Dessert)`,
-    units: `${DUMMY_UNITS.length} items (Gram, Batang, ml, Bungkus, Pcs)`,
-    cashierAccounts: `${DUMMY_CASHIERS.length} users (admin, Deri, Fitri, Lathifah, Rubi, Karina)`
-  },
-  transactions: {
-    totalDummyOrders: DUMMY_ORDERS.length,
-    status: DUMMY_ORDERS.length === 0 ? "Bersih (0 Pesanan Dummy)" : `${DUMMY_ORDERS.length} Dummy Orders`
-  },
-  inventoryMutations: {
-    totalLogs: DUMMY_STOCK_LOGS.length,
-    status: DUMMY_STOCK_LOGS.length === 0 ? "Bersih (0 Log Dummy)" : `${DUMMY_STOCK_LOGS.length} Dummy Logs`
-  }
-}, null, 2)}
-              </pre>
-            </div>
-          </div>
-        ) : (
+        {/* Right Column: Live Interactive Thermal Receipt Preview */}
           <div className="settings-preview-column" style={styles.previewColumn}>
           <div style={styles.previewHeader}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1245,7 +795,6 @@ export const SettingsView = () => {
             </Button>
           </div>
         </div>
-      )}
       </div>
 
 
