@@ -54,6 +54,7 @@ export const ReportProvider = ({ children }) => {
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState('ALL'); // 'ALL' | 'cash' | 'qris' | 'card'
   const [salesItemTypeFilter, setSalesItemTypeFilter] = useState('COMBINED'); // 'COMBINED' | 'ALL' | 'MENU' | 'TOPPING'
+  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
 
   // Material Usage Tab Specific Filters
   const [materialSearchTerm, setMaterialSearchTerm] = useState('');
@@ -91,8 +92,19 @@ export const ReportProvider = ({ children }) => {
         return { start: mStart, end: todayEnd };
       }
       case 'custom': {
-        const cStart = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(0);
-        const cEnd = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : new Date();
+        if (!customStartDate && !customEndDate) {
+          return { start: new Date(0), end: new Date(2099, 11, 31) };
+        }
+        let cStart = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(0);
+        let cEnd = customEndDate
+          ? new Date(`${customEndDate}T23:59:59.999`)
+          : (customStartDate ? new Date(`${customStartDate}T23:59:59.999`) : new Date());
+
+        if (customStartDate && customEndDate && cStart > cEnd) {
+          const temp = cStart;
+          cStart = cEnd;
+          cEnd = temp;
+        }
         return { start: cStart, end: cEnd };
       }
       case 'all':
@@ -716,6 +728,8 @@ export const ReportProvider = ({ children }) => {
         setSalesPaymentFilter,
         salesItemTypeFilter,
         setSalesItemTypeFilter,
+        selectedOrderDetailId,
+        setSelectedOrderDetailId,
         enrichedOrders,
         salesSummary,
         productPerformanceList,

@@ -59,11 +59,18 @@ export const getPeriodLabel = (preset, customStartDate, customEndDate) => {
     case 'this_month':
       return 'Bulan Ini';
     case 'custom':
-      return customStartDate && customEndDate
-        ? `${customStartDate} s/d ${customEndDate}`
-        : customStartDate
-        ? `Mulai ${customStartDate}`
-        : 'Rentang Kustom';
+      if (customStartDate && customEndDate) {
+        return customStartDate === customEndDate
+          ? `Tanggal ${customStartDate}`
+          : `${customStartDate} s/d ${customEndDate}`;
+      }
+      if (customStartDate) {
+        return `Tanggal ${customStartDate}`;
+      }
+      if (customEndDate) {
+        return `Sampai ${customEndDate}`;
+      }
+      return 'Pilih Tanggal / Kustom';
     case 'all':
     default:
       return 'Semua Periode Waktu';

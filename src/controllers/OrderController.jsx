@@ -26,7 +26,14 @@ export const useOrder = () => {
 export const useOrderController = useOrder;
 
 export const OrderProvider = ({ children }) => {
-  const { rawMaterials = [], deductMaterialsForOrder, restoreMaterialsForOrder, recordOrderReturnLog } = useRawMaterial();
+  const { 
+    rawMaterials = [], 
+    deductMaterialsForOrder, 
+    restoreMaterialsForOrder, 
+    recordOrderReturnLog,
+    deductMaterialsForRemake,
+    recordOrderRefundLog
+  } = useRawMaterial();
   const { productMenus } = useProductMenu();
   const { toppings } = useTopping();
   const { showToast } = useUnit();
@@ -551,64 +558,182 @@ export const OrderProvider = ({ children }) => {
     }
   };
 
-  // Record Order Return (Retur Pesanan Gagal Buat)
-  const recordOrderReturn = async ({ orderId, reasonCategory, note = '', photo = null, user = 'Kasir' }) => {
+  // Record Order Return (Retur Pesanan: Remake / Buat Baru atau Refund / Batal)
+  const recordOrderReturn = async ({ 
+    orderId, 
+    returnAction = 'remake', 
+    returnedItems = [], 
+    reasonCategory, 
+    note = '', 
+    photo = null, 
+    user = 'Kasir' 
+  }) => {
     const targetOrder = orders.find(o => o.id === orderId || o.invoiceNumber === orderId);
     if (!targetOrder) {
       return { success: false, error: 'Pesanan tidak ditemukan.' };
     }
 
+    // Determine items being returned
+    let itemsToProcess = returnedItems;
+    if (!Array.isArray(itemsToProcess) || itemsToProcess.length === 0) {
+      // Default fallback: return all remaining unreturned quantities
+      itemsToProcess = (targetOrder.items || []).map(it => {
+        const remaining = Math.max(0, (Number(it.quantity) || 1) - (Number(it.returnedQty) || 0));
+        return {
+          ...it,
+          quantity: remaining
+        };
+      }).filter(it => it.quantity > 0);
+    }
+
+    if (itemsToProcess.length === 0) {
+      return { success: false, error: 'Semua item dalam pesanan ini sudah diretur sebelumnya.' };
+    }
+
     setIsSubmitting(true);
     try {
-      const { error: returnErr } = await ordersService.updateOrderReturn(targetOrder.id, {
-        reason: reasonCategory || 'Adonan Gosong / Kesalahan Pembuatan',
-        note,
-        photo,
-        user: user || targetOrder.cashierName || 'Kasir'
-      });
+      const now = new Date().toISOString();
+      const currentUserName = user || targetOrder.cashierName || 'Kasir';
+      const reason = reasonCategory || 'Adonan Gosong / Kesalahan Pembuatan';
 
-      if (returnErr) {
-        showToast(`Gagal meretur pesanan: ${returnErr.message}`, 'error', 'Error Database');
-        return { success: false, error: returnErr.message };
+      // 1. Process inventory updates based on return action
+      let inventoryResult = { success: true };
+      if (returnAction === 'remake') {
+        if (typeof deductMaterialsForRemake === 'function') {
+          inventoryResult = await deductMaterialsForRemake({
+            order: targetOrder,
+            returnItems: itemsToProcess,
+            reason,
+            note,
+            photo,
+            user: currentUserName,
+            menus: productMenus,
+            toppings
+          });
+        }
+      } else {
+        // 'refund' action: log wasted items / portions without remake deduction
+        if (typeof recordOrderRefundLog === 'function') {
+          inventoryResult = await recordOrderRefundLog({
+            order: targetOrder,
+            returnItems: itemsToProcess,
+            reason,
+            note,
+            photo,
+            user: currentUserName,
+            menus: productMenus,
+            toppings
+          });
+        }
       }
 
-      const returnTimestamp = new Date().toISOString();
+      if (!inventoryResult.success && inventoryResult.error) {
+        showToast(`Gagal memproses stok bahan: ${inventoryResult.error}`, 'error', 'Peringatan Bahan');
+      }
+
+      // 2. Compute updated items with returned quantities and event logs
+      const updatedItems = (targetOrder.items || []).map(item => {
+        const matchingReturn = itemsToProcess.find(r => 
+          (r.id && item.id && r.id === item.id) || 
+          (r.menuId && item.menuId && r.menuId === item.menuId) ||
+          (r.name === item.name)
+        );
+        if (matchingReturn) {
+          const retQty = Number(matchingReturn.quantity) || 0;
+          const prevReturnedQty = Number(item.returnedQty) || 0;
+          const newReturnedQty = prevReturnedQty + retQty;
+
+          const newReturnEvents = [
+            ...(Array.isArray(item.returnEvents) ? item.returnEvents : []),
+            {
+              action: returnAction,
+              quantity: retQty,
+              reason,
+              note: note.trim(),
+              photo,
+              user: currentUserName,
+              timestamp: now
+            }
+          ];
+
+          return {
+            ...item,
+            returnedQty: newReturnedQty,
+            lastReturnAction: returnAction,
+            returnEvents: newReturnEvents
+          };
+        }
+        return item;
+      });
+
+      // 3. Compute new order status
+      // Remake: customer receives replacement food, sales revenue remains intact!
+      // Refund: if all quantities across all items are returned => 'returned', else => 'partially_returned'
+      let newOrderStatus = targetOrder.status;
+      if (returnAction === 'refund') {
+        const isAllItemsFullyReturned = updatedItems.every(it => {
+          const qty = Number(it.quantity) || 1;
+          const ret = Number(it.returnedQty) || 0;
+          return ret >= qty;
+        });
+        newOrderStatus = isAllItemsFullyReturned ? 'returned' : 'partially_returned';
+      } else if (returnAction === 'remake') {
+        // Ensure status stays active (e.g. 'completed' or existing)
+        newOrderStatus = targetOrder.status === 'returned' ? 'completed' : (targetOrder.status || 'completed');
+      }
+
+      // 4. Update in Supabase cloud
+      const payload = {
+        items: updatedItems,
+        status: newOrderStatus,
+        return_reason: reason,
+        return_note: note.trim() || '',
+        return_photo: photo || null,
+        return_by: currentUserName,
+        returned_at: now
+      };
+
+      const { error: updateErr } = await ordersService.updateOrder(targetOrder.id, payload);
+      if (updateErr) {
+        showToast(`Gagal menyimpan perubahan ke cloud: ${updateErr.message}`, 'error', 'Error Database');
+        return { success: false, error: updateErr.message };
+      }
+
+      // 5. Update local state
       setOrders(prev => prev.map(o => {
         if (o.id === targetOrder.id) {
           return {
             ...o,
-            status: 'returned',
-            returnReason: reasonCategory || 'Adonan Gosong / Kesalahan Pembuatan',
+            items: updatedItems,
+            status: newOrderStatus,
+            returnReason: reason,
             returnNote: note.trim() || '',
             returnPhoto: photo || null,
-            returnBy: user || o.cashierName || 'Kasir',
-            returnedAt: returnTimestamp
+            returnBy: currentUserName,
+            returnedAt: now
           };
         }
         return o;
       }));
 
-      try {
-        if (typeof recordOrderReturnLog === 'function') {
-          await recordOrderReturnLog({
-            order: targetOrder,
-            reason: reasonCategory,
-            note,
-            photo,
-            user
-          });
-        }
-      } catch (e) {
-        console.error('Failed to log order return in stockLogs', e);
+      const itemsSummary = itemsToProcess.map(it => `${it.quantity}x ${it.name}`).join(', ');
+      if (returnAction === 'remake') {
+        showToast(
+          `Pesanan #${targetOrder.invoiceNumber} (${itemsSummary}) berhasil diproses BUAT BARU. Bahan dapur terpotong otomatis.`,
+          'success',
+          'Remake Pesanan Berhasil'
+        );
+      } else {
+        showToast(
+          `Pesanan #${targetOrder.invoiceNumber} (${itemsSummary}) berhasil di-REFUND.`,
+          'info',
+          'Refund Selesai'
+        );
       }
 
-      showToast(
-        `Pesanan #${targetOrder.invoiceNumber} berhasil diretur di database cloud.`,
-        'info',
-        'Pesanan Diretur'
-      );
       return { success: true };
     } catch (err) {
+      console.error('recordOrderReturn error:', err);
       showToast(err.message, 'error', 'Error');
       return { success: false, error: err.message };
     } finally {

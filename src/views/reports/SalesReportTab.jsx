@@ -48,7 +48,9 @@ export const SalesReportTab = () => {
     salesItemTypeFilter,
     setSalesItemTypeFilter,
     activeSalesSection,
-    setActiveSalesSection
+    setActiveSalesSection,
+    selectedOrderDetailId,
+    setSelectedOrderDetailId
   } = useReport();
 
   const { openReceiptModal, openOrderReturnModal, openOrderCancelModal, openOrderRevisionModal } = useOrder();
@@ -61,9 +63,6 @@ export const SalesReportTab = () => {
   // Local independent search states for both sub-menus
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
   const [transactionSearchTerm, setTransactionSearchTerm] = useState('');
-
-  // Selected Order for Detail View
-  const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
 
   // Reset detail view when switching between summary and transactions
   useEffect(() => {
@@ -154,95 +153,97 @@ export const SalesReportTab = () => {
   return (
     <div className="sales-report-tab" style={styles.container}>
       {/* 1. TOP OVERALL KPI SUMMARY CARDS */}
-      <div className="reports-kpi-grid" style={styles.kpiGrid}>
-        {/* Total Omset */}
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiHeader}>
-            <span style={styles.kpiLabel}>Total Omset (Pendapatan Kotor)</span>
-            <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--blue-50)', color: 'var(--blue-500)' }}>
-              <DollarSign size={18} />
-            </div>
-          </div>
-          <div style={styles.kpiValue}>{formatIDR(salesSummary.totalGrossRevenue)}</div>
-          <div style={styles.kpiMeta}>
-            <span style={styles.metaHighlight}>{salesSummary.totalTransactions} Transaksi Selesai</span>
-          </div>
-        </div>
-
-        {/* Khusus Kasir: Tampilkan Total Transaksi sebagai card mandiri */}
-        {!showProfitMetrics && (
+      {!selectedOrder && (
+        <div className="reports-kpi-grid" style={styles.kpiGrid}>
+          {/* Total Omset */}
           <div style={styles.kpiCard}>
             <div style={styles.kpiHeader}>
-              <span style={styles.kpiLabel}>Total Transaksi Selesai</span>
-              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
-                <Receipt size={18} />
+              <span style={styles.kpiLabel}>Total Omset (Pendapatan Kotor)</span>
+              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--blue-50)', color: 'var(--blue-500)' }}>
+                <DollarSign size={18} />
+              </div>
+            </div>
+            <div style={styles.kpiValue}>{formatIDR(salesSummary.totalGrossRevenue)}</div>
+            <div style={styles.kpiMeta}>
+              <span style={styles.metaHighlight}>{salesSummary.totalTransactions} Transaksi Selesai</span>
+            </div>
+          </div>
+
+          {/* Khusus Kasir: Tampilkan Total Transaksi sebagai card mandiri */}
+          {!showProfitMetrics && (
+            <div style={styles.kpiCard}>
+              <div style={styles.kpiHeader}>
+                <span style={styles.kpiLabel}>Total Transaksi Selesai</span>
+                <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
+                  <Receipt size={18} />
+                </div>
+              </div>
+              <div style={styles.kpiValue}>
+                {salesSummary.totalTransactions}{' '}
+                <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--neutral-500)' }}>transaksi</span>
+              </div>
+              <div style={styles.kpiMeta}>
+                <span>Rata-rata: {salesSummary.totalTransactions > 0 ? formatIDR(salesSummary.totalGrossRevenue / salesSummary.totalTransactions) : 'Rp 0'} / order</span>
+              </div>
+            </div>
+          )}
+
+          {/* Total Estimasi HPP - Khusus Super Admin */}
+          {showProfitMetrics && (
+            <div style={styles.kpiCard}>
+              <div style={styles.kpiHeader}>
+                <span style={styles.kpiLabel}>Total Estimasi HPP (Bahan)</span>
+                <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--amber-50)', color: 'var(--amber-600)' }}>
+                  <Receipt size={18} />
+                </div>
+              </div>
+              <div style={{ ...styles.kpiValue, color: 'var(--neutral-800)' }}>
+                {formatIDR(salesSummary.totalEstimatedHPP)}
+              </div>
+              <div style={styles.kpiMeta}>
+                <span>Biaya resep menu + topping</span>
+              </div>
+            </div>
+          )}
+
+          {/* Total Laba Bersih - Khusus Super Admin */}
+          {showProfitMetrics && (
+            <div style={{ ...styles.kpiCard, borderLeft: '4px solid var(--green-500)' }}>
+              <div style={styles.kpiHeader}>
+                <span style={styles.kpiLabel}>Pendapatan Bersih (Laba Kotor)</span>
+                <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
+                  <TrendingUp size={18} />
+                </div>
+              </div>
+              <div style={{ ...styles.kpiValue, color: 'var(--green-600)' }}>
+                {formatIDR(salesSummary.totalNetProfit)}
+              </div>
+              <div style={styles.kpiMeta}>
+                <span style={{ ...styles.badgeGreen, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                  <Percent size={11} /> Margin: {salesSummary.grossProfitMargin.toFixed(1)}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Produk Terjual */}
+          <div style={styles.kpiCard}>
+            <div style={styles.kpiHeader}>
+              <span style={styles.kpiLabel}>Total Produk Terjual</span>
+              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--purple-50, #f3e8ff)', color: '#8b5cf6' }}>
+                <ShoppingBag size={18} />
               </div>
             </div>
             <div style={styles.kpiValue}>
-              {salesSummary.totalTransactions}{' '}
-              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--neutral-500)' }}>transaksi</span>
+              {salesSummary.totalAllItemsSold}{' '}
+              <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--neutral-500)' }}>porsi/item</span>
             </div>
             <div style={styles.kpiMeta}>
-              <span>Rata-rata: {salesSummary.totalTransactions > 0 ? formatIDR(salesSummary.totalGrossRevenue / salesSummary.totalTransactions) : 'Rp 0'} / order</span>
+              <span>{salesSummary.totalMenuQtySold} Menu • {salesSummary.totalToppingQtySold} Topping</span>
             </div>
-          </div>
-        )}
-
-        {/* Total Estimasi HPP - Khusus Super Admin */}
-        {showProfitMetrics && (
-          <div style={styles.kpiCard}>
-            <div style={styles.kpiHeader}>
-              <span style={styles.kpiLabel}>Total Estimasi HPP (Bahan)</span>
-              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--amber-50)', color: 'var(--amber-600)' }}>
-                <Receipt size={18} />
-              </div>
-            </div>
-            <div style={{ ...styles.kpiValue, color: 'var(--neutral-800)' }}>
-              {formatIDR(salesSummary.totalEstimatedHPP)}
-            </div>
-            <div style={styles.kpiMeta}>
-              <span>Biaya resep menu + topping</span>
-            </div>
-          </div>
-        )}
-
-        {/* Total Laba Bersih - Khusus Super Admin */}
-        {showProfitMetrics && (
-          <div style={{ ...styles.kpiCard, borderLeft: '4px solid var(--green-500)' }}>
-            <div style={styles.kpiHeader}>
-              <span style={styles.kpiLabel}>Pendapatan Bersih (Laba Kotor)</span>
-              <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
-                <TrendingUp size={18} />
-              </div>
-            </div>
-            <div style={{ ...styles.kpiValue, color: 'var(--green-600)' }}>
-              {formatIDR(salesSummary.totalNetProfit)}
-            </div>
-            <div style={styles.kpiMeta}>
-              <span style={{ ...styles.badgeGreen, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                <Percent size={11} /> Margin: {salesSummary.grossProfitMargin.toFixed(1)}%
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Produk Terjual */}
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiHeader}>
-            <span style={styles.kpiLabel}>Total Produk Terjual</span>
-            <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--purple-50, #f3e8ff)', color: '#8b5cf6' }}>
-              <ShoppingBag size={18} />
-            </div>
-          </div>
-          <div style={styles.kpiValue}>
-            {salesSummary.totalAllItemsSold}{' '}
-            <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--neutral-500)' }}>porsi/item</span>
-          </div>
-          <div style={styles.kpiMeta}>
-            <span>{salesSummary.totalMenuQtySold} Menu • {salesSummary.totalToppingQtySold} Topping</span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2. TAMPILAN SESUAI SUB-MENU AKTIF DARI SIDEBAR */}
       {activeSalesSection === 'products' ? (

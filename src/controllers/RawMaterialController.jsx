@@ -638,7 +638,245 @@ export const RawMaterialProvider = ({ children }) => {
     }
   };
 
-  // C.5 Record Order Return Log
+  // C.4.1 Calculate ingredients breakdown for a list of items and toppings
+  const calculateIngredientsForItems = useCallback((items = [], menus = [], toppings = []) => {
+    const ingredientMap = {};
+
+    items.forEach(item => {
+      const itemQty = Number(item.quantity) || 1;
+      const matchedMenu = menus.find(m => m.id === item.menuId);
+      const menuIngredients = (matchedMenu && matchedMenu.ingredients) || (item.ingredients) || [];
+
+      menuIngredients.forEach(ing => {
+        const requiredQty = (Number(ing.quantity) || 0) * itemQty;
+        if (requiredQty > 0 && ing.rawMaterialId) {
+          const mat = rawMaterials.find(m => m.id === ing.rawMaterialId);
+          if (!ingredientMap[ing.rawMaterialId]) {
+            ingredientMap[ing.rawMaterialId] = {
+              rawMaterialId: ing.rawMaterialId,
+              rawMaterialName: mat ? mat.name : (ing.rawMaterialName || 'Bahan Baku'),
+              unitName: mat ? mat.unitName : (ing.unitName || 'satuan'),
+              amount: 0,
+              currentStock: mat ? (Number(mat.stock ?? mat.currentStock ?? 0)) : 0,
+              pricePerUnit: mat ? (mat.pricePerUnit || 0) : 0,
+              sources: []
+            };
+          }
+          ingredientMap[ing.rawMaterialId].amount += requiredQty;
+          ingredientMap[ing.rawMaterialId].sources.push({
+            itemName: item.name,
+            qty: itemQty,
+            isTopping: false
+          });
+        }
+      });
+
+      if (Array.isArray(item.toppings)) {
+        item.toppings.forEach(t => {
+          const matchedTopping = toppings.find(top => top.id === (t.id || t.toppingId));
+          const toppingIngredients = (matchedTopping && matchedTopping.ingredients) || [];
+          const toppingQty = Number(t.quantity) || 1;
+
+          toppingIngredients.forEach(ting => {
+            const requiredQty = (Number(ting.quantity) || 0) * toppingQty * itemQty;
+            if (requiredQty > 0 && ting.rawMaterialId) {
+              const mat = rawMaterials.find(m => m.id === ting.rawMaterialId);
+              if (!ingredientMap[ting.rawMaterialId]) {
+                ingredientMap[ting.rawMaterialId] = {
+                  rawMaterialId: ting.rawMaterialId,
+                  rawMaterialName: mat ? mat.name : (ting.rawMaterialName || 'Bahan Topping'),
+                  unitName: mat ? mat.unitName : (ting.unitName || 'satuan'),
+                  amount: 0,
+                  currentStock: mat ? (Number(mat.stock ?? mat.currentStock ?? 0)) : 0,
+                  pricePerUnit: mat ? (mat.pricePerUnit || 0) : 0,
+                  sources: []
+                };
+              }
+              ingredientMap[ting.rawMaterialId].amount += requiredQty;
+              ingredientMap[ting.rawMaterialId].sources.push({
+                itemName: `${item.name} (+${t.name})`,
+                qty: toppingQty * itemQty,
+                isTopping: true
+              });
+            }
+          });
+        });
+      }
+    });
+
+    return Object.values(ingredientMap).map(ing => ({
+      ...ing,
+      amount: Math.round(ing.amount * 1000) / 1000,
+      totalCost: Math.round(ing.amount * ing.pricePerUnit)
+    }));
+  }, [rawMaterials]);
+
+  // C.4.2 Deduct Raw Materials for Remade (Gagal Buat) Items
+  const deductMaterialsForRemake = async ({ order, returnItems = [], reason = '', note = '', photo = null, user = 'Kasir', menus = [], toppings = [] }) => {
+    if (!order || !Array.isArray(returnItems) || returnItems.length === 0) {
+      return { success: false, error: 'Tidak ada item retur yang diproses.' };
+    }
+
+    const calculatedIngredients = calculateIngredientsForItems(returnItems, menus, toppings);
+    const newLogs = [];
+    const stockUpdates = [];
+    let updatedMaterials = [...rawMaterials];
+    const now = new Date().toISOString();
+
+    if (calculatedIngredients.length > 0) {
+      calculatedIngredients.forEach(calc => {
+        const matIndex = updatedMaterials.findIndex(m => m.id === calc.rawMaterialId);
+        if (matIndex !== -1) {
+          const mat = updatedMaterials[matIndex];
+          const prevStock = Number(mat.stock ?? mat.currentStock ?? 0) || 0;
+          const deductionAmt = calc.amount;
+          const newStock = Math.max(0, Math.round((prevStock - deductionAmt) * 1000) / 1000);
+
+          updatedMaterials[matIndex] = {
+            ...mat,
+            stock: newStock,
+            currentStock: newStock,
+            updatedAt: now
+          };
+
+          stockUpdates.push({ id: mat.id, stock: newStock });
+
+          const itemsSummary = returnItems.map(it => `${it.quantity}x ${it.name}`).join(', ');
+
+          newLogs.push({
+            id: `LOG-REMAKE-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            rawMaterialId: mat.id,
+            rawMaterialName: mat.name,
+            unitName: mat.unitName,
+            type: 'OUT',
+            amount: deductionAmt,
+            previousStock: prevStock,
+            currentStock: newStock,
+            note: `[RETUR REMAKE] Pembuatan ulang ${itemsSummary} (Pesanan #${order.invoiceNumber}) - Alasan: ${reason}${note ? ` (${note})` : ''}`,
+            reason,
+            photo: photo || null,
+            referenceInvoice: order.invoiceNumber,
+            orderId: order.id,
+            customerName: order.customerName || 'Pelanggan Umum',
+            sourceMenu: itemsSummary,
+            sourceType: 'RETURN_REMAKE',
+            user: user || 'Kasir',
+            createdAt: now
+          });
+        }
+      });
+    }
+
+    // Also add audit return logs for each returned item so it's captured in the Returns table
+    returnItems.forEach(item => {
+      newLogs.push({
+        id: `LOG-RET-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        rawMaterialId: item.menuId || null,
+        rawMaterialName: item.name,
+        unitName: 'porsi',
+        type: 'RETURN_ORDER',
+        amount: Number(item.quantity) || 1,
+        previousStock: 0,
+        currentStock: 0,
+        reason: `[REMAKE] ${reason}`,
+        note: note || reason,
+        photo: photo || null,
+        referenceInvoice: order.invoiceNumber,
+        orderId: order.id,
+        customerName: order.customerName,
+        sourceMenu: item.name,
+        sourceType: 'RETURN_REMAKE',
+        user: user || 'Kasir',
+        createdAt: now
+      });
+    });
+
+    try {
+      if (stockUpdates.length > 0) {
+        await rawMaterialsService.updateStocksBatch(stockUpdates);
+        setRawMaterials(updatedMaterials);
+      }
+      if (newLogs.length > 0) {
+        await stockLogsService.createStockLogsBatch(newLogs);
+        setStockLogs(prev => [...newLogs, ...prev]);
+      }
+
+      return { 
+        success: true, 
+        deductionsCount: stockUpdates.length, 
+        deductedIngredients: calculatedIngredients 
+      };
+    } catch (err) {
+      console.error('Failed to deduct remake materials:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // C.4.3 Record Refunded Return Items (Wasted portion without remake)
+  const recordOrderRefundLog = async ({ order, returnItems = [], reason = '', note = '', photo = null, user = 'Kasir', menus = [], toppings = [] }) => {
+    if (!order || !Array.isArray(returnItems) || returnItems.length === 0) return { success: false };
+
+    const calculatedIngredients = calculateIngredientsForItems(returnItems, menus, toppings);
+    const returnLogs = [];
+    const now = new Date().toISOString();
+
+    returnItems.forEach(item => {
+      returnLogs.push({
+        id: `LOG-RET-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        rawMaterialId: item.menuId || null,
+        rawMaterialName: item.name,
+        unitName: 'porsi',
+        type: 'RETURN_ORDER',
+        amount: Number(item.quantity) || 1,
+        previousStock: 0,
+        currentStock: 0,
+        reason: `[REFUND] ${reason}`,
+        note: note || reason,
+        photo: photo || null,
+        referenceInvoice: order.invoiceNumber,
+        orderId: order.id,
+        customerName: order.customerName,
+        sourceMenu: item.name,
+        sourceType: 'ORDER_RETURN',
+        user: user || 'Kasir',
+        createdAt: now
+      });
+    });
+
+    // Also record waste of ingredients from the returned portion that was thrown away
+    calculatedIngredients.forEach(calc => {
+      returnLogs.push({
+        id: `LOG-WASTE-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        rawMaterialId: calc.rawMaterialId,
+        rawMaterialName: calc.rawMaterialName,
+        unitName: calc.unitName,
+        type: 'WASTE',
+        amount: calc.amount,
+        previousStock: calc.currentStock,
+        currentStock: calc.currentStock,
+        reason: `Retur Refund: ${reason}`,
+        note: `Bahan terbuang akibat retur refund ${calc.sources.map(s => s.itemName).join(', ')} (Pesanan #${order.invoiceNumber})`,
+        referenceInvoice: order.invoiceNumber,
+        orderId: order.id,
+        customerName: order.customerName,
+        sourceMenu: calc.rawMaterialName,
+        sourceType: 'WASTE',
+        user: user || 'Kasir',
+        createdAt: now
+      });
+    });
+
+    try {
+      await stockLogsService.createStockLogsBatch(returnLogs);
+      setStockLogs(prev => [...returnLogs, ...prev]);
+      return { success: true };
+    } catch (err) {
+      console.error('Failed to log order refund waste:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // C.5 Record Order Return Log (Backward-compatible)
   const recordOrderReturnLog = async ({ order, reason, note, photo, user }) => {
     if (!order || !Array.isArray(order.items)) return { success: false };
 
@@ -1767,6 +2005,9 @@ export const RawMaterialProvider = ({ children }) => {
         recordMaterialWaste,
         deductMaterialsForOrder,
         restoreMaterialsForOrder,
+        calculateIngredientsForItems,
+        deductMaterialsForRemake,
+        recordOrderRefundLog,
         recordOrderReturnLog,
         formModalState,
         openAddModal,

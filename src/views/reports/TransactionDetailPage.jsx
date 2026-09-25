@@ -545,6 +545,17 @@ export const TransactionDetailPage = ({
           display: none;
         }
 
+        .transaction-detail-back-btn {
+          height: 48px !important;
+          min-height: 48px !important;
+          box-sizing: border-box !important;
+        }
+
+        .transaction-detail-back-btn:hover {
+          background-color: var(--neutral-50) !important;
+          border-color: var(--neutral-400) !important;
+        }
+
         /* 1. Tablet & Medium Screens <= 1024px */
         @media (max-width: 1024px) {
           .transaction-detail-grid {
@@ -569,8 +580,11 @@ export const TransactionDetailPage = ({
           .transaction-detail-back-btn {
             width: 100% !important;
             justify-content: center !important;
-            padding: 10px 16px !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            padding: 0 16px !important;
             font-size: 0.875rem !important;
+            box-sizing: border-box !important;
           }
 
           .transaction-detail-breadcrumb {
@@ -707,16 +721,19 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '8px 14px',
+    height: '48px',
+    minHeight: '48px',
+    padding: '0 18px',
     borderRadius: '8px',
     border: '1px solid var(--neutral-300)',
     backgroundColor: '#ffffff',
     color: 'var(--neutral-800)',
-    fontSize: '0.844rem',
+    fontSize: '0.875rem',
     fontWeight: 700,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+    boxSizing: 'border-box'
   },
   breadcrumbText: {
     fontSize: '0.781rem',

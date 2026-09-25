@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useUnit } from '../../controllers/UnitController';
 import { useAuth } from '../../controllers/AuthController';
@@ -27,6 +27,9 @@ export const ReportsView = () => {
     setActiveReportTab,
     activeSalesSection,
     setActiveSalesSection,
+    selectedOrderDetailId,
+    setSelectedOrderDetailId,
+    enrichedOrders = [],
     dateRangePreset,
     setDateRangePreset,
     customStartDate,
@@ -37,8 +40,16 @@ export const ReportsView = () => {
     handleExportPDF
   } = useReport();
 
+  const selectedOrder = useMemo(() => {
+    if (!selectedOrderDetailId) return null;
+    return (enrichedOrders || []).find(o => o.id === selectedOrderDetailId) || null;
+  }, [selectedOrderDetailId, enrichedOrders]);
+
   // Sync active report tab and section when sidebar menu changes
   useEffect(() => {
+    if (typeof setSelectedOrderDetailId === 'function') {
+      setSelectedOrderDetailId(null);
+    }
     if (activeMenu === 'reports-sales' || activeMenu === 'reports-sales-summary') {
       setActiveReportTab('sales');
       setActiveSalesSection('products');
@@ -48,21 +59,27 @@ export const ReportsView = () => {
     } else if (activeMenu === 'reports-materials') {
       setActiveReportTab('materials');
     }
-  }, [activeMenu, setActiveReportTab, setActiveSalesSection]);
+  }, [activeMenu, setActiveReportTab, setActiveSalesSection, setSelectedOrderDetailId]);
 
-  const salesTitle = activeSalesSection === 'transactions'
-    ? 'Riwayat Transaksi Penjualan'
-    : (isSuperAdmin ? 'Summary Penjualan Menu & Laba HPP' : 'Summary Penjualan Menu & Topping');
+  const salesTitle = selectedOrder
+    ? 'Detail Transaksi Penjualan'
+    : (activeSalesSection === 'transactions'
+      ? 'Riwayat Transaksi Penjualan'
+      : (isSuperAdmin ? 'Summary Penjualan Menu & Laba HPP' : 'Summary Penjualan Menu & Topping'));
 
-  const salesSubtitle = activeSalesSection === 'transactions'
-    ? 'Daftar lengkap seluruh transaksi pesanan kasir, nomor invoice, kasir yang bertugas, dan status pembayaran.'
-    : (isSuperAdmin
-      ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
-      : 'Pantau ringkasan omset penjualan porsi menu dan extra topping yang terjual.');
+  const salesSubtitle = selectedOrder
+    ? `Rincian lengkap pesanan #${selectedOrder.invoiceNumber}, status pembayaran kasir, serta rincian pemakaian bahan baku.`
+    : (activeSalesSection === 'transactions'
+      ? 'Daftar lengkap seluruh transaksi pesanan kasir, nomor invoice, kasir yang bertugas, dan status pembayaran.'
+      : (isSuperAdmin
+        ? 'Pantau ringkasan omset penjualan, estimasi HPP produk & extra topping, serta audit keuntungan bersih secara akurat.'
+        : 'Pantau ringkasan omset penjualan porsi menu dan extra topping yang terjual.'));
 
-  const badgeText = activeReportTab === 'materials'
-    ? 'Audit Pengurangan Stok'
-    : (activeSalesSection === 'transactions' ? 'Riwayat Transaksi Kasir' : 'Omset & Performa Menu');
+  const badgeText = selectedOrder
+    ? `Invoice #${selectedOrder.invoiceNumber}`
+    : (activeReportTab === 'materials'
+      ? 'Audit Pengurangan Stok'
+      : (activeSalesSection === 'transactions' ? 'Riwayat Transaksi Kasir' : 'Omset & Performa Menu'));
 
   return (
     <div className="reports-page animate-fade-in" style={styles.container}>
@@ -86,12 +103,13 @@ export const ReportsView = () => {
       </div>
 
       {/* 2. DATE RANGE PRESET FILTER BAR (DROPDOWN) & EXPORT ACTIONS */}
-      <div className="reports-date-filter-card" style={styles.dateFilterCard}>
-        <div className="reports-date-filter-left" style={styles.dateFilterLeft}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--neutral-700)', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            <Calendar size={16} color="var(--blue-500)" />
-            <span>Periode Waktu:</span>
-          </div>
+      {!selectedOrder && (
+        <div className="reports-date-filter-card" style={styles.dateFilterCard}>
+          <div className="reports-date-filter-left" style={styles.dateFilterLeft}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--neutral-700)', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              <Calendar size={16} color="var(--blue-500)" />
+              <span>Periode Waktu:</span>
+            </div>
 
           <div style={{ minWidth: '190px' }}>
             <SearchSelect
@@ -102,7 +120,7 @@ export const ReportsView = () => {
                 { value: '7days', label: '7 Hari Terakhir' },
                 { value: '30days', label: '30 Hari Terakhir' },
                 { value: 'this_month', label: 'Bulan Ini' },
-                { value: 'custom', label: 'Kustom (Rentang Tanggal)' }
+                { value: 'custom', label: 'Pilih Tanggal / Kustom' }
               ]}
               value={dateRangePreset}
               onChange={(val) => setDateRangePreset(val)}
@@ -121,6 +139,7 @@ export const ReportsView = () => {
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
                 style={styles.dateInput}
+                title="Pilih tanggal awal / tanggal tertentu"
               />
               <span style={{ color: 'var(--neutral-400)', fontSize: '12px', fontWeight: 600 }}>s/d</span>
               <input
@@ -128,7 +147,21 @@ export const ReportsView = () => {
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
                 style={styles.dateInput}
+                title="Pilih tanggal akhir (opsional untuk rentang)"
               />
+              {(customStartDate || customEndDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomStartDate('');
+                    setCustomEndDate('');
+                  }}
+                  style={styles.dateClearBtn}
+                  title="Reset pilihan tanggal"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -156,7 +189,8 @@ export const ReportsView = () => {
             </button>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {/* 3. ACTIVE REPORT CONTENT */}
       <div style={styles.contentSection}>
@@ -322,6 +356,19 @@ const styles = {
     backgroundColor: 'var(--bg-surface)',
     outline: 'none',
     boxSizing: 'border-box'
+  },
+  dateClearBtn: {
+    border: 'none',
+    background: 'none',
+    color: 'var(--neutral-400)',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '6px',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'color 0.15s ease'
   },
   contentSection: {
     marginTop: '6px'

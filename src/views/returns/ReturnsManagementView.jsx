@@ -57,7 +57,9 @@ export const ReturnsManagementView = () => {
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'WEEK' | 'MONTH'
+  const [dateFilter, setDateFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK' | 'MONTH' | 'CUSTOM'
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [reasonFilter, setReasonFilter] = useState('ALL');
 
   // Format IDR Helper
@@ -100,6 +102,16 @@ export const ReturnsManagementView = () => {
       );
     }
 
+    if (dateFilter === 'YESTERDAY') {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return (
+        itemDate.getDate() === yesterday.getDate() &&
+        itemDate.getMonth() === yesterday.getMonth() &&
+        itemDate.getFullYear() === yesterday.getFullYear()
+      );
+    }
+
     if (dateFilter === 'WEEK') {
       const weekAgo = new Date();
       weekAgo.setDate(now.getDate() - 7);
@@ -113,12 +125,31 @@ export const ReturnsManagementView = () => {
       );
     }
 
+    if (dateFilter === 'CUSTOM') {
+      if (!customStartDate && !customEndDate) return true;
+      let s = customStartDate ? new Date(`${customStartDate}T00:00:00`) : new Date(0);
+      let e = customEndDate
+        ? new Date(`${customEndDate}T23:59:59.999`)
+        : (customStartDate ? new Date(`${customStartDate}T23:59:59.999`) : new Date());
+
+      if (customStartDate && customEndDate && s > e) {
+        const tmp = s;
+        s = e;
+        e = tmp;
+      }
+      return itemDate >= s && itemDate <= e;
+    }
+
     return true;
   };
 
   // 1. Raw Data Extraction
   const returnedOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'returned');
+    return orders.filter(o => 
+      o.status === 'returned' || 
+      o.status === 'partially_returned' || 
+      (Array.isArray(o.items) && o.items.some(it => (Number(it.returnedQty) || 0) > 0 || (Array.isArray(it.returnEvents) && it.returnEvents.length > 0)))
+    );
   }, [orders]);
 
   const wasteLogs = useMemo(() => {
@@ -132,9 +163,25 @@ export const ReturnsManagementView = () => {
   // 2. Calculations for Stat Cards
   const stats = useMemo(() => {
     const totalReturnedCount = returnedOrders.length;
-    const totalCancelledSales = returnedOrders.reduce((sum, o) => sum + (o.grossRevenue || 0), 0);
-    const totalWastedHPP = returnedOrders.reduce((sum, o) => sum + (o.orderTotalHPP || 0), 0);
+    
+    // Only count cancelled sales for refunded items / orders (not for remake)
+    const totalCancelledSales = returnedOrders.reduce((sum, o) => {
+      if (o.status === 'returned') {
+        return sum + (o.grossRevenue || o.totalAmount || 0);
+      }
+      if (o.status === 'partially_returned') {
+        const refundedVal = (o.items || []).reduce((itemSum, it) => {
+          if (it.lastReturnAction === 'refund' && it.returnedQty > 0) {
+            return itemSum + ((Number(it.unitPrice || it.price) || 0) * (Number(it.returnedQty) || 1));
+          }
+          return itemSum;
+        }, 0);
+        return sum + refundedVal;
+      }
+      return sum;
+    }, 0);
 
+    const totalWastedHPP = returnedOrders.reduce((sum, o) => sum + (o.orderTotalHPP || 0), 0);
     const totalWasteLogsCount = wasteLogs.length;
     
     // Calculate raw material waste loss (qty * pricePerUnit)
@@ -175,7 +222,7 @@ export const ReturnsManagementView = () => {
 
       return matchesSearch && matchesReason && matchesDate;
     });
-  }, [returnedOrders, searchQuery, reasonFilter, dateFilter, isCashier]);
+  }, [returnedOrders, searchQuery, reasonFilter, dateFilter, customStartDate, customEndDate, isCashier]);
 
   const filteredWasteLogs = useMemo(() => {
     return wasteLogs.filter(log => {
@@ -190,24 +237,27 @@ export const ReturnsManagementView = () => {
 
       return matchesSearch && matchesReason && matchesDate;
     });
-  }, [wasteLogs, searchQuery, reasonFilter, dateFilter, isCashier]);
+  }, [wasteLogs, searchQuery, reasonFilter, dateFilter, customStartDate, customEndDate, isCashier]);
 
   // 4. Combined Audit Timeline
   const combinedAuditLogs = useMemo(() => {
     const list = [
-      ...(!isCashier ? returnedOrders.map(o => ({
-        id: `ret_order_${o.id}`,
-        category: 'ORDER_RETURN',
-        timestamp: o.returnedAt || o.date,
-        title: `Retur Pesanan: #${o.invoiceNumber}`,
-        subtitle: `${o.customerName || 'Pelanggan'} • ${(o.items || []).map(it => `${it.quantity}x ${it.name}`).join(', ')}`,
-        reason: o.returnReason || 'Gagal Masak',
-        note: o.returnNote,
-        user: o.returnBy || 'Kasir',
-        photo: o.returnPhoto,
-        impactValue: o.orderTotalHPP || 0,
-        originalData: o
-      })) : []),
+      ...(!isCashier ? returnedOrders.map(o => {
+        const hasRemake = (o.items || []).some(it => it.lastReturnAction === 'remake' || (it.returnEvents || []).some(ev => ev.action === 'remake'));
+        return {
+          id: `ret_order_${o.id}`,
+          category: hasRemake ? 'ORDER_REMAKE' : 'ORDER_RETURN',
+          timestamp: o.returnedAt || o.date,
+          title: hasRemake ? `Buat Baru (Remake): #${o.invoiceNumber}` : `Retur Pesanan: #${o.invoiceNumber}`,
+          subtitle: `${o.customerName || 'Pelanggan'} • ${(o.items || []).map(it => `${it.returnedQty ? `${it.returnedQty}/${it.quantity}x` : `${it.quantity}x`} ${it.name}`).join(', ')}`,
+          reason: o.returnReason || 'Gagal Masak',
+          note: o.returnNote,
+          user: o.returnBy || 'Kasir',
+          photo: o.returnPhoto,
+          impactValue: o.orderTotalHPP || 0,
+          originalData: o
+        };
+      }) : []),
       ...wasteLogs.map(w => {
         const mat = rawMaterials.find(m => m.id === w.rawMaterialId || m.name === w.rawMaterialName);
         const unitPrice = mat ? (mat.pricePerUnit || 0) : 0;
@@ -244,7 +294,7 @@ export const ReturnsManagementView = () => {
         return matchesSearch && matchesReason && matchesDate;
       })
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }, [returnedOrders, wasteLogs, rawMaterials, searchQuery, reasonFilter, dateFilter, isCashier]);
+  }, [returnedOrders, wasteLogs, rawMaterials, searchQuery, reasonFilter, dateFilter, customStartDate, customEndDate, isCashier]);
 
   return (
     <div className="returns-view-container" style={styles.container}>
@@ -430,13 +480,15 @@ export const ReturnsManagementView = () => {
             </div>
 
             {/* Date Range Filter */}
-            <div style={{ minWidth: '170px' }}>
+            <div style={{ minWidth: '180px' }}>
               <SearchSelect
                 options={[
                   { value: 'ALL', label: 'Semua Waktu' },
                   { value: 'TODAY', label: 'Hari Ini' },
+                  { value: 'YESTERDAY', label: 'Kemarin' },
                   { value: 'WEEK', label: '7 Hari Terakhir' },
-                  { value: 'MONTH', label: 'Bulan Ini' }
+                  { value: 'MONTH', label: 'Bulan Ini' },
+                  { value: 'CUSTOM', label: 'Pilih Tanggal / Kustom' }
                 ]}
                 value={dateFilter}
                 onChange={(val) => setDateFilter(val)}
@@ -447,6 +499,40 @@ export const ReturnsManagementView = () => {
                 size="sm"
               />
             </div>
+
+            {/* Custom Date Pickers */}
+            {dateFilter === 'CUSTOM' && (
+              <div className="returns-custom-date-wrapper" style={styles.customDateWrapper}>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  style={styles.dateInput}
+                  title="Pilih tanggal awal / tanggal tertentu"
+                />
+                <span style={{ color: 'var(--neutral-400)', fontSize: '12px', fontWeight: 600 }}>s/d</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  style={styles.dateInput}
+                  title="Pilih tanggal akhir (opsional untuk rentang)"
+                />
+                {(customStartDate || customEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }}
+                    style={styles.dateClearBtn}
+                    title="Reset pilihan tanggal"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Reason Category Filter (Filter Alasan - Di-take out khusus untuk Kasir) */}
             {!isCashier && (
@@ -509,80 +595,122 @@ export const ReturnsManagementView = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredReturnedOrders.map((order, index) => (
-                      <tr key={order.id} style={styles.tableRow}>
-                        <td style={{ ...styles.td, color: 'var(--neutral-400)', fontWeight: 600 }}>
-                          {index + 1}
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>
-                            #{order.invoiceNumber}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                            <Clock size={11} /> {formatDate(order.returnedAt || order.date)}
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ fontWeight: 600, color: 'var(--neutral-900)' }}>
-                            {order.customerName || 'Pelanggan Walk-In'}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-                            {order.tableNumber || 'Take Away'}
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxWidth: '280px' }}>
-                            {(order.items || []).map((it, i) => (
-                              <div key={i} style={{ fontSize: '0.813rem' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--neutral-800)' }}>
-                                  {it.quantity}x {it.name}
+                    {filteredReturnedOrders.map((order, index) => {
+                      const hasRemake = (order.items || []).some(it => it.lastReturnAction === 'remake' || (it.returnEvents || []).some(ev => ev.action === 'remake'));
+                      const isPartial = order.status === 'partially_returned' || (order.items || []).some(it => (it.returnedQty || 0) > 0 && (it.returnedQty || 0) < it.quantity);
+
+                      return (
+                        <tr key={order.id} style={styles.tableRow}>
+                          <td style={{ ...styles.td, color: 'var(--neutral-400)', fontWeight: 600 }}>
+                            {index + 1}
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>
+                              #{order.invoiceNumber}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <Clock size={11} /> {formatDate(order.returnedAt || order.date)}
+                            </div>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: 600, color: 'var(--neutral-900)' }}>
+                              {order.customerName || 'Pelanggan Walk-In'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
+                              {order.tableNumber || 'Take Away'}
+                            </div>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '280px' }}>
+                              {(order.items || []).map((it, i) => {
+                                const retQty = Number(it.returnedQty) || 0;
+                                const isRemake = it.lastReturnAction === 'remake';
+                                return (
+                                  <div key={i} style={{ fontSize: '0.813rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--neutral-800)' }}>
+                                        {it.quantity}x {it.name}
+                                      </span>
+                                      {retQty > 0 && (
+                                        <span style={{ 
+                                          fontSize: '0.688rem', 
+                                          fontWeight: 700,
+                                          padding: '1px 6px',
+                                          borderRadius: '4px',
+                                          backgroundColor: isRemake ? '#eff6ff' : '#fee2e2',
+                                          color: isRemake ? 'var(--blue-700)' : '#b91c1c',
+                                          border: `1px solid ${isRemake ? '#bfdbfe' : '#fecaca'}`
+                                        }}>
+                                          {isRemake ? `🔄 Remake ${retQty} porsi` : `Retur ${retQty} porsi`}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {it.toppings && it.toppings.length > 0 && (
+                                      <div style={{ fontSize: '0.688rem', color: 'var(--orange-600)', marginTop: '1px' }}>
+                                        (+{it.toppings.map(t => `${t.name}${t.quantity > 1 ? ` [${t.quantity}x]` : ''}`).join(', ')})
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '260px' }}>
+                              <span style={styles.reasonBadge}>
+                                <AlertOctagon size={11} />
+                                {order.returnReason || 'Gagal Masak'}
+                              </span>
+                              {order.returnNote && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--neutral-600)', fontStyle: 'italic', backgroundColor: '#f8fafc', padding: '4px 6px', borderRadius: '4px', border: '1px dashed #e2e8f0' }}>
+                                  "{order.returnNote}"
+                                </div>
+                              )}
+                              {order.returnPhoto && (
+                                <a href={order.returnPhoto} target="_blank" rel="noreferrer" style={{ fontSize: '0.688rem', color: 'var(--blue-600)', display: 'inline-flex', alignItems: 'center', gap: '3px', textDecoration: 'underline', fontWeight: 600 }}>
+                                  📷 Lihat Foto Bukti
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            {order.status === 'returned' ? (
+                              <>
+                                <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontWeight: 600, fontSize: '0.875rem' }}>
+                                  {formatIDR(order.grossRevenue || order.totalAmount)}
                                 </span>
-                                {it.toppings && it.toppings.length > 0 && (
-                                  <span style={{ fontSize: '0.688rem', color: 'var(--orange-600)', marginLeft: '4px' }}>
-                                    (+{it.toppings.map(t => `${t.name}${it.quantity > 1 ? ` [${it.quantity}x]` : ''}`).join(', ')})
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '260px' }}>
-                            <span style={styles.reasonBadge}>
-                              <AlertOctagon size={11} />
-                              {order.returnReason || 'Gagal Masak'}
-                            </span>
-                            {order.returnNote && (
-                              <div style={{ fontSize: '0.75rem', color: 'var(--neutral-600)', fontStyle: 'italic', backgroundColor: '#f8fafc', padding: '4px 6px', borderRadius: '4px', border: '1px dashed #e2e8f0' }}>
-                                "{order.returnNote}"
-                              </div>
+                                <div style={{ fontSize: '0.688rem', color: '#dc2626', fontWeight: 600 }}>
+                                  Dibatalkan (Rp 0)
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ color: 'var(--neutral-900)', fontWeight: 700, fontSize: '0.875rem' }}>
+                                  {formatIDR(order.grossRevenue || order.totalAmount)}
+                                </span>
+                                <div style={{ fontSize: '0.688rem', color: hasRemake ? '#2563eb' : '#16a34a', fontWeight: 700 }}>
+                                  {hasRemake ? '🔄 Penjualan Sah (Remake)' : isPartial ? 'Sebagian Batal' : 'Penjualan Sah'}
+                                </div>
+                              </>
                             )}
-                          </div>
-                        </td>
-                        <td style={{ ...styles.td, textAlign: 'right' }}>
-                          <span style={{ textDecoration: 'line-through', color: '#9ca3af', fontWeight: 600, fontSize: '0.875rem' }}>
-                            {formatIDR(order.grossRevenue)}
-                          </span>
-                          <div style={{ fontSize: '0.688rem', color: '#dc2626', fontWeight: 600 }}>
-                            Dibatalkan (Rp 0)
-                          </div>
-                        </td>
-                        <td style={{ ...styles.td, textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, color: '#dc2626' }}>
-                            {formatIDR(order.orderTotalHPP)}
-                          </div>
-                          <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>
-                            Bahan Terpakai
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.813rem', color: 'var(--neutral-700)' }}>
-                            <User size={13} color="var(--neutral-400)" />
-                            <span>{order.returnBy || 'Kasir'}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: '#dc2626' }}>
+                              {formatIDR(order.orderTotalHPP)}
+                            </div>
+                            <div style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>
+                              Bahan Terpakai
+                            </div>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.813rem', color: 'var(--neutral-700)' }}>
+                              <User size={13} color="var(--neutral-400)" />
+                              <span>{order.returnBy || 'Kasir'}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1086,6 +1214,34 @@ const styles = {
     outline: 'none',
     cursor: 'pointer',
     fontWeight: 500
+  },
+  customDateWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap'
+  },
+  dateInput: {
+    padding: '0 10px',
+    height: '34px',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color, #e2e8f0)',
+    fontSize: '0.813rem',
+    color: 'var(--neutral-700)',
+    backgroundColor: '#f8fafc',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  dateClearBtn: {
+    border: 'none',
+    background: 'none',
+    color: 'var(--neutral-400)',
+    cursor: 'pointer',
+    fontSize: '13px',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   contentContainer: {
     display: 'flex',
