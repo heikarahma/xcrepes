@@ -80,6 +80,7 @@ export const cashiersService = {
     if (cashier.nama !== undefined) payload.nama = cashier.nama;
     if (cashier.username !== undefined) payload.username = cashier.username;
     if (cashier.password !== undefined) payload.password = cashier.password;
+    if (cashier.role !== undefined) payload.role = cashier.role;
     if (cashier.permissions !== undefined) payload.permissions = cashier.permissions;
     if (cashier.isActive !== undefined) payload.is_active = cashier.isActive;
 

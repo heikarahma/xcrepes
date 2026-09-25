@@ -41,7 +41,7 @@ export const canKasirEditReport = (opnameDateOrReport, optionalReport) => {
 export const StockOpnameProvider = ({ children }) => {
   const { rawMaterials = [], applyOpnameReportToStock, refetch: refetchRawMaterials } = useRawMaterial();
   const { currentUser, storeName = 'XCrepes POS' } = useAuth();
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
 
   // 1. All Opname Reports from Cloud / DB
   const [reports, setReports] = useState([]);
@@ -332,7 +332,7 @@ export const StockOpnameProvider = ({ children }) => {
         role: currentUser?.role || 'kasir'
       };
 
-      const auditAction = isNew ? 'SUBMIT' : (currentUser?.role === 'superadmin' ? 'ADMIN_CORRECTION' : 'CASHIER_EDIT');
+      const auditAction = isNew ? 'SUBMIT' : (isSuperAdmin ? 'ADMIN_CORRECTION' : 'CASHIER_EDIT');
       const auditEntry = {
         id: `audit_${Date.now()}`,
         timestamp: now,
@@ -442,9 +442,9 @@ export const StockOpnameProvider = ({ children }) => {
     try {
       const now = new Date().toISOString();
       const adminUserObj = {
-        id: currentUser?.id || 'usr_superadmin',
-        name: currentUser?.nama || 'Super Admin',
-        role: currentUser?.role || 'superadmin'
+        id: currentUser?.id || 'usr_admin',
+        name: currentUser?.nama || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Kepala Toko'),
+        role: currentUser?.role || 'admin'
       };
 
       const auditEntries = [];
@@ -625,9 +625,9 @@ export const StockOpnameProvider = ({ children }) => {
     try {
       const now = new Date().toISOString();
       const adminUserObj = {
-        id: currentUser?.id || 'usr_superadmin',
-        name: currentUser?.nama || 'Super Admin',
-        role: currentUser?.role || 'superadmin'
+        id: currentUser?.id || 'usr_admin',
+        name: currentUser?.nama || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Kepala Toko'),
+        role: currentUser?.role || 'admin'
       };
 
       // 1. Update physical counts into rawMaterials and generate stock logs (ADJUST)
@@ -728,9 +728,9 @@ export const StockOpnameProvider = ({ children }) => {
     try {
       const now = new Date().toISOString();
       const adminUserObj = {
-        id: currentUser?.id || 'usr_superadmin',
-        name: currentUser?.nama || 'Super Admin',
-        role: currentUser?.role || 'superadmin'
+        id: currentUser?.id || 'usr_admin',
+        name: currentUser?.nama || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Kepala Toko'),
+        role: currentUser?.role || 'admin'
       };
 
       let revertedItems = null;
@@ -826,9 +826,9 @@ export const StockOpnameProvider = ({ children }) => {
     setIsSubmitting(true);
     try {
       const adminUserObj = {
-        id: currentUser?.id || 'usr_superadmin',
-        name: currentUser?.nama || 'Super Admin',
-        role: currentUser?.role || 'superadmin'
+        id: currentUser?.id || 'usr_admin',
+        name: currentUser?.nama || (currentUser?.role === 'superadmin' ? 'Super Admin' : 'Kepala Toko'),
+        role: currentUser?.role || 'admin'
       };
 
       const { data, error } = await opnameReportsService.voidOpnameReport(reportId, reason.trim(), adminUserObj);

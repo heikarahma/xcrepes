@@ -52,7 +52,7 @@ export const KasirOrderView = () => {
   const { categories: contextCategories = [], openReorderModal } = useCategory();
   const categories = Array.isArray(contextCategories) ? contextCategories : [];
   const { currentUser } = useAuth();
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const { rawMaterials = [] } = useRawMaterial();
   const { showToast } = useUnit();
   const {

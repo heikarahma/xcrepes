@@ -5,7 +5,10 @@ import { subscribeToTable } from '../lib/supabase';
 import { 
   AUTH_USER_STORAGE_KEY, 
   DEFAULT_SUPERADMIN, 
-  NAV_FEATURES 
+  NAV_FEATURES,
+  ROLES,
+  hasAdminPrivileges,
+  isStoreAdminRole
 } from '../models/UserModel';
 
 const AuthContext = createContext();
@@ -160,12 +163,15 @@ export const AuthProvider = ({ children }) => {
       };
     }
 
+    const isMatchedAdmin = hasAdminPrivileges(matchedCashier.role);
     const cashierUser = {
       id: matchedCashier.id,
       nama: matchedCashier.nama,
       username: matchedCashier.username,
-      role: 'kasir',
-      permissions: Array.from(new Set([...(matchedCashier.permissions || []), 'stock-opname'])),
+      role: matchedCashier.role || 'kasir',
+      permissions: isMatchedAdmin 
+        ? NAV_FEATURES.map(f => f.key) 
+        : Array.from(new Set([...(matchedCashier.permissions || []), 'stock-opname'])),
       loggedInAt: new Date().toISOString()
     };
 
@@ -184,7 +190,7 @@ export const AuthProvider = ({ children }) => {
 
   const hasPermission = (featureKey) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'superadmin') return true;
+    if (hasAdminPrivileges(currentUser.role)) return true;
     if (featureKey === 'cashier-management') return false;
 
     if (featureKey === 'reports') {
@@ -207,38 +213,54 @@ export const AuthProvider = ({ children }) => {
   };
 
   // -------------------------------------------------------------
-  // CASHIER CRUD LOGIC
+  // CASHIER & ADMIN ACCOUNT CRUD LOGIC
   // -------------------------------------------------------------
-  const addCashier = async ({ nama, username, password, permissions = [], isActive = true }) => {
+  const addCashier = async ({ nama, username, password, role = 'kasir', permissions = [], isActive = true }) => {
     const trimmedNama = (nama || '').trim();
     const trimmedUser = (username || '').trim().toLowerCase();
     const trimmedPass = (password || '').trim();
 
-    if (!trimmedNama) return { success: false, error: 'Nama kasir wajib diisi.' };
-    if (!trimmedUser) return { success: false, error: 'Username kasir wajib diisi.' };
-    if (!trimmedPass) return { success: false, error: 'Kata sandi kasir wajib diisi.' };
+    if (!trimmedNama) return { success: false, error: 'Nama akun wajib diisi.' };
+    if (!trimmedUser) return { success: false, error: 'Username login wajib diisi.' };
+    if (!trimmedPass) return { success: false, error: 'Kata sandi wajib diisi.' };
 
     if (trimmedUser === superAdminProfile.username.toLowerCase()) {
       return { success: false, error: 'Username tersebut merupakan akun khusus Super Admin.' };
     }
 
-    const isDuplicate = cashiers.some(c => c.username.toLowerCase() === trimmedUser);
-    if (isDuplicate) {
-      return { success: false, error: `Username "${trimmedUser}" sudah digunakan kasir lain.` };
+    // Hanya Super Admin yang berhak menambahkan akun dengan peran Kepala Toko
+    if (hasAdminPrivileges(role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return { 
+        success: false, 
+        error: 'Hanya Super Admin yang berhak menambahkan akun Kepala Toko. Kepala Toko hanya dapat menambahkan akun kasir.' 
+      };
     }
 
-    const nextNumber = cashiers.length > 0
-      ? Math.max(...cashiers.map(c => parseInt(c.id.replace('KASIR-', '')) || 0)) + 1
-      : 1;
-    const formattedId = `KASIR-${String(nextNumber).padStart(3, '0')}`;
+    const isDuplicate = cashiers.some(c => c.username.toLowerCase() === trimmedUser);
+    if (isDuplicate) {
+      return { success: false, error: `Username "${trimmedUser}" sudah digunakan akun lain.` };
+    }
+
+    const existingNumbers = cashiers.map(c => {
+      const match = c.id && c.id.match(/\d+/);
+      return match ? parseInt(match[0], 10) : 0;
+    });
+    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers, 0) + 1 : 1;
+    const prefix = hasAdminPrivileges(role) ? 'ADM' : 'KASIR';
+    const formattedId = `${prefix}-${String(nextNumber).padStart(3, '0')}`;
+
+    const isAdmin = hasAdminPrivileges(role);
+    const assignedPermissions = isAdmin 
+      ? NAV_FEATURES.map(f => f.key) 
+      : (Array.isArray(permissions) ? permissions : []);
 
     const newCashier = {
       id: formattedId,
       nama: trimmedNama,
       username: trimmedUser,
       password: trimmedPass,
-      role: 'kasir',
-      permissions: Array.isArray(permissions) ? permissions : [],
+      role: role || 'kasir',
+      permissions: assignedPermissions,
       isActive: Boolean(isActive),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -256,17 +278,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateCashier = async (id, { nama, username, password, permissions, isActive }) => {
+  const updateCashier = async (id, { nama, username, password, role, permissions, isActive }) => {
     const trimmedNama = (nama || '').trim();
     const trimmedUser = (username || '').trim().toLowerCase();
     const trimmedPass = (password || '').trim();
 
-    if (!trimmedNama) return { success: false, error: 'Nama kasir wajib diisi.' };
-    if (!trimmedUser) return { success: false, error: 'Username kasir wajib diisi.' };
-    if (!trimmedPass) return { success: false, error: 'Kata sandi kasir wajib diisi.' };
+    if (!trimmedNama) return { success: false, error: 'Nama akun wajib diisi.' };
+    if (!trimmedUser) return { success: false, error: 'Username login wajib diisi.' };
+    if (!trimmedPass) return { success: false, error: 'Kata sandi wajib diisi.' };
 
     if (trimmedUser === superAdminProfile.username.toLowerCase()) {
       return { success: false, error: 'Username tersebut khusus Super Admin.' };
+    }
+
+    // Cek apakah akun yang ingin diubah adalah akun Kepala Toko
+    const existingAccount = cashiers.find(c => c.id === id);
+    if (existingAccount && hasAdminPrivileges(existingAccount.role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return { 
+        success: false, 
+        error: 'Hanya Super Admin yang berhak mengubah data akun Kepala Toko.' 
+      };
+    }
+
+    // Jika non-superadmin mencoba mengubah role menjadi admin
+    if (hasAdminPrivileges(role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return { 
+        success: false, 
+        error: 'Hanya Super Admin yang berhak menetapkan peran Kepala Toko.' 
+      };
     }
 
     const isDuplicate = cashiers.some(c => c.id !== id && c.username.toLowerCase() === trimmedUser);
@@ -274,12 +313,18 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: `Username "${trimmedUser}" sudah digunakan.` };
     }
 
+    const isAdmin = hasAdminPrivileges(role);
+    const assignedPermissions = isAdmin 
+      ? NAV_FEATURES.map(f => f.key) 
+      : (permissions !== undefined ? permissions : undefined);
+
     try {
       const { data: updatedRecord, error } = await cashiersService.updateCashier(id, {
         nama: trimmedNama,
         username: trimmedUser,
         password: trimmedPass,
-        permissions,
+        role,
+        permissions: assignedPermissions,
         isActive
       });
 
@@ -294,7 +339,10 @@ export const AuthProvider = ({ children }) => {
           ...prev,
           nama: updatedRecord.nama,
           username: updatedRecord.username,
-          permissions: updatedRecord.permissions
+          role: updatedRecord.role,
+          permissions: hasAdminPrivileges(updatedRecord.role)
+            ? NAV_FEATURES.map(f => f.key)
+            : updatedRecord.permissions
         }));
       }
 
@@ -305,6 +353,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const deleteCashier = async (id) => {
+    // Validasi otorisasi penghapusan akun Kepala Toko
+    const target = cashiers.find(c => c.id === id);
+    if (target && hasAdminPrivileges(target.role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return { 
+        success: false, 
+        error: 'Hanya Super Admin yang berhak menghapus akun Kepala Toko.' 
+      };
+    }
+
     try {
       const { error } = await cashiersService.deleteCashier(id);
       if (error) {
@@ -323,6 +380,12 @@ export const AuthProvider = ({ children }) => {
   const toggleCashierStatus = async (id) => {
     const target = cashiers.find(c => c.id === id);
     if (!target) return;
+
+    // Cegah Kepala Toko menonaktifkan akun sesama Kepala Toko
+    if (hasAdminPrivileges(target.role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return;
+    }
+
     const nextActive = !target.isActive;
 
     try {
@@ -397,6 +460,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const openEditCashierModal = (cashier) => {
+    if (hasAdminPrivileges(cashier?.role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return;
+    }
     setFormModalState({ isOpen: true, mode: 'edit', cashier });
   };
 
@@ -405,6 +471,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const openDeleteCashierModal = (cashier) => {
+    if (hasAdminPrivileges(cashier?.role) && currentUser?.role !== ROLES.SUPERADMIN) {
+      return;
+    }
     setDeleteModalState({ isOpen: true, cashier });
   };
 

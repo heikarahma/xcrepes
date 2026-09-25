@@ -13,11 +13,14 @@ import {
   Edit3, 
   Trash2, 
   Sliders,
-  Calendar
+  Calendar,
+  ShoppingBag
 } from 'lucide-react';
+import { ROLES, hasAdminPrivileges, isStoreAdminRole } from '../../models/UserModel';
 
 export const CashierManagementView = () => {
   const { 
+    currentUser,
     cashiers, 
     filteredCashiers, 
     isLoading,
@@ -34,6 +37,8 @@ export const CashierManagementView = () => {
   } = useAuth();
   const { showToast } = useUnit();
 
+  const isSuperAdmin = currentUser?.role === ROLES.SUPERADMIN;
+
   const formatDate = (isoString) => {
     if (!isoString) return '-';
     try {
@@ -48,6 +53,8 @@ export const CashierManagementView = () => {
     }
   };
 
+  const totalAdminStore = cashiers.filter(c => hasAdminPrivileges(c.role)).length;
+  const totalKasir = cashiers.filter(c => !hasAdminPrivileges(c.role)).length;
   const totalActive = cashiers.filter(c => c.isActive !== false).length;
 
   return (
@@ -58,11 +65,13 @@ export const CashierManagementView = () => {
           <div className="page-breadcrumb">
             <span>PENGATURAN & SISTEM</span>
             <span className="breadcrumb-separator">/</span>
-            <span className="breadcrumb-current">Manajemen Hak Akses Kasir</span>
+            <span className="breadcrumb-current">Manajemen Akun & Hak Akses</span>
           </div>
-          <h1 className="page-main-title">Kelola Akun Kasir & Hak Akses</h1>
+          <h1 className="page-main-title">Kelola Akun Pengguna & Hak Akses</h1>
           <p className="page-main-subtitle">
-            Buat akun kasir, atur password login, dan batasi fitur yang dapat diakses melalui saklar toggle ON / OFF.
+            {isSuperAdmin 
+              ? 'Buat akun Kepala Toko (akses penuh seperti Super Admin) atau Kasir POS, atur password login, dan batasi fitur yang dapat diakses.' 
+              : 'Kelola akun kasir POS, atur password login, dan batasi fitur yang dapat diakses.'}
           </p>
         </div>
 
@@ -73,26 +82,28 @@ export const CashierManagementView = () => {
             onClick={openAddCashierModal}
           >
             <UserPlus size={18} />
-            <span>Tambah Kasir Baru</span>
+            <span>{isSuperAdmin ? 'Tambah Akun Baru' : 'Tambah Kasir Baru'}</span>
           </button>
         </div>
       </div>
 
       {/* Stats Summary Cards */}
-      <div className="cashier-stats-grid">
+      <div className="cashier-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        {/* Card 1: Kepala Toko */}
         <div className="stat-card">
-          <div className="stat-icon-wrapper sa-badge">
-            <ShieldCheck size={22} color="#005BC6" />
+          <div className="stat-icon-wrapper" style={{ backgroundColor: '#f5f3ff', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldCheck size={22} color="#7c3aed" />
           </div>
           <div className="stat-info">
-            <span className="stat-label">SUPER ADMIN (PERMANEN)</span>
+            <span className="stat-label">KEPALA TOKO</span>
             <div className="stat-value-row">
-              <span className="stat-number">{superAdminProfile?.nama || 'Super Admin'}</span>
-              <span className="stat-tag sa-tag">Akses Penuh</span>
+              <span className="stat-number">{totalAdminStore} Akun</span>
             </div>
+            <span className="stat-desc">Akses penuh seluruh modul & laba HPP</span>
           </div>
         </div>
 
+        {/* Card 3: Kasir POS */}
         <div className="stat-card">
           <div className="stat-icon-wrapper ca-badge">
             <Users size={22} color="#00823F" />
@@ -100,19 +111,20 @@ export const CashierManagementView = () => {
           <div className="stat-info">
             <span className="stat-label">TOTAL AKUN KASIR</span>
             <div className="stat-value-row">
-              <span className="stat-number">{cashiers.length} Akun</span>
+              <span className="stat-number">{totalKasir} Akun</span>
               <span className="stat-tag ca-tag">{totalActive} Aktif</span>
             </div>
             <span className="stat-desc">Dapat login sesuai izin yang diatur</span>
           </div>
         </div>
 
+        {/* Card 4: Fitur Tersedia */}
         <div className="stat-card">
           <div className="stat-icon-wrapper ft-badge">
             <Sliders size={22} color="#FF7600" />
           </div>
           <div className="stat-info">
-            <span className="stat-label">FITUR SIDENAVBAR TERSEDIA</span>
+            <span className="stat-label">FITUR SIDENAVBAR</span>
             <div className="stat-value-row">
               <span className="stat-number">{navFeatures.length} Menu</span>
               <span className="stat-tag ft-tag">Toggle Switch</span>
@@ -131,7 +143,7 @@ export const CashierManagementView = () => {
             <input
               type="text"
               className="search-input"
-              placeholder="Cari kasir berdasarkan nama, username, atau ID..."
+              placeholder="Cari akun berdasarkan nama, username, atau ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -147,14 +159,14 @@ export const CashierManagementView = () => {
           </div>
 
           <div className="table-count-label">
-            Menampilkan <b>{filteredCashiers.length}</b> akun kasir
+            Menampilkan <b>{filteredCashiers.length}</b> akun pengguna
           </div>
         </div>
 
         {error && (
           <div style={{ padding: '0 20px 16px' }}>
             <ErrorAlert 
-              title="Gagal Memuat Akun Kasir" 
+              title="Gagal Memuat Akun Pengguna" 
               message={error} 
               onRetry={refetchCashiers} 
             />
@@ -163,7 +175,7 @@ export const CashierManagementView = () => {
 
         {isLoading ? (
           <div style={{ padding: '20px' }}>
-            <TableSkeleton rows={4} cols={5} />
+            <TableSkeleton rows={4} cols={6} />
           </div>
         ) : (
           <>
@@ -172,21 +184,22 @@ export const CashierManagementView = () => {
           <table className="cashier-table">
             <thead>
               <tr>
-                <th style={{ width: '110px' }}>ID KASIR</th>
-                <th>NAMA KASIR</th>
-                <th style={{ textAlign: 'center', width: '130px' }}>STATUS</th>
-                <th style={{ width: '170px' }}>TANGGAL DIBUAT</th>
-                <th style={{ textAlign: 'center', width: '110px' }}>AKSI</th>
+                <th style={{ width: '100px' }}>ID AKUN</th>
+                <th>PENGGUNA</th>
+                <th style={{ width: '170px' }}>PERAN / JABATAN</th>
+                <th style={{ textAlign: 'center', width: '120px' }}>STATUS</th>
+                <th style={{ width: '160px' }}>TANGGAL DIBUAT</th>
+                <th style={{ textAlign: 'center', width: '100px' }}>AKSI</th>
               </tr>
             </thead>
             <tbody>
               {filteredCashiers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="empty-table-cell">
+                  <td colSpan="6" className="empty-table-cell">
                     <div className="empty-state-box">
                       <Users size={38} color="var(--neutral-300)" />
                       <p className="empty-text">
-                        {searchTerm ? `Tidak ditemukan kasir dengan kata kunci "${searchTerm}"` : 'Belum ada akun kasir yang dibuat.'}
+                        {searchTerm ? `Tidak ditemukan akun dengan kata kunci "${searchTerm}"` : 'Belum ada akun pengguna yang dibuat.'}
                       </p>
                       {searchTerm ? (
                         <button 
@@ -203,7 +216,7 @@ export const CashierManagementView = () => {
                           onClick={openAddCashierModal}
                         >
                           <UserPlus size={16} />
-                          <span>Buat Kasir Pertama</span>
+                          <span>Buat Akun Pertama</span>
                         </button>
                       )}
                     </div>
@@ -211,14 +224,24 @@ export const CashierManagementView = () => {
                 </tr>
               ) : (
                 filteredCashiers.map((c) => {
+                  const isAdmin = hasAdminPrivileges(c.role);
                   return (
                     <tr key={c.id}>
                       {/* ID */}
                       <td>
-                        <span className="cashier-id-badge">{c.id}</span>
+                        <span 
+                          className="cashier-id-badge"
+                          style={{
+                            backgroundColor: isAdmin ? '#f5f3ff' : undefined,
+                            color: isAdmin ? '#7c3aed' : undefined,
+                            borderColor: isAdmin ? '#ddd6fe' : undefined
+                          }}
+                        >
+                          {c.id}
+                        </span>
                       </td>
 
-                      {/* Nama */}
+                      {/* Nama & Username */}
                       <td>
                         <div className="cashier-name-cell">
                           <div className="avatar-circle">
@@ -226,39 +249,96 @@ export const CashierManagementView = () => {
                           </div>
                           <div className="name-details">
                             <span className="cashier-full-name">{c.nama}</span>
-                            <span className="cashier-role-label">@{c.username || 'user'} • Role: Kasir POS</span>
+                            <span className="cashier-role-label">@{c.username || 'user'}</span>
                           </div>
                         </div>
                       </td>
 
+                      {/* Peran / Jabatan */}
+                      <td>
+                        {isAdmin ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: '16px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            backgroundColor: '#ede9fe',
+                            color: '#6d28d9',
+                            border: '1px solid #ddd6fe'
+                          }}>
+                            <ShieldCheck size={14} color="#7c3aed" />
+                            <span>Kepala Toko</span>
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: '16px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            backgroundColor: 'var(--green-50)',
+                            color: 'var(--green-700)',
+                            border: '1px solid var(--green-200)'
+                          }}>
+                            <ShoppingBag size={14} color="var(--green-600)" />
+                            <span>Kasir POS</span>
+                          </span>
+                        )}
+                      </td>
+
                       {/* Status Toggle */}
                       <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className={`status-chip-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
-                          onClick={() => {
-                            toggleCashierStatus(c.id);
-                            const nextState = c.isActive === false;
-                            showToast(
-                              `Akun kasir "${c.nama}" berhasil di${nextState ? 'aktifkan' : 'nonaktifkan'}.`,
-                              nextState ? 'success' : 'info',
-                              'Status Akun Diubah'
-                            );
-                          }}
-                          title="Klik untuk mengaktifkan / menonaktifkan kasir"
-                        >
-                          {c.isActive !== false ? (
-                            <>
-                              <CheckCircle2 size={13} />
-                              <span>Aktif</span>
-                            </>
-                          ) : (
-                            <>
-                              <XCircle size={13} />
-                              <span>Nonaktif</span>
-                            </>
-                          )}
-                        </button>
+                        {isAdmin && !isSuperAdmin ? (
+                          <span 
+                            className={`status-chip-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
+                            style={{ opacity: 0.85, cursor: 'default' }}
+                            title="Status akun Kepala Toko dikelola oleh Super Admin"
+                          >
+                            {c.isActive !== false ? (
+                              <>
+                                <CheckCircle2 size={13} />
+                                <span>Aktif</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle size={13} />
+                                <span>Nonaktif</span>
+                              </>
+                            )}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`status-chip-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
+                            onClick={() => {
+                              toggleCashierStatus(c.id);
+                              const nextState = c.isActive === false;
+                              showToast(
+                                `Akun "${c.nama}" berhasil di${nextState ? 'aktifkan' : 'nonaktifkan'}.`,
+                                nextState ? 'success' : 'info',
+                                'Status Akun Diubah'
+                              );
+                            }}
+                            title="Klik untuk mengaktifkan / menonaktifkan akun"
+                          >
+                            {c.isActive !== false ? (
+                              <>
+                                <CheckCircle2 size={13} />
+                                <span>Aktif</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle size={13} />
+                                <span>Nonaktif</span>
+                              </>
+                            )}
+                          </button>
+                        )}
                       </td>
 
                       {/* Tanggal Dibuat */}
@@ -273,24 +353,30 @@ export const CashierManagementView = () => {
 
                       {/* Actions (Edit & Delete) */}
                       <td style={{ textAlign: 'center' }}>
-                        <div className="action-btns-row">
-                          <button
-                            type="button"
-                            className="row-action-btn edit-action-btn"
-                            onClick={() => openEditCashierModal(c)}
-                            title="Edit Akun & Hak Akses"
-                          >
-                            <Edit3 size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="row-action-btn delete-action-btn"
-                            onClick={() => openDeleteCashierModal(c)}
-                            title="Hapus Akun Kasir"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
+                        {isAdmin && !isSuperAdmin ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--neutral-400)', fontStyle: 'italic' }}>
+                            Dikelola Super Admin
+                          </span>
+                        ) : (
+                          <div className="action-btns-row">
+                            <button
+                              type="button"
+                              className="row-action-btn edit-action-btn"
+                              onClick={() => openEditCashierModal(c)}
+                              title={isSuperAdmin ? 'Edit Akun & Peran' : 'Edit Akun Kasir'}
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="row-action-btn delete-action-btn"
+                              onClick={() => openDeleteCashierModal(c)}
+                              title="Hapus Akun"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -306,7 +392,7 @@ export const CashierManagementView = () => {
             <div className="empty-state-box mobile-empty-box">
               <Users size={38} color="var(--neutral-300)" />
               <p className="empty-text">
-                {searchTerm ? `Tidak ditemukan kasir dengan kata kunci "${searchTerm}"` : 'Belum ada akun kasir yang dibuat.'}
+                {searchTerm ? `Tidak ditemukan akun dengan kata kunci "${searchTerm}"` : 'Belum ada akun pengguna yang dibuat.'}
               </p>
               {searchTerm ? (
                 <button 
@@ -323,13 +409,14 @@ export const CashierManagementView = () => {
                   onClick={openAddCashierModal}
                 >
                   <UserPlus size={16} />
-                  <span>Buat Kasir Pertama</span>
+                  <span>Buat Akun Pertama</span>
                 </button>
               )}
             </div>
           ) : (
             <div className="mobile-cashier-cards-list">
               {filteredCashiers.map((c) => {
+                const isAdmin = hasAdminPrivileges(c.role);
                 const userPermissions = Array.isArray(c.permissions) ? c.permissions : [];
                 return (
                   <div key={c.id} className="mobile-cashier-card">
@@ -342,38 +429,68 @@ export const CashierManagementView = () => {
                         <div className="mobile-user-details">
                           <div className="mobile-user-name-row">
                             <span className="cashier-full-name mobile-title">{c.nama}</span>
-                            <span className="cashier-id-badge mobile-badge">{c.id}</span>
+                            <span 
+                              className="cashier-id-badge mobile-badge"
+                              style={{
+                                backgroundColor: isAdmin ? '#f5f3ff' : undefined,
+                                color: isAdmin ? '#7c3aed' : undefined,
+                                borderColor: isAdmin ? '#ddd6fe' : undefined
+                              }}
+                            >
+                              {c.id}
+                            </span>
                           </div>
-                          <span className="mobile-username-sub">@{c.username || 'kasir'} • Role: Kasir POS</span>
+                          <span className="mobile-username-sub">
+                            @{c.username || 'user'} • Role: {isAdmin ? 'Kepala Toko' : 'Kasir POS'}
+                          </span>
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        className={`status-chip-btn mobile-status-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
-                        onClick={() => {
-                          toggleCashierStatus(c.id);
-                          const nextState = c.isActive === false;
-                          showToast(
-                            `Akun kasir "${c.nama}" berhasil di${nextState ? 'aktifkan' : 'nonaktifkan'}.`,
-                            nextState ? 'success' : 'info',
-                            'Status Akun Diubah'
-                          );
-                        }}
-                        title="Klik untuk mengaktifkan / menonaktifkan status kasir"
-                      >
-                        {c.isActive !== false ? (
-                          <>
-                            <CheckCircle2 size={13} />
-                            <span>Aktif</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle size={13} />
-                            <span>Nonaktif</span>
-                          </>
-                        )}
-                      </button>
+                      {isAdmin && !isSuperAdmin ? (
+                        <span 
+                          className={`status-chip-btn mobile-status-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
+                          style={{ opacity: 0.85, cursor: 'default' }}
+                        >
+                          {c.isActive !== false ? (
+                            <>
+                              <CheckCircle2 size={13} />
+                              <span>Aktif</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={13} />
+                              <span>Nonaktif</span>
+                            </>
+                          )}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`status-chip-btn mobile-status-btn ${c.isActive !== false ? 'status-active' : 'status-inactive'}`}
+                          onClick={() => {
+                            toggleCashierStatus(c.id);
+                            const nextState = c.isActive === false;
+                            showToast(
+                              `Akun "${c.nama}" berhasil di${nextState ? 'aktifkan' : 'nonaktifkan'}.`,
+                              nextState ? 'success' : 'info',
+                              'Status Akun Diubah'
+                            );
+                          }}
+                          title="Klik untuk mengaktifkan / menonaktifkan status akun"
+                        >
+                          {c.isActive !== false ? (
+                            <>
+                              <CheckCircle2 size={13} />
+                              <span>Aktif</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={13} />
+                              <span>Nonaktif</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
 
                     {/* Meta & Permissions */}
@@ -384,51 +501,75 @@ export const CashierManagementView = () => {
                           <span>Dibuat: <b>{formatDate(c.createdAt)}</b></span>
                         </div>
                         <div className="mobile-meta-item">
-                          <ShieldCheck size={13} color="var(--blue-500)" />
-                          <span><b>{userPermissions.length}</b> Hak Akses</span>
+                          <ShieldCheck size={13} color={isAdmin ? '#7c3aed' : 'var(--blue-500)'} />
+                          {isAdmin ? (
+                            <span style={{ color: '#7c3aed', fontWeight: 700 }}>Akses Penuh (Setara Super Admin)</span>
+                          ) : (
+                            <span><b>{userPermissions.length}</b> Hak Akses</span>
+                          )}
                         </div>
                       </div>
 
-                      {userPermissions.length > 0 && (
-                        <div className="mobile-permissions-chips">
-                          {userPermissions.slice(0, 3).map((permKey) => {
-                            const feat = navFeatures.find(f => f.key === permKey);
-                            const label = feat ? feat.label.split('(')[0].trim() : permKey;
-                            return (
-                              <span key={permKey} className="mobile-perm-tag">
-                                {label}
-                              </span>
-                            );
-                          })}
-                          {userPermissions.length > 3 && (
-                            <span className="mobile-perm-more">
-                              +{userPermissions.length - 3} lainnya
-                            </span>
-                          )}
+                      {isAdmin ? (
+                        <div style={{
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          backgroundColor: '#f5f3ff',
+                          color: '#6d28d9',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          marginTop: '6px'
+                        }}>
+                          Semua fitur & laporan aktif otomatis layaknya Super Admin
                         </div>
+                      ) : (
+                        userPermissions.length > 0 && (
+                          <div className="mobile-permissions-chips">
+                            {userPermissions.slice(0, 3).map((permKey) => {
+                              const feat = navFeatures.find(f => f.key === permKey);
+                              const label = feat ? feat.label.split('(')[0].trim() : permKey;
+                              return (
+                                <span key={permKey} className="mobile-perm-tag">
+                                  {label}
+                                </span>
+                              );
+                            })}
+                            {userPermissions.length > 3 && (
+                              <span className="mobile-perm-more">
+                                +{userPermissions.length - 3} lainnya
+                              </span>
+                            )}
+                          </div>
+                        )
                       )}
                     </div>
 
                     {/* Actions Bar */}
-                    <div className="mobile-card-actions">
-                      <button
-                        type="button"
-                        className="mobile-edit-btn"
-                        onClick={() => openEditCashierModal(c)}
-                      >
-                        <Edit3 size={15} />
-                        <span>Edit Akun & Hak Akses</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="mobile-delete-btn"
-                        onClick={() => openDeleteCashierModal(c)}
-                        title="Hapus Akun Kasir"
-                        aria-label="Hapus Akun Kasir"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    {isAdmin && !isSuperAdmin ? (
+                      <div style={{ textAlign: 'center', padding: '8px', fontSize: '0.75rem', color: 'var(--neutral-500)', fontStyle: 'italic', backgroundColor: 'var(--neutral-50)', borderRadius: '6px', border: '1px dashed var(--neutral-200)', marginTop: '8px' }}>
+                        Dikelola khusus oleh Super Admin
+                      </div>
+                    ) : (
+                      <div className="mobile-card-actions">
+                        <button
+                          type="button"
+                          className="mobile-edit-btn"
+                          onClick={() => openEditCashierModal(c)}
+                        >
+                          <Edit3 size={15} />
+                          <span>{isSuperAdmin ? 'Edit Akun & Peran' : 'Edit Akun Kasir'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="mobile-delete-btn"
+                          onClick={() => openDeleteCashierModal(c)}
+                          title="Hapus Akun"
+                          aria-label="Hapus Akun"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

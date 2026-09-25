@@ -132,7 +132,7 @@ function MainLayout() {
       case 'reports-materials':
         return <ReportsView />;
       case 'cashier-management':
-        return currentUser?.role === 'superadmin' ? <CashierManagementView /> : <KasirOrderView />;
+        return (currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko') ? <CashierManagementView /> : <KasirOrderView />;
       case 'unit':
       default:
         return <UnitListView />;

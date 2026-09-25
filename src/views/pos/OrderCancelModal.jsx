@@ -16,7 +16,7 @@ export const OrderCancelModal = () => {
     cancelOrder 
   } = useOrder();
   const { currentUser } = useAuth();
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
 
   const { isOpen, order } = orderCancelModalState;
 

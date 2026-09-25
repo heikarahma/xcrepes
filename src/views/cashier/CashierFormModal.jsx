@@ -28,9 +28,11 @@ import {
   RotateCcw,
   ClipboardCheck
 } from 'lucide-react';
+import { ROLES, hasAdminPrivileges } from '../../models/UserModel';
 
 export const CashierFormModal = () => {
   const { 
+    currentUser,
     formModalState, 
     closeFormCashierModal, 
     addCashier, 
@@ -39,8 +41,10 @@ export const CashierFormModal = () => {
   } = useAuth();
   const { showToast } = useUnit();
 
+  const isSuperAdmin = currentUser?.role === ROLES.SUPERADMIN;
   const { isOpen, mode, cashier } = formModalState;
 
+  const [role, setRole] = useState('kasir'); // 'kasir' | 'admin'
   const [nama, setNama] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +56,14 @@ export const CashierFormModal = () => {
 
   useEffect(() => {
     if (isOpen) {
+      if (!isSuperAdmin) {
+        setRole('kasir');
+      } else if (mode === 'edit' && cashier) {
+        setRole(hasAdminPrivileges(cashier.role) ? 'admin' : 'kasir');
+      } else {
+        setRole('kasir');
+      }
+
       if (mode === 'edit' && cashier) {
         setNama(cashier.nama || '');
         setUsername(cashier.username || '');
@@ -69,7 +81,7 @@ export const CashierFormModal = () => {
       setErrors({});
       setIsSubmitting(false);
     }
-  }, [isOpen, mode, cashier]);
+  }, [isOpen, mode, cashier, isSuperAdmin]);
 
   if (!isOpen) return null;
 
@@ -91,7 +103,7 @@ export const CashierFormModal = () => {
   const validate = () => {
     const err = {};
     if (!nama.trim()) {
-      err.nama = 'Nama lengkap kasir wajib diisi!';
+      err.nama = role === 'admin' ? 'Nama lengkap Kepala Toko wajib diisi!' : 'Nama lengkap kasir wajib diisi!';
     }
     if (!username.trim()) {
       err.username = 'Username login wajib diisi!';
@@ -103,7 +115,7 @@ export const CashierFormModal = () => {
     } else if (password.trim().length < 4) {
       err.password = 'Kata sandi minimal 4 karakter!';
     }
-    if (permissions.length === 0) {
+    if (role === 'kasir' && permissions.length === 0) {
       err.permissions = 'Pilih minimal 1 fitur yang dapat diakses oleh kasir!';
     }
     setErrors(err);
@@ -117,13 +129,15 @@ export const CashierFormModal = () => {
     setIsSubmitting(true);
 
     let res;
+    const effectivePermissions = role === 'admin' ? navFeatures.map(f => f.key) : permissions;
     try {
       if (isEdit) {
         res = await updateCashier(cashier.id, {
           nama: nama.trim(),
           username: username.trim().toLowerCase(),
           password: password.trim(),
-          permissions,
+          role,
+          permissions: effectivePermissions,
           isActive
         });
       } else {
@@ -131,7 +145,8 @@ export const CashierFormModal = () => {
           nama: nama.trim(),
           username: username.trim().toLowerCase(),
           password: password.trim(),
-          permissions,
+          role,
+          permissions: effectivePermissions,
           isActive
         });
       }
@@ -142,14 +157,16 @@ export const CashierFormModal = () => {
     }
 
     if (res && res.success) {
+      const roleText = role === 'admin' ? 'Kepala Toko' : 'Kasir';
       if (isEdit) {
-        showToast(`Akun kasir "${nama}" berhasil diperbarui.`, 'success', 'Perubahan Disimpan');
+        showToast(`Akun ${roleText} "${nama}" berhasil diperbarui.`, 'success', 'Perubahan Disimpan');
       } else {
-        showToast(`Akun kasir "${nama}" berhasil ditambahkan.`, 'success', 'Kasir Ditambahkan');
+        showToast(`Akun ${roleText} "${nama}" berhasil ditambahkan.`, 'success', 'Akun Ditambahkan');
       }
       setNama('');
       setUsername('');
       setPassword('');
+      setRole('kasir');
       setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
       setIsActive(true);
       setShowPassword(false);
@@ -202,8 +219,20 @@ export const CashierFormModal = () => {
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEdit ? 'Ubah Akun Kasir' : 'Tambah Kasir Baru'}
-      subtitle={isEdit ? 'Perbarui informasi profil dan hak akses menu kasir.' : 'Buat kredensial kasir dan atur hak akses fitur menu.'}
+      title={
+        !isSuperAdmin
+          ? (isEdit ? 'Ubah Akun Kasir' : 'Tambah Kasir Baru')
+          : (isEdit 
+              ? (role === 'admin' ? 'Ubah Akun Kepala Toko' : 'Ubah Akun Kasir') 
+              : (role === 'admin' ? 'Tambah Kepala Toko' : 'Tambah Akun Pengguna Baru'))
+      }
+      subtitle={
+        !isSuperAdmin
+          ? (isEdit ? 'Perbarui informasi profil dan hak akses menu kasir.' : 'Buat akun kasir baru dan atur izin akses menunya.')
+          : (isEdit 
+              ? 'Perbarui informasi profil, jabatan, dan hak akses akun.' 
+              : 'Pilih peran akun (Kasir atau Kepala Toko) dan tentukan hak aksesnya.')
+      }
       size="md"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
@@ -216,19 +245,84 @@ export const CashierFormModal = () => {
             onClick={handleSubmit}
             disabled={isSubmitting || !nama.trim() || !username.trim() || !password.trim()}
           >
-            {isSubmitting ? 'Menyimpan...' : isEdit ? 'Simpan Perubahan' : 'Tambah Kasir'}
+            {isSubmitting 
+              ? 'Menyimpan...' 
+              : isEdit 
+                ? 'Simpan Perubahan' 
+                : (!isSuperAdmin || role !== 'admin' ? 'Tambah Kasir' : 'Tambah Kepala Toko')}
           </Button>
         </div>
       }
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Info Callout Box (Sama persis seperti Form Modal lainnya) */}
-        <div style={styles.infoCallout}>
-          <ShieldCheck size={20} color="var(--blue-500)" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <div style={{ fontSize: '0.813rem', color: 'var(--blue-900)', lineHeight: '1.4' }}>
-            Kasir hanya dapat melihat dan mengakses menu yang Anda berikan izin (saklar <strong>ON</strong>) di bawah ini.
+        {/* Pilihan Peran / Role Akun (Hanya ditampilkan untuk Super Admin saat tambah akun baru) */}
+        {isSuperAdmin && !isEdit && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label className="blue-label" style={{ fontWeight: 700, margin: 0 }}>
+              Peran / Jabatan Akun <span style={{ color: 'var(--red-500)' }}>*</span>
+            </label>
+            <div style={styles.roleCardsGrid}>
+              {/* Pilihan 1: Kasir POS */}
+              <div
+                onClick={() => setRole('kasir')}
+                style={{
+                  ...styles.roleSelectCard,
+                  borderColor: role === 'kasir' ? 'var(--blue-500)' : 'var(--border-color)',
+                  backgroundColor: role === 'kasir' ? 'var(--blue-50)' : '#FFFFFF',
+                  boxShadow: role === 'kasir' ? '0 0 0 1.5px var(--blue-500)' : 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                  <div style={{
+                    ...styles.roleIconWrapper,
+                    backgroundColor: role === 'kasir' ? 'var(--blue-100)' : 'var(--neutral-100)'
+                  }}>
+                    <ShoppingBag size={18} color={role === 'kasir' ? 'var(--blue-600)' : 'var(--neutral-600)'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: role === 'kasir' ? 'var(--blue-900)' : 'var(--neutral-900)' }}>
+                      Kasir POS
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
+                      Operasional & izin menu fleksibel
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pilihan 2: Kepala Toko */}
+              <div
+                onClick={() => {
+                  setRole('admin');
+                  if (errors.permissions) setErrors(prev => ({ ...prev, permissions: '' }));
+                }}
+                style={{
+                  ...styles.roleSelectCard,
+                  borderColor: role === 'admin' ? '#7c3aed' : 'var(--border-color)',
+                  backgroundColor: role === 'admin' ? '#f5f3ff' : '#FFFFFF',
+                  boxShadow: role === 'admin' ? '0 0 0 1.5px #7c3aed' : 'none'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                  <div style={{
+                    ...styles.roleIconWrapper,
+                    backgroundColor: role === 'admin' ? '#ede9fe' : 'var(--neutral-100)'
+                  }}>
+                    <ShieldCheck size={18} color={role === 'admin' ? '#7c3aed' : 'var(--neutral-600)'} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.875rem', color: role === 'admin' ? '#5b21b6' : 'var(--neutral-900)' }}>
+                      Kepala Toko
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
+                      Akses penuh setara Super Admin
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Global Error Form Alert */}
         {errors.form && (
@@ -238,10 +332,10 @@ export const CashierFormModal = () => {
           </div>
         )}
 
-        {/* 1. Input: Nama Lengkap Kasir */}
+        {/* 1. Input: Nama Lengkap */}
         <Input
-          label="Nama Lengkap Kasir"
-          placeholder="Contoh: Siti Rahma"
+          label={role === 'admin' ? 'Nama Lengkap Kepala Toko' : 'Nama Lengkap Kasir'}
+          placeholder={role === 'admin' ? 'Contoh: Budi Santoso (Kepala Toko)' : 'Contoh: Siti Rahma'}
           value={nama}
           onChange={(e) => {
             setNama(e.target.value);
@@ -250,8 +344,8 @@ export const CashierFormModal = () => {
           error={errors.nama}
           required
           autoFocus
-          icon={User}
-          helperText="Nama yang akan ditampilkan pada struk dan sistem POS."
+          icon={role === 'admin' ? ShieldCheck : User}
+          helperText="Nama yang akan ditampilkan pada struk, riwayat audit, dan sistem POS."
         />
 
         {/* 2. Grid Baris: Username & Password */}
@@ -344,8 +438,9 @@ export const CashierFormModal = () => {
           </button>
         </div>
 
-        {/* 4. Section: Hak Akses Fitur Menu (Toggle On/Off) */}
-        <div style={styles.permissionSection}>
+        {/* 4. Section: Hak Akses Fitur Menu (Khusus Kasir) */}
+        {role === 'kasir' && (
+          <div style={styles.permissionSection}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <span style={styles.sectionLabel}>Hak Akses Fitur Kasir</span>
@@ -440,6 +535,7 @@ export const CashierFormModal = () => {
             })}
           </div>
         </div>
+      )}
       </form>
 
       <style>{`
@@ -500,6 +596,36 @@ export const CashierFormModal = () => {
 };
 
 const styles = {
+  roleCardsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px'
+  },
+  roleSelectCard: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '12px 14px',
+    borderRadius: 'var(--radius-md)',
+    border: '1.5px solid var(--border-color)',
+    cursor: 'pointer',
+    userSelect: 'none',
+    transition: 'all var(--transition-fast)'
+  },
+  roleIconWrapper: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
+  },
+  adminAccessBox: {
+    padding: '16px',
+    borderRadius: 'var(--radius-md)',
+    backgroundColor: '#f5f3ff',
+    border: '1.5px solid #ddd6fe'
+  },
   infoCallout: {
     display: 'flex',
     alignItems: 'flex-start',

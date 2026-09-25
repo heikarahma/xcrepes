@@ -8,6 +8,25 @@ export const AUTH_USER_STORAGE_KEY = 'pos_authenticated_user';
 export const CASHIERS_STORAGE_KEY = 'pos_cashier_accounts';
 export const SUPERADMIN_STORAGE_KEY = 'pos_superadmin_profile';
 
+// Role Constants
+export const ROLES = {
+  SUPERADMIN: 'superadmin',
+  ADMIN: 'admin', // Kepala Toko
+  KASIR: 'kasir'
+};
+
+export const hasAdminPrivileges = (role) => 
+  role === ROLES.SUPERADMIN || role === ROLES.ADMIN || role === 'kepala_toko';
+
+export const isStoreAdminRole = (role) => 
+  role === ROLES.ADMIN || role === 'kepala_toko';
+
+export const getRoleDisplayName = (role) => {
+  if (role === ROLES.SUPERADMIN) return 'Super Admin';
+  if (role === ROLES.ADMIN || role === 'kepala_toko') return 'Kepala Toko';
+  return 'Kasir POS';
+};
+
 // Akun permanen Super Admin default
 export const DEFAULT_SUPERADMIN = {
   id: 'usr_superadmin',
@@ -16,6 +35,7 @@ export const DEFAULT_SUPERADMIN = {
   password: 'superadminxcrepes123*',
   role: 'superadmin'
 };
+
 
 // Daftar seluruh fitur / menu sidebar yang dapat diatur hak aksesnya (Toggle On/Off)
 export const NAV_FEATURES = [

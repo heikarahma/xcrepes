@@ -55,7 +55,7 @@ export const SalesReportTab = () => {
   const { openPhotoPreviewModal } = useRawMaterial();
   const { currentUser } = useAuth();
 
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const showProfitMetrics = isSuperAdmin;
 
   // Local independent search states for both sub-menus

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useUnit } from '../../controllers/UnitController';
 import { useSettings } from '../../controllers/SettingsController';
 import { useAuth } from '../../controllers/AuthController';
+import { hasAdminPrivileges, isStoreAdminRole } from '../../models/UserModel';
 import { 
   Clock, 
   User, 
@@ -35,6 +36,8 @@ export const Navbar = () => {
   const dropdownRef = useRef(null);
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isStoreAdmin = isStoreAdminRole(currentUser?.role);
+  const hasFullAccess = hasAdminPrivileges(currentUser?.role);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -159,46 +162,48 @@ export const Navbar = () => {
               cursor: 'pointer',
               transition: 'all var(--transition-fast)',
               borderColor: isDropdownOpen 
-                ? (isSuperAdmin ? 'var(--blue-400)' : 'var(--green-400)') 
-                : (isSuperAdmin ? 'var(--blue-100)' : 'var(--green-100)'),
+                ? (isSuperAdmin ? 'var(--blue-400)' : (isStoreAdmin ? '#a78bfa' : 'var(--green-400)')) 
+                : (isSuperAdmin ? 'var(--blue-100)' : (isStoreAdmin ? '#ede9fe' : 'var(--green-100)')),
               backgroundColor: isDropdownOpen 
-                ? (isSuperAdmin ? '#e0edff' : '#dcfce7') 
-                : (isSuperAdmin ? 'var(--blue-50)' : 'var(--green-50)')
+                ? (isSuperAdmin ? '#e0edff' : (isStoreAdmin ? '#f5f3ff' : '#dcfce7')) 
+                : (isSuperAdmin ? 'var(--blue-50)' : (isStoreAdmin ? '#faf5ff' : 'var(--green-50)'))
             }}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             title="Klik untuk membuka menu profil pengguna"
-            className={`navbar-user-chip-clickable ${isSuperAdmin ? 'role-superadmin' : 'role-cashier'}`}
+            className={`navbar-user-chip-clickable ${isSuperAdmin ? 'role-superadmin' : (isStoreAdmin ? 'role-storeadmin' : 'role-cashier')}`}
           >
             <div 
               className="navbar-user-avatar"
               style={{
                 ...styles.userAvatar,
-                backgroundColor: isSuperAdmin ? 'var(--blue-100)' : 'var(--green-100)'
+                backgroundColor: isSuperAdmin ? 'var(--blue-100)' : (isStoreAdmin ? '#ede9fe' : 'var(--green-100)')
               }}
             >
               {isSuperAdmin ? (
                 <ShieldCheck size={16} color="var(--blue-600)" />
+              ) : isStoreAdmin ? (
+                <ShieldCheck size={16} color="#7c3aed" />
               ) : (
                 <User size={16} color="var(--green-600)" />
               )}
             </div>
             <div className="navbar-user-info" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
               <span className="navbar-username" style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
-                {currentUser?.nama || (isSuperAdmin ? 'Super Admin' : 'Kasir')}
+                {currentUser?.nama || (isSuperAdmin ? 'Super Admin' : (isStoreAdmin ? 'Kepala Toko' : 'Kasir'))}
               </span>
               <span className="navbar-userrole" style={{ 
                 fontSize: '0.625rem', 
                 fontWeight: 700, 
-                color: isSuperAdmin ? 'var(--blue-600)' : 'var(--green-600)',
+                color: isSuperAdmin ? 'var(--blue-600)' : (isStoreAdmin ? '#7c3aed' : 'var(--green-600)'),
                 letterSpacing: '0.04em'
               }}>
-                {isSuperAdmin ? 'SUPER ADMIN' : 'KASIR'}
+                {isSuperAdmin ? 'SUPER ADMIN' : (isStoreAdmin ? 'KEPALA TOKO' : 'KASIR')}
               </span>
             </div>
             <ChevronDown 
               className="navbar-chevron"
               size={13} 
-              color={isSuperAdmin ? 'var(--blue-600)' : 'var(--green-600)'} 
+              color={isSuperAdmin ? 'var(--blue-600)' : (isStoreAdmin ? '#7c3aed' : 'var(--green-600)')} 
               style={{
                 marginLeft: '2px',
                 transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -215,19 +220,21 @@ export const Navbar = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{
                     ...styles.userAvatar,
-                    backgroundColor: isSuperAdmin ? 'var(--blue-100)' : 'var(--green-100)',
+                    backgroundColor: isSuperAdmin ? 'var(--blue-100)' : (isStoreAdmin ? '#ede9fe' : 'var(--green-100)'),
                     width: '32px',
                     height: '32px'
                   }}>
                     {isSuperAdmin ? (
                       <ShieldCheck size={17} color="var(--blue-700)" />
+                    ) : isStoreAdmin ? (
+                      <ShieldCheck size={17} color="#7c3aed" />
                     ) : (
                       <User size={17} color="var(--green-700)" />
                     )}
                   </div>
                   <div style={{ overflow: 'hidden' }}>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--neutral-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                      {currentUser?.nama || (isSuperAdmin ? 'Super Admin' : 'Kasir')}
+                      {currentUser?.nama || (isSuperAdmin ? 'Super Admin' : (isStoreAdmin ? 'Kepala Toko' : 'Kasir'))}
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--neutral-500)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                       @{currentUser?.username || 'user'}
@@ -242,11 +249,11 @@ export const Navbar = () => {
                     fontWeight: 700,
                     padding: '2px 8px',
                     borderRadius: '12px',
-                    backgroundColor: isSuperAdmin ? '#e0edff' : 'var(--green-50)',
-                    color: isSuperAdmin ? 'var(--blue-700)' : 'var(--green-700)',
-                    border: `1px solid ${isSuperAdmin ? '#bdd7ff' : 'var(--green-200)'}`
+                    backgroundColor: isSuperAdmin ? '#e0edff' : (isStoreAdmin ? '#ede9fe' : 'var(--green-50)'),
+                    color: isSuperAdmin ? 'var(--blue-700)' : (isStoreAdmin ? '#6d28d9' : 'var(--green-700)'),
+                    border: `1px solid ${isSuperAdmin ? '#bdd7ff' : (isStoreAdmin ? '#ddd6fe' : 'var(--green-200)')}`
                   }}>
-                    {isSuperAdmin ? 'SUPER ADMIN (Akses Penuh)' : 'KASIR POS'}
+                    {isSuperAdmin ? 'SUPER ADMIN (Akses Penuh)' : (isStoreAdmin ? 'KEPALA TOKO (Akses Penuh)' : 'KASIR POS')}
                   </span>
                 </div>
               </div>

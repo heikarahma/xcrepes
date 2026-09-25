@@ -20,7 +20,7 @@ import {
 export const ReportsView = () => {
   const { activeMenu } = useUnit();
   const { currentUser } = useAuth();
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const isCashier = currentUser?.role === 'kasir';
   const {
     activeReportTab,

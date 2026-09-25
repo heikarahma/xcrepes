@@ -6,7 +6,7 @@ import { AdminOpnameDetailView } from '../stockOpname/AdminOpnameDetailView';
 
 export const StockOpnameView = () => {
   const { currentUser } = useAuth();
-  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
 
   // Navigation states for Admin
   const [selectedReport, setSelectedReport] = useState(null);

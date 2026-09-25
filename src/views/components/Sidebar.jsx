@@ -7,6 +7,7 @@ import { useProductMenu } from '../../controllers/ProductMenuController';
 import { useSettings } from '../../controllers/SettingsController';
 import { useReport } from '../../controllers/ReportController';
 import { useAuth } from '../../controllers/AuthController';
+import { hasAdminPrivileges, isStoreAdminRole } from '../../models/UserModel';
 import { 
   Ruler, 
   Layers, 
@@ -47,12 +48,14 @@ export const Sidebar = () => {
   const { currentUser, hasPermission, logout, cashiers, openProfileModal } = useAuth();
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isStoreAdmin = isStoreAdminRole(currentUser?.role);
+  const hasFullAccess = hasAdminPrivileges(currentUser?.role);
   const hasSales = hasPermission('kasir');
   const hasMasterData = hasPermission('unit') || hasPermission('category') || hasPermission('topping') || hasPermission('product-menu');
   const hasInventory = hasPermission('raw-material') || hasPermission('stock-opname');
   const hasReturns = hasPermission('returns');
   const hasReports = hasPermission('reports') || hasPermission('reports-sales') || hasPermission('reports-materials');
-  const hasSettingsGroup = hasPermission('settings') || isSuperAdmin;
+  const hasSettingsGroup = hasPermission('settings') || hasFullAccess;
 
   const isSummaryActive = activeMenu === 'reports-sales-summary' || 
                           (activeMenu === 'reports-sales' && activeSalesSection === 'products') || 
@@ -458,8 +461,8 @@ export const Sidebar = () => {
                   </button>
                 )}
 
-                {/* Khusus Super Admin: Menu Kelola Akun Kasir & Hak Akses */}
-                {isSuperAdmin && (
+                {/* Menu Kelola Akun & Hak Akses (Super Admin & Kepala Toko) */}
+                {hasFullAccess && (
                   <button
                     className={`sidebar-nav-btn ${activeMenu === 'cashier-management' ? 'is-active' : ''}`}
                     style={{
@@ -467,12 +470,12 @@ export const Sidebar = () => {
                       ...(activeMenu === 'cashier-management' ? styles.navButtonActive : {})
                     }}
                     onClick={() => handleSelectMenu('cashier-management')}
-                    title="Kelola Akun Kasir"
+                    title="Kelola Akun & Hak Akses"
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
                       <Users size={18} color={activeMenu === 'cashier-management' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
                       <span style={{ fontWeight: activeMenu === 'cashier-management' ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
-                        Kelola Akun Kasir
+                        Kelola Akun & Akses
                       </span>
                     </div>
                     <span style={{ ...(activeMenu === 'cashier-management' ? styles.activeCounterBadge : styles.inactiveCounterBadge), flexShrink: 0 }}>
@@ -491,6 +494,8 @@ export const Sidebar = () => {
             <div style={styles.userCardAvatar}>
               {isSuperAdmin ? (
                 <ShieldCheck size={18} color="#005BC6" />
+              ) : isStoreAdmin ? (
+                <ShieldCheck size={18} color="#6d28d9" />
               ) : (
                 <User size={18} color="#00823F" />
               )}
@@ -502,6 +507,15 @@ export const Sidebar = () => {
               <div style={styles.userCardRole}>
                 {isSuperAdmin ? (
                   <span style={styles.roleTagSuperAdmin}>SUPER ADMIN</span>
+                ) : isStoreAdmin ? (
+                  <span style={{ 
+                    ...styles.roleTagSuperAdmin, 
+                    backgroundColor: '#ede9fe', 
+                    color: '#6d28d9', 
+                    borderColor: '#ddd6fe' 
+                  }}>
+                    KEPALA TOKO
+                  </span>
                 ) : (
                   <span style={styles.roleTagCashier}>KASIR POS</span>
                 )}

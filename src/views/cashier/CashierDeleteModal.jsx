@@ -12,9 +12,12 @@ export const CashierDeleteModal = () => {
 
   if (!isOpen || !cashier) return null;
 
+  const isStoreAdmin = cashier.role === 'admin' || cashier.role === 'kepala_toko';
+  const roleName = isStoreAdmin ? 'Kepala Toko' : 'Kasir';
+
   const handleConfirmDelete = () => {
     deleteCashier(cashier.id);
-    showToast(`Akun kasir "${cashier.nama}" telah dihapus.`, 'info', 'Kasir Dihapus');
+    showToast(`Akun ${roleName} "${cashier.nama}" telah dihapus.`, 'info', 'Akun Dihapus');
     closeDeleteCashierModal();
   };
 
@@ -22,8 +25,8 @@ export const CashierDeleteModal = () => {
     <Modal
       isOpen={isOpen}
       onClose={closeDeleteCashierModal}
-      title="Hapus Akun Kasir?"
-      subtitle="Konfirmasi penghapusan akun kasir dari sistem."
+      title={`Hapus Akun ${roleName}?`}
+      subtitle={`Konfirmasi penghapusan akun ${roleName} dari sistem.`}
       size="sm"
       footer={
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', width: '100%' }}>
@@ -48,7 +51,7 @@ export const CashierDeleteModal = () => {
               Tindakan ini permanen
             </div>
             <div style={{ fontSize: '0.813rem', color: 'var(--neutral-600)', marginTop: '4px', lineHeight: '1.4' }}>
-              Yakin ingin menghapus akun kasir <strong>"{cashier.nama}"</strong> (<code>@{cashier.username}</code>)? Kasir ini tidak akan dapat login lagi ke sistem.
+              Yakin ingin menghapus akun {roleName} <strong>"{cashier.nama}"</strong> (<code>@{cashier.username}</code>)? Pengguna ini tidak akan dapat login lagi ke sistem.
             </div>
           </div>
         </div>
