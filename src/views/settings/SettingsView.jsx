@@ -804,6 +804,19 @@ export const SettingsView = () => {
                         <span style={styles.toggleDesc}>Mencetak catatan khusus pesanan menu pelanggan.</span>
                       </div>
                     </label>
+
+                    <label style={styles.toggleItem}>
+                      <input
+                        type="checkbox"
+                        checked={formData.showToppings !== false}
+                        onChange={(e) => handleChange('showToppings', e.target.checked)}
+                        style={styles.checkbox}
+                      />
+                      <div>
+                        <span style={styles.toggleTitle}>Rincian Extra Topping</span>
+                        <span style={styles.toggleDesc}>Cetak daftar topping pesanan di bawah menu struk.</span>
+                      </div>
+                    </label>
                   </div>
                 </div>
 
@@ -959,10 +972,12 @@ export const SettingsView = () => {
                   <span>1 x Rp 28.000</span>
                   <span style={{ fontWeight: 700 }}>Rp 28.000</span>
                 </div>
-                <div style={{ paddingLeft: '8px', fontSize: '0.688rem', color: '#444444', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>+ Keju Parut Kraft</span>
-                  <span>Rp 3.000</span>
-                </div>
+                {formData.showToppings !== false && (
+                  <div style={{ paddingLeft: '8px', fontSize: '0.688rem', color: '#444444', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>+ Keju Parut Kraft</span>
+                    <span>Rp 3.000</span>
+                  </div>
+                )}
                 {formData.showNotes && (
                   <div style={{ paddingLeft: '8px', fontSize: '0.688rem', color: '#666666', fontStyle: 'italic' }}>
                     *Coklat agak banyak

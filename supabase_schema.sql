@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS toppings (
     price NUMERIC NOT NULL DEFAULT 0,
     description TEXT,
     ingredients JSONB DEFAULT '[]'::JSONB,
+    show_on_receipt BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -140,6 +141,7 @@ CREATE TABLE IF NOT EXISTS store_settings (
     show_customer_name BOOLEAN DEFAULT true,
     show_table_number BOOLEAN DEFAULT true,
     show_notes BOOLEAN DEFAULT true,
+    show_toppings BOOLEAN DEFAULT true,
     enable_tax BOOLEAN DEFAULT false,
     tax_rate NUMERIC DEFAULT 10,
     tax_name TEXT DEFAULT 'Pajak',
@@ -275,6 +277,8 @@ ON CONFLICT (id) DO NOTHING;
 -- MIGRATION SCRIPT UNTUK DATABASE SUPABASE YANG SUDAH BERJALAN
 -- ==============================================================================
 -- Jalankan query di bawah ini di SQL Editor Supabase jika kolom belum ada:
+ALTER TABLE toppings ADD COLUMN IF NOT EXISTS show_on_receipt BOOLEAN DEFAULT true;
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS show_toppings BOOLEAN DEFAULT true;
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS enable_tax BOOLEAN DEFAULT false;
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 10;
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_name TEXT DEFAULT 'Pajak';

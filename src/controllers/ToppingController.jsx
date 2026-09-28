@@ -162,7 +162,8 @@ export const ToppingProvider = ({ children }) => {
         name: trimmedName,
         price: Math.max(0, Number(data.price) || 0),
         description: data.description || '',
-        ingredients: Array.isArray(data.ingredients) ? data.ingredients : []
+        ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+        showOnReceipt: data.showOnReceipt !== false
       });
 
       if (err) {
@@ -201,7 +202,8 @@ export const ToppingProvider = ({ children }) => {
         name: trimmedName,
         price: Math.max(0, Number(data.price) || 0),
         description: data.description || '',
-        ingredients: Array.isArray(data.ingredients) ? data.ingredients : []
+        ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+        showOnReceipt: data.showOnReceipt !== undefined ? Boolean(data.showOnReceipt) : true
       });
 
       if (err) {

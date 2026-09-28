@@ -243,9 +243,37 @@ export const ToppingListView = () => {
 
                       {/* Nama Topping */}
                       <td>
-                        <span style={styles.toppingName}>
-                          {item.name}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={styles.toppingName}>
+                            {item.name}
+                          </span>
+                          {item.showOnReceipt === false && (
+                            <span style={{
+                              fontSize: '0.688rem',
+                              fontWeight: 700,
+                              color: 'var(--amber-700)',
+                              backgroundColor: 'var(--amber-50)',
+                              border: '1px solid var(--amber-200)',
+                              borderRadius: '4px',
+                              padding: '2px 6px'
+                            }}>
+                              Non-Struk
+                            </span>
+                          )}
+                          {Number(item.price) === 0 && (
+                            <span style={{
+                              fontSize: '0.688rem',
+                              fontWeight: 700,
+                              color: 'var(--emerald-700)',
+                              backgroundColor: 'var(--emerald-50)',
+                              border: '1px solid var(--emerald-200)',
+                              borderRadius: '4px',
+                              padding: '2px 6px'
+                            }}>
+                              Gratis
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Harga Jual */}
@@ -324,10 +352,36 @@ export const ToppingListView = () => {
                         <span style={styles.rowNumberTag}>
                           #{rowNumber}
                         </span>
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span className="mobile-unit-name">
                             {item.name}
                           </span>
+                          {item.showOnReceipt === false && (
+                            <span style={{
+                              fontSize: '0.625rem',
+                              fontWeight: 700,
+                              color: 'var(--amber-700)',
+                              backgroundColor: 'var(--amber-50)',
+                              border: '1px solid var(--amber-200)',
+                              borderRadius: '4px',
+                              padding: '1px 5px'
+                            }}>
+                              Non-Struk
+                            </span>
+                          )}
+                          {Number(item.price) === 0 && (
+                            <span style={{
+                              fontSize: '0.625rem',
+                              fontWeight: 700,
+                              color: 'var(--emerald-700)',
+                              backgroundColor: 'var(--emerald-50)',
+                              border: '1px solid var(--emerald-200)',
+                              borderRadius: '4px',
+                              padding: '1px 5px'
+                            }}>
+                              Gratis
+                            </span>
+                          )}
                         </div>
                       </div>
 

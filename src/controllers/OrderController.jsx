@@ -183,7 +183,8 @@ export const OrderProvider = ({ children }) => {
 
     const sanitizedToppings = (Array.isArray(selectedToppings) ? selectedToppings : []).map(t => ({
       ...t,
-      quantity: Math.max(1, Number(t.quantity) || 1)
+      quantity: Math.max(1, Number(t.quantity) || 1),
+      showOnReceipt: t.showOnReceipt !== false
     }));
     const toppingsCost = sanitizedToppings.reduce((sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 0);
     const unitPrice = Number(menu.price) + toppingsCost;
@@ -257,7 +258,8 @@ export const OrderProvider = ({ children }) => {
 
       const sanitizedToppings = (Array.isArray(selectedToppings) ? selectedToppings : []).map(t => ({
         ...t,
-        quantity: Math.max(1, Number(t.quantity) || 1)
+        quantity: Math.max(1, Number(t.quantity) || 1),
+        showOnReceipt: t.showOnReceipt !== false
       }));
       const toppingsCost = sanitizedToppings.reduce((sum, t) => sum + ((Number(t.price) || 0) * (Number(t.quantity) || 1)), 0);
       const unitPrice = Number(matchedMenu.price) + toppingsCost;

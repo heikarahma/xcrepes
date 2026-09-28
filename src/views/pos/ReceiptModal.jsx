@@ -307,22 +307,24 @@ export const ReceiptModal = () => {
                   </div>
 
                   {/* Toppings indented */}
-                  {item.toppings && item.toppings.length > 0 ? (
+                  {settings.showToppings !== false && Array.isArray(item.toppings) && item.toppings.some(top => top.showOnReceipt !== false) ? (
                     <div style={styles.itemToppingList}>
-                      {item.toppings.map((top, tIdx) => {
-                        const topQty = Number(top.quantity) || 1;
-                        const topPrice = Number(top.price) || 0;
-                        const topTotal = topPrice * topQty * (item.quantity || 1);
-                        return (
-                          <div key={tIdx} style={styles.toppingRow}>
-                            <span>
-                              + {top.name} {topQty > 1 ? `(${topQty}x)` : ''}
-                              {item.quantity > 1 ? ` (${item.quantity}x @${formatIDR(topPrice * topQty)})` : (topQty > 1 ? ` (@${formatIDR(topPrice)})` : '')}
-                            </span>
-                            <span>{formatIDR(topTotal)}</span>
-                          </div>
-                        );
-                      })}
+                      {item.toppings
+                        .filter(top => top.showOnReceipt !== false)
+                        .map((top, tIdx) => {
+                          const topQty = Number(top.quantity) || 1;
+                          const topPrice = Number(top.price) || 0;
+                          const topTotal = topPrice * topQty * (item.quantity || 1);
+                          return (
+                            <div key={tIdx} style={styles.toppingRow}>
+                              <span>
+                                + {top.name} {topQty > 1 ? `(${topQty}x)` : ''}
+                                {item.quantity > 1 ? ` (${item.quantity}x @${formatIDR(topPrice * topQty)})` : (topQty > 1 ? ` (@${formatIDR(topPrice)})` : '')}
+                              </span>
+                              <span>{formatIDR(topTotal)}</span>
+                            </div>
+                          );
+                        })}
                     </div>
                   ) : null}
 

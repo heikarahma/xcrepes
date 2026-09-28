@@ -15,7 +15,8 @@ import {
   Search, 
   ChevronDown, 
   Check, 
-  X 
+  X,
+  Receipt
 } from 'lucide-react';
 
 export const ToppingFormModal = () => {
@@ -33,6 +34,7 @@ export const ToppingFormModal = () => {
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [showOnReceipt, setShowOnReceipt] = useState(true);
   const [ingredients, setIngredients] = useState([]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,7 +64,8 @@ export const ToppingFormModal = () => {
     if (isOpen) {
       if (mode === 'edit' && item) {
         setName(item.name || '');
-        setPrice(item.price || '');
+        setPrice(item.price !== undefined && item.price !== null ? item.price : '');
+        setShowOnReceipt(item.showOnReceipt !== false);
         setIngredients(
           item.ingredients && item.ingredients.length > 0
             ? item.ingredients.map(ing => ({ ...ing }))
@@ -71,6 +74,7 @@ export const ToppingFormModal = () => {
       } else {
         setName('');
         setPrice('');
+        setShowOnReceipt(true);
         setIngredients([createDefaultIngredient()]);
       }
       setErrors({});
@@ -80,10 +84,10 @@ export const ToppingFormModal = () => {
     }
   }, [isOpen, mode, item, availableRawMaterials]);
 
-  // Auto-fill or adjust price based on HPP
+  // Auto-fill suggested price based on HPP ONLY when price is empty and not yet edited
   useEffect(() => {
     const list = Array.isArray(availableRawMaterials) ? availableRawMaterials : [];
-    if (isOpen && ingredients && ingredients.length > 0) {
+    if (isOpen && mode !== 'edit' && ingredients && ingredients.length > 0) {
       const currentCost = ingredients.reduce((total, ing) => {
         const mat = list.find(m => m.id === ing.rawMaterialId || m.name === ing.rawMaterialName);
         const pricePerUnit = mat ? mat.pricePerUnit : 0;
@@ -91,11 +95,11 @@ export const ToppingFormModal = () => {
         return total + (pricePerUnit * qty);
       }, 0);
       
-      if (price === '' || Number(price) < currentCost) {
-        setPrice(currentCost > 0 ? currentCost : '');
+      if (price === '' && currentCost > 0) {
+        setPrice(currentCost);
       }
     }
-  }, [ingredients, isOpen, availableRawMaterials]); // price omitted intentionally
+  }, [ingredients, isOpen, availableRawMaterials, mode]);
 
   // Create default ingredient row
   function createDefaultIngredient() {
@@ -179,10 +183,11 @@ export const ToppingFormModal = () => {
     }
     
     const currentCost = calculateTotalCost();
-    if (price === '' || isNaN(Number(price)) || Number(price) < 0) {
+    const numPrice = Number(price);
+    if (price === '' || isNaN(numPrice) || numPrice < 0) {
       err.price = 'Harga jual topping tidak valid.';
-    } else if (Number(price) < currentCost) {
-      err.price = `Harga jual tidak boleh di bawah estimasi modal (${formatIDR(currentCost)}).`;
+    } else if (numPrice > 0 && numPrice < currentCost) {
+      err.price = `Harga jual tidak boleh di bawah estimasi modal (${formatIDR(currentCost)}). Untuk topping gratis / tanpa biaya, isi nominal 0.`;
     }
 
     if (!ingredients || ingredients.length === 0) {
@@ -215,13 +220,15 @@ export const ToppingFormModal = () => {
       if (mode === 'edit' && item) {
         result = await updateTopping(item.id, {
           name,
-          price,
+          price: Number(price) || 0,
+          showOnReceipt,
           ingredients
         });
       } else {
         result = await addTopping({
           name,
-          price,
+          price: Number(price) || 0,
+          showOnReceipt,
           ingredients
         });
       }
@@ -234,6 +241,7 @@ export const ToppingFormModal = () => {
     if (result && result.success) {
       setName('');
       setPrice('');
+      setShowOnReceipt(true);
       setIngredients([createDefaultIngredient()]);
       setErrors({});
       setOpenDropdownIndex(null);
@@ -247,6 +255,7 @@ export const ToppingFormModal = () => {
   const handleClose = () => {
     setName('');
     setPrice('');
+    setShowOnReceipt(true);
     setIngredients([createDefaultIngredient()]);
     setErrors({});
     setOpenDropdownIndex(null);
@@ -549,9 +558,32 @@ export const ToppingFormModal = () => {
 
             {/* Manual Price Input */}
             <div>
-              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Harga Jual Topping <span className="text-red-500">*</span></span>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label className="form-label" style={{ margin: 0 }}>
+                  Harga Jual Topping <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrice(0);
+                    if (errors.price) setErrors({ ...errors, price: '' });
+                  }}
+                  style={{
+                    fontSize: '0.688rem',
+                    fontWeight: 700,
+                    color: Number(price) === 0 ? 'var(--emerald-700)' : 'var(--blue-600)',
+                    backgroundColor: Number(price) === 0 ? 'var(--emerald-50)' : 'var(--blue-50)',
+                    border: Number(price) === 0 ? '1px solid var(--emerald-300)' : '1px solid var(--blue-200)',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {Number(price) === 0 ? '✓ Topping Gratis (Rp 0)' : 'Set Rp 0 (Gratis)'}
+                </button>
+              </div>
+
               <div style={{ position: 'relative' }}>
                 <span style={{
                   position: 'absolute',
@@ -566,20 +598,114 @@ export const ToppingFormModal = () => {
                 </span>
                 <input
                   type="number"
-                  placeholder="Contoh: 15000"
-                  value={price}
+                  min="0"
+                  placeholder="0"
+                  value={price !== undefined && price !== null ? price : ''}
                   onChange={(e) => {
                     setPrice(e.target.value);
                     if (errors.price) setErrors({ ...errors, price: '' });
                   }}
                   className={`blue-input ${errors.price ? 'has-error' : ''}`}
-                  style={{ paddingLeft: '36px' }}
+                  style={{ paddingLeft: '36px', fontWeight: 700 }}
                 />
               </div>
               {errors.price && <span className="form-error">{errors.price}</span>}
               <p style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginTop: '6px' }}>
-                Masukkan nominal harga jual akhir (sebaiknya lebih besar dari <strong>{formatIDR(totalCost)}</strong>).
+                Masukkan nominal harga jual. Dapat diisi <strong>0</strong> jika topping gratis / tanpa biaya tambahan.
               </p>
+            </div>
+
+            {/* Switch Button: Opsi Catat di Struk Kasir */}
+            <div 
+              onClick={() => setShowOnReceipt(!showOnReceipt)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowOnReceipt(!showOnReceipt);
+                }
+              }}
+              style={{
+                marginTop: '4px',
+                padding: '12px 14px',
+                backgroundColor: showOnReceipt ? 'var(--blue-50, #f0f7ff)' : 'var(--neutral-50, #f8fafc)',
+                borderRadius: '12px',
+                border: showOnReceipt ? '1.5px solid var(--blue-200)' : '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  backgroundColor: showOnReceipt ? 'var(--blue-600)' : '#cbd5e1',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background-color 0.2s ease'
+                }}>
+                  <Receipt size={17} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
+                      Cetak di Struk
+                    </span>
+                    <span style={{
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: showOnReceipt ? 'var(--blue-100)' : '#e2e8f0',
+                      color: showOnReceipt ? 'var(--blue-700)' : 'var(--neutral-600)',
+                      transition: 'all 0.2s ease'
+                    }}>
+                      {showOnReceipt ? 'Tampil' : 'Sembunyi'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.688rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
+                    {showOnReceipt 
+                      ? 'Rincian topping dicetak pada struk kasir'
+                      : 'Disembunyikan dari struk (stok tetap terpotong)'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Switch UI Component */}
+              <div 
+                style={{
+                  width: '46px',
+                  height: '26px',
+                  borderRadius: '13px',
+                  backgroundColor: showOnReceipt ? 'var(--blue-600)' : '#cbd5e1',
+                  padding: '2px',
+                  boxSizing: 'border-box',
+                  transition: 'background-color 0.2s ease',
+                  position: 'relative',
+                  flexShrink: 0
+                }}
+                aria-label="Toggle cetak struk"
+              >
+                <div style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
+                  transform: showOnReceipt ? 'translateX(20px)' : 'translateX(0px)',
+                  transition: 'transform 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                }} />
+              </div>
             </div>
           </div>
       </div>

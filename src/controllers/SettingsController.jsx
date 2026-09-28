@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS = {
   showCustomerName: true,
   showTableNumber: true,
   showNotes: true,
+  showToppings: true,
   enableTax: false,
   taxRate: 10,
   taxName: 'Pajak'

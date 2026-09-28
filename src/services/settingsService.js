@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS = {
   showCustomerName: true,
   showTableNumber: true,
   showNotes: true,
+  showToppings: true,
   enableTax: false,
   taxRate: 10,
   taxName: 'Pajak'
@@ -122,6 +123,7 @@ export const settingsService = {
         showCustomerName: data.show_customer_name !== false,
         showTableNumber: data.show_table_number !== false,
         showNotes: data.show_notes !== false,
+        showToppings: data.show_toppings !== undefined ? data.show_toppings !== false : true,
         enableTax: data.enable_tax !== undefined ? Boolean(data.enable_tax) : localTax.enableTax,
         taxRate: data.tax_rate !== undefined ? Number(data.tax_rate) : localTax.taxRate,
         taxName: data.tax_name !== undefined && data.tax_name ? data.tax_name : localTax.taxName
@@ -167,6 +169,7 @@ export const settingsService = {
 
     const fullPayload = {
       ...basePayload,
+      show_toppings: settings.showToppings !== false,
       enable_tax: Boolean(settings.enableTax),
       tax_rate: Number(settings.taxRate) || 0,
       tax_name: settings.taxName || 'Pajak'
