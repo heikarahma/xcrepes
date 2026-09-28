@@ -23,7 +23,8 @@ import {
   Ban,
   AlertCircle,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 
 export const ToppingSelectionModal = () => {
@@ -39,6 +40,7 @@ export const ToppingSelectionModal = () => {
   const [note, setNote] = useState('');
   const [itemDiscountType, setItemDiscountType] = useState('none'); // 'none' | 'percent' | 'fixed'
   const [itemDiscountValue, setItemDiscountValue] = useState(0);
+  const [toppingSearchQuery, setToppingSearchQuery] = useState('');
 
   // Check menu portions limit based on available raw materials
   const menuAvailability = checkMenuAvailability(menu, rawMaterials);
@@ -56,6 +58,7 @@ export const ToppingSelectionModal = () => {
   // Reset or pre-populate states on open
   useEffect(() => {
     if (isOpen && menu) {
+      setToppingSearchQuery('');
       if (cartItem) {
         // Filter out toppings that are out of stock and ensure quantity >= 1
         const validExistingToppings = (Array.isArray(cartItem.toppings) ? cartItem.toppings : [])
@@ -122,6 +125,12 @@ export const ToppingSelectionModal = () => {
     }
     return list;
   })();
+
+  const filteredToppings = displayToppings.filter(t => {
+    if (!toppingSearchQuery.trim()) return true;
+    const query = toppingSearchQuery.toLowerCase().trim();
+    return (t.name || '').toLowerCase().includes(query);
+  });
 
   const handleToggleTopping = (topping) => {
     const topAvail = checkToppingAvailability(topping, rawMaterials, masterToppings);
@@ -272,11 +281,39 @@ export const ToppingSelectionModal = () => {
               <Sparkles size={14} style={{ display: 'inline', verticalAlign: 'text-bottom' }} /> PILIH EXTRA TOPPING:
             </label>
             <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-              {selectedToppings.length > 0 
-                ? `${selectedToppings.length} jenis (${totalToppingCount}x)` 
-                : '0 dipilih'}
+              {toppingSearchQuery.trim()
+                ? `${filteredToppings.length} ditemukan • ${selectedToppings.length} dipilih`
+                : (selectedToppings.length > 0 
+                    ? `${selectedToppings.length} jenis (${totalToppingCount}x)` 
+                    : '0 dipilih')}
             </span>
           </div>
+
+          {/* Search Box untuk Extra Topping */}
+          {displayToppings.length > 0 && (
+            <div style={styles.searchWrapper}>
+              <Search size={15} color="var(--neutral-400)" style={styles.searchIcon} />
+              <input
+                type="text"
+                value={toppingSearchQuery}
+                onChange={(e) => setToppingSearchQuery(e.target.value)}
+                placeholder="Cari nama extra topping..."
+                className="blue-input"
+                style={styles.searchInput}
+              />
+              {toppingSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setToppingSearchQuery('')}
+                  style={styles.clearSearchBtn}
+                  title="Hapus pencarian"
+                  aria-label="Hapus pencarian"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
 
           {displayToppings.length === 0 ? (
             <div style={styles.emptyToppingsAlert}>
@@ -285,9 +322,23 @@ export const ToppingSelectionModal = () => {
                 Tidak ada pilihan extra topping
               </span>
             </div>
+          ) : filteredToppings.length === 0 ? (
+            <div style={styles.emptySearchAlert}>
+              <Search size={22} color="var(--neutral-400)" />
+              <span style={{ fontWeight: 600, color: 'var(--neutral-700)', fontSize: '0.813rem' }}>
+                Topping "{toppingSearchQuery}" tidak ditemukan
+              </span>
+              <button
+                type="button"
+                onClick={() => setToppingSearchQuery('')}
+                style={styles.clearSearchLink}
+              >
+                Hapus Pencarian
+              </button>
+            </div>
           ) : (
             <div style={styles.toppingList}>
-              {displayToppings.map(topping => {
+              {filteredToppings.map(topping => {
                 const selectedItem = selectedToppings.find(t => t.id === topping.id);
                 const isSelected = !!selectedItem;
                 const toppingQty = selectedItem?.quantity || 1;
@@ -816,6 +867,66 @@ const styles = {
     color: 'var(--neutral-500)',
     marginBottom: '6px',
     letterSpacing: '0.5px'
+  },
+  searchWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: '8px'
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: '12px',
+    pointerEvents: 'none'
+  },
+  searchInput: {
+    width: '100%',
+    height: '36px',
+    paddingLeft: '34px',
+    paddingRight: '34px',
+    fontSize: '0.813rem',
+    borderRadius: '8px',
+    border: '1px solid var(--border-color)',
+    backgroundColor: '#ffffff'
+  },
+  clearSearchBtn: {
+    position: 'absolute',
+    right: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '22px',
+    height: '22px',
+    borderRadius: '50%',
+    border: 'none',
+    backgroundColor: 'var(--neutral-200)',
+    color: 'var(--neutral-600)',
+    cursor: 'pointer',
+    padding: 0,
+    transition: 'all 0.15s ease'
+  },
+  emptySearchAlert: {
+    padding: '20px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    backgroundColor: 'var(--neutral-50)',
+    border: '1px dashed var(--border-color)',
+    borderRadius: '8px',
+    color: 'var(--neutral-600)',
+    textAlign: 'center'
+  },
+  clearSearchLink: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: 'var(--blue-600)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '2px 6px',
+    textDecoration: 'underline'
   },
   toppingList: {
     display: 'flex',
