@@ -17,8 +17,228 @@ import {
   Eye,
   ShieldCheck,
   Sparkles,
-  Check
+  Check,
+  Percent,
+  Info
 } from 'lucide-react';
+
+const TaxConfigSection = ({ formData, handleChange, styles, context = 'store' }) => {
+  const currentRate = Number(formData.taxRate) || 0;
+  const isEnabled = Boolean(formData.enableTax);
+
+  const sampleBase = 50000;
+  const sampleTax = isEnabled && currentRate > 0 ? Math.round((sampleBase * currentRate) / 100) : 0;
+  const sampleTotal = sampleBase + sampleTax;
+
+  return (
+    <div style={{
+      marginTop: '10px',
+      padding: '16px',
+      borderRadius: '12px',
+      border: isEnabled ? '1.5px solid var(--blue-400)' : '1px solid var(--border-color)',
+      backgroundColor: isEnabled ? 'var(--blue-50, #eff6ff)' : '#f8fafc',
+      transition: 'all 0.2s ease'
+    }}>
+      {/* Header with Icon and Toggle Switch */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '9px',
+            backgroundColor: isEnabled ? 'var(--blue-600)' : '#e2e8f0',
+            color: isEnabled ? '#ffffff' : '#64748b',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s ease',
+            flexShrink: 0
+          }}>
+            <Percent size={18} />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--neutral-900)' }}>
+              Pajak Restoran / PPN (PB1)
+            </div>
+            <div style={{ fontSize: '0.719rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
+              {context === 'store' 
+                ? 'Kelola aturan pajak resto/kafe yang berlaku di toko & tercetak pada struk.'
+                : 'Pajak akan dicantumkan di rincian struk kasir thermal dan total tagihan.'}
+            </div>
+          </div>
+        </div>
+
+        {/* Toggle Switch */}
+        <label 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            cursor: 'pointer', 
+            gap: '8px', 
+            userSelect: 'none' 
+          }}
+          title={isEnabled ? 'Klik untuk nonaktifkan pajak' : 'Klik untuk aktifkan pajak'}
+        >
+          <input
+            type="checkbox"
+            checked={isEnabled}
+            onChange={(e) => handleChange('enableTax', e.target.checked)}
+            style={{ display: 'none' }}
+          />
+          <div style={{
+            width: '46px',
+            height: '26px',
+            borderRadius: '13px',
+            backgroundColor: isEnabled ? 'var(--blue-600)' : '#cbd5e1',
+            padding: '2px',
+            boxSizing: 'border-box',
+            transition: 'background-color 0.2s ease',
+            position: 'relative'
+          }}>
+            <div style={{
+              width: '22px',
+              height: '22px',
+              borderRadius: '50%',
+              backgroundColor: '#ffffff',
+              transform: isEnabled ? 'translateX(20px)' : 'translateX(0px)',
+              transition: 'transform 0.2s ease',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+            }} />
+          </div>
+          <span style={{ 
+            fontSize: '0.813rem', 
+            fontWeight: 700, 
+            color: isEnabled ? 'var(--blue-700)' : 'var(--neutral-600)',
+            minWidth: '58px' 
+          }}>
+            {isEnabled ? 'Aktif' : 'Nonaktif'}
+          </span>
+        </label>
+      </div>
+
+      {/* Expanded Tax Form when Enabled */}
+      {isEnabled && (
+        <div style={{
+          marginTop: '16px',
+          paddingTop: '16px',
+          borderTop: '1px dashed var(--blue-200)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '14px'
+          }}>
+            {/* Persentase Pajak */}
+            <div>
+              <label style={{ fontSize: '0.688rem', fontWeight: 700, color: 'var(--neutral-700)', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                PERSENTASE PAJAK (%) <span style={{ color: 'var(--red-500)' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  className="blue-input"
+                  value={formData.taxRate !== undefined && formData.taxRate !== null ? formData.taxRate : ''}
+                  onChange={(e) => {
+                    const rawVal = e.target.value;
+                    if (rawVal === '') {
+                      handleChange('taxRate', 0);
+                    } else {
+                      const val = Math.max(0, Math.min(100, Number(rawVal) || 0));
+                      handleChange('taxRate', val);
+                    }
+                  }}
+                  placeholder="10"
+                  style={{ ...styles.input, paddingRight: '36px', fontWeight: 700, fontSize: '0.938rem' }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontWeight: 800,
+                  color: 'var(--neutral-500)',
+                  pointerEvents: 'none'
+                }}>
+                  %
+                </span>
+              </div>
+
+              {/* Quick Presets */}
+              <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { label: '10% (PB1 Resto)', value: 10 },
+                  { label: '11% (PPN)', value: 11 },
+                  { label: '12%', value: 12 }
+                ].map(preset => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => handleChange('taxRate', preset.value)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.688rem',
+                      fontWeight: 700,
+                      borderRadius: '6px',
+                      border: currentRate === preset.value ? '1px solid var(--blue-600)' : '1px solid var(--neutral-300)',
+                      backgroundColor: currentRate === preset.value ? 'var(--blue-600)' : '#ffffff',
+                      color: currentRate === preset.value ? '#ffffff' : 'var(--neutral-700)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nama Label Pajak */}
+            <div>
+              <label style={{ fontSize: '0.688rem', fontWeight: 700, color: 'var(--neutral-700)', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+                NAMA LABEL DI STRUK
+              </label>
+              <input
+                type="text"
+                className="blue-input"
+                value={formData.taxName || ''}
+                onChange={(e) => handleChange('taxName', e.target.value)}
+                placeholder="Contoh: Pajak (PB1) atau PPN"
+                style={styles.input}
+              />
+              <span style={{ fontSize: '0.688rem', color: 'var(--neutral-500)', marginTop: '4px', display: 'block' }}>
+                Teks label yang akan tercetak di baris pajak struk thermal (bawaan: "Pajak").
+              </span>
+            </div>
+          </div>
+
+          {/* Simulation Box */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            padding: '10px 12px',
+            border: '1px solid var(--blue-200)',
+            fontSize: '0.75rem',
+            color: 'var(--neutral-700)'
+          }}>
+            <Info size={16} color="var(--blue-600)" style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Simulasi Perhitungan:</strong> Belanja Rp {sampleBase.toLocaleString('id-ID')} + Pajak {currentRate}% (+Rp {sampleTax.toLocaleString('id-ID')}) = Total Rp {sampleTotal.toLocaleString('id-ID')}.
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const SettingsView = () => {
   const { settings, updateSettings, resetSettings } = useSettings();
@@ -42,6 +262,16 @@ export const SettingsView = () => {
       addressRef.current.style.height = `${Math.max(42, scrollH)}px`;
     }
   };
+
+  // Live thermal receipt preview calculations
+  const previewGross = 67000;
+  const previewDiscount = 5000;
+  const previewTaxableBase = previewGross - previewDiscount; // 62000
+  const previewTaxRate = Number(formData.taxRate) || 0;
+  const previewTaxAmount = formData.enableTax && previewTaxRate > 0
+    ? Math.round((previewTaxableBase * previewTaxRate) / 100)
+    : 0;
+  const previewTotalAmount = previewTaxableBase + previewTaxAmount;
 
   // Sync form state when global settings change
   useEffect(() => {
@@ -394,6 +624,14 @@ export const SettingsView = () => {
                     />
                   </div>
                 </div>
+
+                {/* Tax Configuration Section */}
+                <TaxConfigSection 
+                  formData={formData} 
+                  handleChange={handleChange} 
+                  styles={styles} 
+                  context="store"
+                />
               </div>
             </div>
           )}
@@ -568,6 +806,14 @@ export const SettingsView = () => {
                     </label>
                   </div>
                 </div>
+
+                {/* Tax Configuration Section */}
+                <TaxConfigSection 
+                  formData={formData} 
+                  handleChange={handleChange} 
+                  styles={styles} 
+                  context="receipt"
+                />
 
                 {/* Footer Struk */}
                 <div className="settings-form-row2" style={styles.formRow2}>
@@ -752,6 +998,12 @@ export const SettingsView = () => {
                 <span>Diskon Promo:</span>
                 <span>-Rp 5.000</span>
               </div>
+              {formData.enableTax && previewTaxAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#000000', fontWeight: 600 }}>
+                  <span>{formData.taxName || 'Pajak'} ({formData.taxRate || 0}%):</span>
+                  <span>+Rp {previewTaxAmount.toLocaleString('id-ID')}</span>
+                </div>
+              )}
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -763,7 +1015,7 @@ export const SettingsView = () => {
                 margin: '2px 0'
               }}>
                 <span>TOTAL:</span>
-                <span>Rp 62.000</span>
+                <span>Rp {previewTotalAmount.toLocaleString('id-ID')}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Metode Bayar:</span>

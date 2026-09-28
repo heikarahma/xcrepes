@@ -16,43 +16,69 @@ export const ordersService = {
     }
 
     return {
-      data: (data || []).map(row => ({
-        id: row.id,
-        invoiceNumber: row.invoice_number,
-        date: row.date,
-        status: row.status || 'completed',
-        cashierName: row.cashier_name || 'Kasir',
-        customerName: row.customer_name || 'Pelanggan Umum',
-        tableNumber: row.table_number || '',
-        items: Array.isArray(row.items) ? row.items : [],
-        subtotal: Number(row.subtotal) || 0,
-        itemsDiscountTotal: Number(row.items_discount_total) || 0,
-        orderDiscountType: row.order_discount_type || 'none',
-        orderDiscountValue: Number(row.order_discount_value) || 0,
-        orderDiscountAmount: Number(row.order_discount_amount) || 0,
-        discount: Number(row.discount) || 0,
-        totalAmount: Number(row.total_amount) || 0,
-        totalItemsCount: Number(row.total_items_count) || 0,
-        paymentMethod: row.payment_method || 'cash',
-        cashReceived: Number(row.cash_received) || 0,
-        returnReason: row.return_reason || null,
-        returnNote: row.return_note || null,
-        returnPhoto: row.return_photo || null,
-        returnBy: row.return_by || null,
-        returnedAt: row.returned_at || null,
-        cancelReason: row.status === 'cancelled' ? (row.return_reason?.startsWith('[BATAL] ') ? row.return_reason.replace('[BATAL] ', '') : (row.return_reason || 'Dibatalkan oleh Admin')) : null,
-        cancelNote: row.status === 'cancelled' ? (row.return_note || '') : null,
-        cancelBy: row.status === 'cancelled' ? (row.return_by || 'Admin') : null,
-        cancelledAt: row.status === 'cancelled' ? row.returned_at : null,
-        createdAt: row.created_at
-      })),
+      data: (data || []).map(row => {
+        const subtotal = Number(row.subtotal) || 0;
+        const discount = Number(row.discount) || 0;
+        const totalAmount = Number(row.total_amount) || 0;
+        const baseAfterDisc = Math.max(0, subtotal - discount);
+
+        let taxAmount = Number(row.tax_amount) || 0;
+        let taxRate = Number(row.tax_rate) || 0;
+        let taxName = row.tax_name || 'Pajak';
+        let enableTax = row.enable_tax !== undefined ? Boolean(row.enable_tax) : false;
+
+        // If not stored in explicit database columns, deduce from difference between total_amount and net base
+        if (taxAmount === 0 && totalAmount > baseAfterDisc) {
+          taxAmount = Math.max(0, totalAmount - baseAfterDisc);
+          if (baseAfterDisc > 0) {
+            taxRate = Math.round((taxAmount / baseAfterDisc) * 100);
+          }
+          enableTax = true;
+        }
+
+        return {
+          id: row.id,
+          invoiceNumber: row.invoice_number,
+          date: row.date,
+          status: row.status || 'completed',
+          cashierName: row.cashier_name || 'Kasir',
+          customerName: row.customer_name || 'Pelanggan Umum',
+          tableNumber: row.table_number || '',
+          items: Array.isArray(row.items) ? row.items : [],
+          subtotal,
+          itemsDiscountTotal: Number(row.items_discount_total) || 0,
+          orderDiscountType: row.order_discount_type || 'none',
+          orderDiscountValue: Number(row.order_discount_value) || 0,
+          orderDiscountAmount: Number(row.order_discount_amount) || 0,
+          discount,
+          enableTax,
+          taxRate,
+          taxAmount,
+          taxName,
+          totalAmount,
+          totalItemsCount: Number(row.total_items_count) || 0,
+          paymentMethod: row.payment_method || 'cash',
+          cashReceived: Number(row.cash_received) || 0,
+          changeAmount: Number(row.change_amount) || 0,
+          returnReason: row.return_reason || null,
+          returnNote: row.return_note || null,
+          returnPhoto: row.return_photo || null,
+          returnBy: row.return_by || null,
+          returnedAt: row.returned_at || null,
+          cancelReason: row.status === 'cancelled' ? (row.return_reason?.startsWith('[BATAL] ') ? row.return_reason.replace('[BATAL] ', '') : (row.return_reason || 'Dibatalkan oleh Admin')) : null,
+          cancelNote: row.status === 'cancelled' ? (row.return_note || '') : null,
+          cancelBy: row.status === 'cancelled' ? (row.return_by || 'Admin') : null,
+          cancelledAt: row.status === 'cancelled' ? row.returned_at : null,
+          createdAt: row.created_at
+        };
+      }),
       error: null
     };
   },
 
   async createOrder(order) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
-    const payload = {
+    const basePayload = {
       id: order.id,
       invoice_number: order.invoiceNumber,
       date: order.date || new Date().toISOString(),
@@ -80,11 +106,30 @@ export const ordersService = {
       created_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
+    const fullPayload = {
+      ...basePayload,
+      enable_tax: Boolean(order.enableTax),
+      tax_rate: Number(order.taxRate) || 0,
+      tax_amount: Number(order.taxAmount) || 0,
+      tax_name: order.taxName || 'Pajak'
+    };
+
+    let { data, error } = await supabase
       .from(TABLE)
-      .insert([payload])
+      .insert([fullPayload])
       .select()
       .single();
+
+    // Fallback if tax columns don't exist in remote orders table
+    if (error && (error.code === 'PGRST204' || String(error.message).includes('column'))) {
+      const retry = await supabase
+        .from(TABLE)
+        .insert([basePayload])
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('ordersService.createOrder error:', error);
@@ -107,6 +152,10 @@ export const ordersService = {
         orderDiscountValue: Number(data.order_discount_value) || 0,
         orderDiscountAmount: Number(data.order_discount_amount) || 0,
         discount: Number(data.discount) || 0,
+        enableTax: Boolean(order.enableTax),
+        taxRate: Number(order.taxRate) || 0,
+        taxAmount: Number(order.taxAmount) || 0,
+        taxName: order.taxName || 'Pajak',
         totalAmount: Number(data.total_amount) || 0,
         totalItemsCount: Number(data.total_items_count) || 0,
         paymentMethod: data.payment_method,

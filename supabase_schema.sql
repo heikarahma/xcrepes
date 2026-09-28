@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS orders (
     order_discount_value NUMERIC NOT NULL DEFAULT 0,
     order_discount_amount NUMERIC NOT NULL DEFAULT 0,
     discount NUMERIC NOT NULL DEFAULT 0,
+    enable_tax BOOLEAN DEFAULT false,
+    tax_rate NUMERIC DEFAULT 0,
+    tax_amount NUMERIC DEFAULT 0,
+    tax_name TEXT DEFAULT 'Pajak',
     total_amount NUMERIC NOT NULL DEFAULT 0,
     total_items_count INTEGER NOT NULL DEFAULT 0,
     payment_method TEXT NOT NULL DEFAULT 'cash',
@@ -136,6 +140,9 @@ CREATE TABLE IF NOT EXISTS store_settings (
     show_customer_name BOOLEAN DEFAULT true,
     show_table_number BOOLEAN DEFAULT true,
     show_notes BOOLEAN DEFAULT true,
+    enable_tax BOOLEAN DEFAULT false,
+    tax_rate NUMERIC DEFAULT 10,
+    tax_name TEXT DEFAULT 'Pajak',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -263,3 +270,17 @@ INSERT INTO store_settings (
     true, true, true, true, NOW()
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- MIGRATION SCRIPT UNTUK DATABASE SUPABASE YANG SUDAH BERJALAN
+-- ==============================================================================
+-- Jalankan query di bawah ini di SQL Editor Supabase jika kolom belum ada:
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS enable_tax BOOLEAN DEFAULT false;
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 10;
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_name TEXT DEFAULT 'Pajak';
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS enable_tax BOOLEAN DEFAULT false;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_amount NUMERIC DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_name TEXT DEFAULT 'Pajak';
+

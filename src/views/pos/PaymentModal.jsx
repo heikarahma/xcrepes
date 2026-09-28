@@ -23,6 +23,10 @@ export const PaymentModal = () => {
     orderDiscountValue,
     orderDiscountAmount,
     discount, 
+    enableTax,
+    taxRate,
+    taxAmount,
+    taxName,
     totalAmount, 
     customerName, 
     tableNumber,
@@ -110,12 +114,12 @@ export const PaymentModal = () => {
           </div>
         </div>
 
-        {/* Discount Breakdown strip if any discount exists */}
-        {discount > 0 && (
+        {/* Discount & Tax Breakdown strip if discount or tax exists */}
+        {(discount > 0 || (enableTax && taxAmount > 0)) && (
           <div style={{
-            backgroundColor: 'var(--emerald-50)',
+            backgroundColor: 'var(--neutral-50, #f8fafc)',
             borderRadius: '8px',
-            border: '1px solid var(--emerald-200)',
+            border: '1px solid var(--border-color, #e2e8f0)',
             padding: '8px 12px',
             display: 'flex',
             flexDirection: 'column',
@@ -123,7 +127,7 @@ export const PaymentModal = () => {
             fontSize: '0.75rem'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--neutral-600)' }}>
-              <span>Subtotal Asli:</span>
+              <span>Subtotal Item:</span>
               <span>{formatIDR(grossSubtotal)}</span>
             </div>
             {itemsDiscountTotal > 0 && (
@@ -138,6 +142,12 @@ export const PaymentModal = () => {
                   Diskon Pesanan {orderDiscountType === 'percent' ? `(${orderDiscountValue}%)` : ''}:
                 </span>
                 <span>-{formatIDR(orderDiscountAmount)}</span>
+              </div>
+            )}
+            {enableTax && taxAmount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--blue-700)', fontWeight: 700 }}>
+                <span>{taxName || 'Pajak'} ({taxRate}%):</span>
+                <span>+{formatIDR(taxAmount)}</span>
               </div>
             )}
           </div>

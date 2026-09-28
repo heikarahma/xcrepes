@@ -136,7 +136,10 @@ export const OrderRevisionModal = () => {
     orderDiscountAmount = Math.min(netSubtotalAfterItems, orderDiscountValue);
   }
   const totalDiscount = newItemsDiscountTotal + orderDiscountAmount;
-  const newTotalAmount = Math.max(0, newSubtotal - totalDiscount);
+  const taxableBase = Math.max(0, newSubtotal - totalDiscount);
+  const taxRate = order.taxRate !== undefined ? Number(order.taxRate) : 0;
+  const newTaxAmount = taxRate > 0 ? Math.round((taxableBase * taxRate) / 100) : 0;
+  const newTotalAmount = taxableBase + newTaxAmount;
 
   const originalTotal = Number(order.totalAmount) || 0;
   const priceDifference = newTotalAmount - originalTotal; // positive: customer owes, negative: refund to customer

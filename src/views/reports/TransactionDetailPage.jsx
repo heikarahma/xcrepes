@@ -44,6 +44,21 @@ export const TransactionDetailPage = ({
   // Calculate total items count
   const totalItemsCount = (order.items || []).reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
 
+  // Tax calculations
+  const orderSubtotal = Number(order.subtotal || order.totalAmount) || 0;
+  const orderDiscount = Number(order.discount || order.orderDiscountAmount) || 0;
+  const orderTaxableBase = Math.max(0, orderSubtotal - orderDiscount);
+
+  let orderTaxAmount = Number(order.taxAmount) || 0;
+  let orderTaxRate = order.taxRate !== undefined ? Number(order.taxRate) : 0;
+  const orderTaxName = order.taxName || 'Pajak';
+  if (orderTaxAmount === 0 && Number(order.totalAmount) > orderTaxableBase) {
+    orderTaxAmount = Math.max(0, Number(order.totalAmount) - orderTaxableBase);
+    if (!orderTaxRate && orderTaxableBase > 0) {
+      orderTaxRate = Math.round((orderTaxAmount / orderTaxableBase) * 100);
+    }
+  }
+
   return (
     <div className="transaction-detail-page animate-fade-in" style={styles.container}>
       {/* 1. Top Navigation Bar */}
@@ -435,11 +450,20 @@ export const TransactionDetailPage = ({
                 <span style={styles.summaryValue}>{formatIDR(order.subtotal || order.totalAmount)}</span>
               </div>
 
-              {Number(order.orderDiscountAmount) > 0 && (
+              {Number(order.orderDiscountAmount || order.discount) > 0 && (
                 <div style={styles.summaryRow}>
                   <span style={{ ...styles.summaryLabel, color: '#059669' }}>Diskon Transaksi</span>
                   <span style={{ ...styles.summaryValue, color: '#059669', fontWeight: 700 }}>
-                    -{formatIDR(order.orderDiscountAmount)}
+                    -{formatIDR(order.orderDiscountAmount || order.discount)}
+                  </span>
+                </div>
+              )}
+
+              {orderTaxAmount > 0 && (
+                <div style={styles.summaryRow}>
+                  <span style={styles.summaryLabel}>{orderTaxName} ({orderTaxRate}%)</span>
+                  <span style={{ ...styles.summaryValue, color: 'var(--neutral-900)', fontWeight: 600 }}>
+                    +{formatIDR(orderTaxAmount)}
                   </span>
                 </div>
               )}

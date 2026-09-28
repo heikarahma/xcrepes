@@ -77,6 +77,10 @@ export const KasirOrderView = () => {
     setItemDiscount,
     discount,
     setDiscount,
+    enableTax,
+    taxRate,
+    taxAmount,
+    taxName,
     totalAmount,
     totalItemsCount,
     updateQuantity,
@@ -905,7 +909,17 @@ export const KasirOrderView = () => {
                   </div>
                 )}
 
-                {/* 5. Total Net to Pay */}
+                {/* 5. Tax Row */}
+                {enableTax && taxRate > 0 && (
+                  <div style={{ ...styles.billingRow, color: 'var(--neutral-700)' }}>
+                    <span style={styles.billingLabel}>{taxName || 'Pajak'} ({taxRate}%):</span>
+                    <span style={{ ...styles.billingValue, color: 'var(--neutral-800)', fontWeight: 700 }}>
+                      +{formatIDR(taxAmount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* 6. Total Net to Pay */}
                 <div style={styles.totalRow}>
                   <span style={styles.totalLabel}>TOTAL BAYAR:</span>
                   <span style={styles.totalValue}>{formatIDR(totalAmount)}</span>

@@ -21,12 +21,60 @@ const DEFAULT_SETTINGS = {
   showCashierName: true,
   showCustomerName: true,
   showTableNumber: true,
-  showNotes: true
+  showNotes: true,
+  enableTax: false,
+  taxRate: 10,
+  taxName: 'Pajak'
+};
+
+const getLocalTaxSettings = () => {
+  try {
+    const raw = localStorage.getItem('store_tax_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          enableTax: Boolean(parsed.enableTax),
+          taxRate: Number(parsed.taxRate) || 0,
+          taxName: parsed.taxName || 'Pajak'
+        };
+      }
+    }
+  } catch (e) {
+    console.error('Failed to read store_tax_settings from localStorage', e);
+  }
+  return {
+    enableTax: DEFAULT_SETTINGS.enableTax,
+    taxRate: DEFAULT_SETTINGS.taxRate,
+    taxName: DEFAULT_SETTINGS.taxName
+  };
+};
+
+const saveLocalTaxSettings = (taxSettings) => {
+  try {
+    localStorage.setItem('store_tax_settings', JSON.stringify({
+      enableTax: Boolean(taxSettings.enableTax),
+      taxRate: Number(taxSettings.taxRate) || 0,
+      taxName: taxSettings.taxName || 'Pajak'
+    }));
+  } catch (e) {
+    console.error('Failed to write store_tax_settings to localStorage', e);
+  }
 };
 
 export const settingsService = {
   async getSettings() {
-    if (!isSupabaseConfigured()) return { data: DEFAULT_SETTINGS, error: null };
+    const localTax = getLocalTaxSettings();
+    if (!isSupabaseConfigured()) {
+      return { 
+        data: {
+          ...DEFAULT_SETTINGS,
+          ...localTax
+        }, 
+        error: null 
+      };
+    }
+
     const { data, error } = await supabase
       .from(TABLE)
       .select('*')
@@ -35,11 +83,23 @@ export const settingsService = {
 
     if (error) {
       console.error('settingsService.getSettings error:', error);
-      return { data: DEFAULT_SETTINGS, error };
+      return { 
+        data: {
+          ...DEFAULT_SETTINGS,
+          ...localTax
+        }, 
+        error 
+      };
     }
 
     if (!data) {
-      return { data: DEFAULT_SETTINGS, error: null };
+      return { 
+        data: {
+          ...DEFAULT_SETTINGS,
+          ...localTax
+        }, 
+        error: null 
+      };
     }
 
     return {
@@ -61,15 +121,28 @@ export const settingsService = {
         showCashierName: data.show_cashier_name !== false,
         showCustomerName: data.show_customer_name !== false,
         showTableNumber: data.show_table_number !== false,
-        showNotes: data.show_notes !== false
+        showNotes: data.show_notes !== false,
+        enableTax: data.enable_tax !== undefined ? Boolean(data.enable_tax) : localTax.enableTax,
+        taxRate: data.tax_rate !== undefined ? Number(data.tax_rate) : localTax.taxRate,
+        taxName: data.tax_name !== undefined && data.tax_name ? data.tax_name : localTax.taxName
       },
       error: null
     };
   },
 
   async saveSettings(settings) {
-    if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
-    const payload = {
+    // 1. Always persist tax settings to local storage as high-reliability cache
+    saveLocalTaxSettings({
+      enableTax: settings.enableTax,
+      taxRate: settings.taxRate,
+      taxName: settings.taxName
+    });
+
+    if (!isSupabaseConfigured()) {
+      return { data: settings, error: null };
+    }
+
+    const basePayload = {
       id: DEFAULT_SETTINGS_ID,
       app_name: settings.appName,
       store_name: settings.storeName,
@@ -92,17 +165,43 @@ export const settingsService = {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
+    const fullPayload = {
+      ...basePayload,
+      enable_tax: Boolean(settings.enableTax),
+      tax_rate: Number(settings.taxRate) || 0,
+      tax_name: settings.taxName || 'Pajak'
+    };
+
+    // Attempt to upsert with full payload
+    let { data, error } = await supabase
       .from(TABLE)
-      .upsert(payload)
+      .upsert(fullPayload)
       .select()
       .single();
+
+    // Fallback if tax columns don't exist yet in Supabase schema cache
+    if (error && (error.code === 'PGRST204' || String(error.message).includes('column'))) {
+      console.warn('Tax columns not in remote store_settings table schema yet. Falling back to base payload:', error.message);
+      const retry = await supabase
+        .from(TABLE)
+        .upsert(basePayload)
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('settingsService.saveSettings error:', error);
       return { data: null, error };
     }
 
-    return { data, error: null };
+    return { 
+      data: {
+        ...settings,
+        ...data
+      }, 
+      error: null 
+    };
   }
 };

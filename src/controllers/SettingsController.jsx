@@ -33,7 +33,10 @@ const DEFAULT_SETTINGS = {
   showCashierName: true,
   showCustomerName: true,
   showTableNumber: true,
-  showNotes: true
+  showNotes: true,
+  enableTax: false,
+  taxRate: 10,
+  taxName: 'Pajak'
 };
 
 export const SettingsProvider = ({ children }) => {

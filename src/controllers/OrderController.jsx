@@ -12,6 +12,7 @@ import { useProductMenu } from './ProductMenuController';
 import { useTopping } from './ToppingController';
 import { useUnit } from './UnitController';
 import { useAuth } from './AuthController';
+import { useSettings } from './SettingsController';
 
 const OrderContext = createContext();
 
@@ -38,6 +39,7 @@ export const OrderProvider = ({ children }) => {
   const { toppings } = useTopping();
   const { showToast } = useUnit();
   const { currentUser } = useAuth();
+  const { settings } = useSettings();
 
   // 1. Cloud Database State via Supabase (Historical Completed Orders)
   const [orders, setOrders] = useState([]);
@@ -422,7 +424,14 @@ export const OrderProvider = ({ children }) => {
   }, [orderDiscountType, orderDiscountValue, subtotalAfterItemDiscount]);
 
   const discount = itemsDiscountTotal + orderDiscountAmount;
-  const totalAmount = Math.max(0, grossSubtotal - discount);
+  const taxableBase = Math.max(0, grossSubtotal - discount);
+  const isTaxEnabled = Boolean(settings?.enableTax);
+  const taxRate = Number(settings?.taxRate) || 0;
+  const taxName = settings?.taxName || 'Pajak';
+  const taxAmount = isTaxEnabled && taxRate > 0
+    ? Math.round((taxableBase * taxRate) / 100)
+    : 0;
+  const totalAmount = taxableBase + taxAmount;
   const totalItemsCount = safeCart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0);
   const subtotal = grossSubtotal;
 
@@ -517,6 +526,10 @@ export const OrderProvider = ({ children }) => {
       orderDiscountValue,
       orderDiscountAmount,
       discount,
+      enableTax: isTaxEnabled,
+      taxRate: isTaxEnabled ? taxRate : 0,
+      taxAmount,
+      taxName,
       totalAmount,
       totalItemsCount: totalItemsCount || safeCart.reduce((sum, item) => sum + (Number(item?.quantity) || 1), 0),
       paymentMethod,
@@ -827,7 +840,13 @@ export const OrderProvider = ({ children }) => {
         orderDiscountAmount = Math.min(netSubtotalAfterItems, orderDiscountValue);
       }
       const totalDiscount = itemsDiscountTotal + orderDiscountAmount;
-      const totalAmount = Math.max(0, subtotal - totalDiscount);
+      const orderTaxRate = originalOrder.taxRate !== undefined && originalOrder.enableTax !== false
+        ? Number(originalOrder.taxRate)
+        : (isTaxEnabled ? taxRate : 0);
+      const orderTaxName = originalOrder.taxName || taxName;
+      const taxableBase = Math.max(0, subtotal - totalDiscount);
+      const taxAmount = orderTaxRate > 0 ? Math.round((taxableBase * orderTaxRate) / 100) : 0;
+      const totalAmount = taxableBase + taxAmount;
 
       const revisionNote = reason ? `[REVISI] ${reason} (oleh ${actor})` : `[REVISI] oleh ${actor}`;
       const combinedNotes = originalOrder.returnNote 
@@ -889,6 +908,10 @@ export const OrderProvider = ({ children }) => {
         orderDiscountValue,
         orderDiscountAmount,
         discount: totalDiscount,
+        enableTax: orderTaxRate > 0,
+        taxRate: orderTaxRate,
+        taxAmount,
+        taxName: orderTaxName,
         totalAmount,
         totalItemsCount,
         returnNote: combinedNotes,
@@ -1015,6 +1038,11 @@ export const OrderProvider = ({ children }) => {
         applyDiscountPreset,
         clearDiscount,
         setItemDiscount,
+        enableTax: isTaxEnabled,
+        taxRate,
+        taxAmount,
+        taxName,
+        taxableBase,
         totalAmount,
         totalItemsCount,
         addToCart,

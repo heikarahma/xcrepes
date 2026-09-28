@@ -192,6 +192,24 @@ export const ReceiptModal = () => {
     minute: '2-digit'
   });
 
+  // Calculate tax details for receipt display
+  const subtotal = Number(completedReceipt.subtotal) || 0;
+  const itemsDiscountTotal = Number(completedReceipt.itemsDiscountTotal) || 0;
+  const orderDiscount = Number(completedReceipt.orderDiscountAmount || (completedReceipt.discount && !completedReceipt.itemsDiscountTotal ? completedReceipt.discount : 0)) || 0;
+  const totalDiscount = itemsDiscountTotal + orderDiscount;
+  const netTaxableBase = Math.max(0, subtotal - totalDiscount);
+
+  let taxAmount = Number(completedReceipt.taxAmount) || 0;
+  let taxRate = completedReceipt.taxRate !== undefined ? Number(completedReceipt.taxRate) : (settings?.enableTax ? Number(settings.taxRate) : 0);
+  const taxName = completedReceipt.taxName || settings?.taxName || 'Pajak';
+
+  if (taxAmount === 0 && Number(completedReceipt.totalAmount) > netTaxableBase) {
+    taxAmount = Math.max(0, Number(completedReceipt.totalAmount) - netTaxableBase);
+    if (!taxRate && netTaxableBase > 0) {
+      taxRate = Math.round((taxAmount / netTaxableBase) * 100);
+    }
+  }
+
   return (
     <Modal
       isOpen={isReceiptModalOpen}
@@ -358,6 +376,14 @@ export const ReceiptModal = () => {
                     : ''}
                 </span>
                 <span>-{formatIDR(completedReceipt.orderDiscountAmount || completedReceipt.discount)}</span>
+              </div>
+            )}
+
+            {/* Pajak / Tax Row */}
+            {taxAmount > 0 && (
+              <div style={{ ...styles.summaryRow, fontWeight: 600 }}>
+                <span>{taxName} ({taxRate}%)</span>
+                <span>+{formatIDR(taxAmount)}</span>
               </div>
             )}
 
