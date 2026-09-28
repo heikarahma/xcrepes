@@ -623,7 +623,7 @@ export const ReportProvider = ({ children }) => {
       const isCombined = salesItemTypeFilter === 'COMBINED';
       const itemsToExport = isCombined ? menuSalesWithToppings.list : productPerformanceList;
       const activeFilterLabel = isCombined ? 'Ringkasan Menu & Topping' : salesItemTypeFilter === 'MENU' ? 'Menu Utama' : salesItemTypeFilter === 'TOPPING' ? 'Extra Topping' : 'Semua Item';
-      const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
+      const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'debit' ? 'Kartu Debit' : salesPaymentFilter === 'card' ? 'Kartu Kredit' : 'Semua Pembayaran';
       exportCompleteSalesReportToExcel({
         items: itemsToExport,
         orders: enrichedOrders,
@@ -670,7 +670,7 @@ export const ReportProvider = ({ children }) => {
           showProfitMetrics: isSuperAdmin
         });
       } else {
-        const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'card' ? 'Kartu' : 'Semua Pembayaran';
+        const activePaymentLabel = salesPaymentFilter === 'cash' ? 'Tunai (Cash)' : salesPaymentFilter === 'qris' ? 'QRIS' : salesPaymentFilter === 'debit' ? 'Kartu Debit' : salesPaymentFilter === 'card' ? 'Kartu Kredit' : 'Semua Pembayaran';
         exportTransactionHistoryToPDF({
           orders: enrichedOrders,
           periodLabel,

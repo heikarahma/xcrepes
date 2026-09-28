@@ -109,7 +109,7 @@ export const PaymentModal = () => {
               </span>
             )}
             <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
-              {tableNumber !== '-' && tableNumber ? `Meja ${tableNumber}` : 'Takeaway / Umum'}
+              {tableNumber && tableNumber !== '-' ? (tableNumber === 'Dine In' || tableNumber === 'Takeaway' ? tableNumber : `Meja ${tableNumber}`) : 'Dine In'}
             </span>
           </div>
         </div>
@@ -180,6 +180,17 @@ export const PaymentModal = () => {
             </div>
 
             <div
+              onClick={() => setPaymentMethod('debit')}
+              style={{
+                ...styles.methodCard,
+                ...(paymentMethod === 'debit' ? styles.methodCardActive : styles.methodCardInactive)
+              }}
+            >
+              <CreditCard size={20} color={paymentMethod === 'debit' ? 'var(--blue-600)' : 'var(--neutral-600)'} />
+              <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Kartu Debit</span>
+            </div>
+
+            <div
               onClick={() => setPaymentMethod('card')}
               style={{
                 ...styles.methodCard,
@@ -187,7 +198,7 @@ export const PaymentModal = () => {
               }}
             >
               <CreditCard size={20} color={paymentMethod === 'card' ? 'var(--blue-600)' : 'var(--neutral-600)'} />
-              <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Debit / Kartu</span>
+              <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Kartu Kredit</span>
             </div>
           </div>
         </div>
@@ -355,7 +366,7 @@ const styles = {
   },
   methodGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
     gap: '10px'
   },
   methodCard: {

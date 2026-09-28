@@ -271,7 +271,12 @@ export const ReceiptModal = () => {
             {(settings.showCashierName || settings.showTableNumber) && (
               <div style={styles.metaRow}>
                 {settings.showCashierName && <span>Kasir: {completedReceipt.cashierName || 'Kasir 1'}</span>}
-                {settings.showTableNumber && <span>Meja: <strong>{completedReceipt.tableNumber || 'Takeaway'}</strong></span>}
+                {settings.showTableNumber && (
+                  <span>
+                    {completedReceipt.tableNumber && !['Dine In', 'Takeaway'].includes(completedReceipt.tableNumber) ? 'Meja: ' : 'Tipe: '}
+                    <strong>{completedReceipt.tableNumber || 'Dine In'}</strong>
+                  </span>
+                )}
               </div>
             )}
             {settings.showCustomerName && (

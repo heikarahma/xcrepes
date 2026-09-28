@@ -34,7 +34,12 @@ import {
   User,
   Ban,
   Clock,
-  Edit3
+  Edit3,
+  Banknote,
+  QrCode,
+  CreditCard,
+  Utensils,
+  Calendar
 } from 'lucide-react';
 
 export const SalesReportTab = () => {
@@ -50,7 +55,8 @@ export const SalesReportTab = () => {
     activeSalesSection,
     setActiveSalesSection,
     selectedOrderDetailId,
-    setSelectedOrderDetailId
+    setSelectedOrderDetailId,
+    periodLabel
   } = useReport();
 
   const { openReceiptModal, openOrderReturnModal, openOrderCancelModal, openOrderRevisionModal } = useOrder();
@@ -60,9 +66,10 @@ export const SalesReportTab = () => {
   const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const showProfitMetrics = isSuperAdmin;
 
-  // Local independent search states for both sub-menus
+  // Local independent search and filter states
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
   const [transactionSearchTerm, setTransactionSearchTerm] = useState('');
+  const [salesOrderTypeFilter, setSalesOrderTypeFilter] = useState('ALL'); // 'ALL' | 'dineIn' | 'takeaway'
 
   // Reset detail view when switching between summary and transactions
   useEffect(() => {
@@ -129,12 +136,95 @@ export const SalesReportTab = () => {
     );
   }, [productPerformanceList, menuSearchTerm]);
 
-  // Filtered transactions by transactionSearchTerm & salesPaymentFilter
-  const filteredTransactionOrders = useMemo(() => {
-    return enrichedOrders.filter(order => {
-      if (salesPaymentFilter !== 'ALL' && order.paymentMethod !== salesPaymentFilter) {
-        return false;
+  // Summary Pembayaran & Tipe Pesanan untuk Riwayat Transaksi Kasir
+  const transactionSummary = useMemo(() => {
+    const activeOrders = (enrichedOrders || []).filter(o => o.status !== 'cancelled' && o.status !== 'returned');
+
+    const paymentBreakdown = {
+      cash: { count: 0, total: 0, label: 'Tunai (Cash)', key: 'cash' },
+      qris: { count: 0, total: 0, label: 'QRIS', key: 'qris' },
+      debit: { count: 0, total: 0, label: 'Kartu Debit', key: 'debit' },
+      card: { count: 0, total: 0, label: 'Kartu Kredit', key: 'card' }
+    };
+
+    const orderTypeBreakdown = {
+      dineIn: { count: 0, total: 0, label: 'Dine In', key: 'dineIn' },
+      takeaway: { count: 0, total: 0, label: 'Take Away', key: 'takeaway' }
+    };
+
+    let totalRevenue = 0;
+    const totalCount = activeOrders.length;
+
+    activeOrders.forEach(order => {
+      const amount = Number(order.grossRevenue ?? order.totalAmount) || 0;
+      totalRevenue += amount;
+
+      // Payment method normalization
+      const method = (order.paymentMethod || '').toLowerCase();
+      if (method === 'cash' || method.includes('tunai')) {
+        paymentBreakdown.cash.count += 1;
+        paymentBreakdown.cash.total += amount;
+      } else if (method === 'qris') {
+        paymentBreakdown.qris.count += 1;
+        paymentBreakdown.qris.total += amount;
+      } else if (method === 'debit') {
+        paymentBreakdown.debit.count += 1;
+        paymentBreakdown.debit.total += amount;
+      } else if (method === 'card' || method.includes('kartu') || method.includes('kredit')) {
+        paymentBreakdown.card.count += 1;
+        paymentBreakdown.card.total += amount;
+      } else {
+        paymentBreakdown.cash.count += 1;
+        paymentBreakdown.cash.total += amount;
       }
+
+      // Order type normalization
+      const table = (order.tableNumber || '').trim().toLowerCase();
+      if (table.includes('take') || table.includes('bungkus')) {
+        orderTypeBreakdown.takeaway.count += 1;
+        orderTypeBreakdown.takeaway.total += amount;
+      } else {
+        orderTypeBreakdown.dineIn.count += 1;
+        orderTypeBreakdown.dineIn.total += amount;
+      }
+    });
+
+    return {
+      totalRevenue,
+      totalCount,
+      payments: paymentBreakdown,
+      orderTypes: orderTypeBreakdown
+    };
+  }, [enrichedOrders]);
+
+  // Filtered transactions by transactionSearchTerm, salesPaymentFilter & salesOrderTypeFilter
+  const filteredTransactionOrders = useMemo(() => {
+    return (enrichedOrders || []).filter(order => {
+      // 1. Payment Method Filter
+      if (salesPaymentFilter !== 'ALL') {
+        const method = (order.paymentMethod || '').toLowerCase();
+        let normalizedMethod = 'cash';
+        if (method === 'cash' || method.includes('tunai')) normalizedMethod = 'cash';
+        else if (method === 'qris') normalizedMethod = 'qris';
+        else if (method === 'debit') normalizedMethod = 'debit';
+        else if (method === 'card' || method.includes('kartu') || method.includes('kredit')) normalizedMethod = 'card';
+
+        if (normalizedMethod !== salesPaymentFilter) {
+          return false;
+        }
+      }
+
+      // 2. Order Type Filter (Dine In vs Take Away)
+      if (salesOrderTypeFilter !== 'ALL') {
+        const table = (order.tableNumber || '').trim().toLowerCase();
+        const isTakeaway = table.includes('take') || table.includes('bungkus');
+        const currentType = isTakeaway ? 'takeaway' : 'dineIn';
+        if (currentType !== salesOrderTypeFilter) {
+          return false;
+        }
+      }
+
+      // 3. Search Term
       if (transactionSearchTerm.trim()) {
         const q = transactionSearchTerm.toLowerCase().trim();
         const matchesInv = (order.invoiceNumber || '').toLowerCase().includes(q);
@@ -148,7 +238,7 @@ export const SalesReportTab = () => {
       }
       return true;
     });
-  }, [enrichedOrders, salesPaymentFilter, transactionSearchTerm]);
+  }, [enrichedOrders, salesPaymentFilter, salesOrderTypeFilter, transactionSearchTerm]);
 
   return (
     <div className="sales-report-tab" style={styles.container}>
@@ -715,7 +805,8 @@ export const SalesReportTab = () => {
                     { value: 'ALL', label: 'Semua Pembayaran' },
                     { value: 'cash', label: 'Tunai (Cash)' },
                     { value: 'qris', label: 'QRIS' },
-                    { value: 'card', label: 'Kartu Debit/Kredit' }
+                    { value: 'debit', label: 'Kartu Debit' },
+                    { value: 'card', label: 'Kartu Kredit' }
                   ]}
                   value={salesPaymentFilter}
                   onChange={(val) => setSalesPaymentFilter(val)}
@@ -725,6 +816,333 @@ export const SalesReportTab = () => {
                   clearable={false}
                   size="sm"
                 />
+              </div>
+
+              {/* Order Type Select Filter */}
+              <div style={{ minWidth: '170px' }}>
+                <SearchSelect
+                  options={[
+                    { value: 'ALL', label: 'Semua Tipe Pesanan' },
+                    { value: 'dineIn', label: 'Dine In' },
+                    { value: 'takeaway', label: 'Take Away' }
+                  ]}
+                  value={salesOrderTypeFilter}
+                  onChange={(val) => setSalesOrderTypeFilter(val)}
+                  placeholder="Semua Tipe Pesanan"
+                  searchPlaceholder="Cari tipe pesanan..."
+                  icon={Utensils}
+                  clearable={false}
+                  size="sm"
+                />
+              </div>
+
+              {/* Reset Filter Button */}
+              {(salesPaymentFilter !== 'ALL' || salesOrderTypeFilter !== 'ALL' || transactionSearchTerm) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSalesPaymentFilter('ALL');
+                    setSalesOrderTypeFilter('ALL');
+                    setTransactionSearchTerm('');
+                  }}
+                  style={styles.resetFilterBtn}
+                  title="Reset semua filter transaksi"
+                >
+                  <RotateCcw size={12} />
+                  <span>Reset Filter</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Dynamic Summary Cards: Metode Pembayaran & Tipe Pesanan */}
+          <div className="trans-summary-container" style={styles.transSummaryContainer}>
+            {/* Header Ringkasan dengan Indikator Periode Tanggal */}
+            <div style={styles.transSummaryHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={styles.transSummaryTitle}>Ringkasan Pembayaran & Tipe Pesanan</span>
+                <span style={styles.transSummaryPeriodBadge}>
+                  <Calendar size={13} />
+                  Periode: {periodLabel || 'Semua Waktu'}
+                </span>
+              </div>
+              <div style={styles.transSummaryTotalMeta}>
+                Total Omset: <strong style={{ color: 'var(--neutral-900)' }}>{formatIDR(transactionSummary.totalRevenue)}</strong>
+                <span style={{ margin: '0 6px', color: 'var(--neutral-300)' }}>•</span>
+                <span>{transactionSummary.totalCount} Transaksi Selesai</span>
+              </div>
+            </div>
+
+            {/* Dua Blok Grid: 1. Berdasarkan Pembayaran (Tunai, QRIS, Debit, Kartu) & 2. Berdasarkan Tipe Pesanan (Dine In, Take Away) */}
+            <div style={styles.transSummarySectionGroup}>
+              {/* Group A: Summary Metode Pembayaran */}
+              <div>
+                <div style={styles.transGroupLabelRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <DollarSign size={14} color="var(--neutral-500)" />
+                    <span style={styles.transGroupLabel}>Summary Berdasarkan Metode Pembayaran:</span>
+                  </div>
+                  <span style={styles.transGroupSublabel}>Klik card untuk filter otomatis</span>
+                </div>
+                <div className="trans-kpi-grid-4" style={styles.transSummaryGrid4}>
+                  {/* Tunai */}
+                  <div
+                    onClick={() => setSalesPaymentFilter(prev => prev === 'cash' ? 'ALL' : 'cash')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesPaymentFilter === 'cash' ? '#10b981' : 'var(--border-color)',
+                      backgroundColor: salesPaymentFilter === 'cash' ? '#f0fdf4' : '#ffffff',
+                      boxShadow: salesPaymentFilter === 'cash' ? '0 0 0 2px rgba(16, 185, 129, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter transaksi Tunai"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#ecfdf5', color: '#059669' }}>
+                          <Banknote size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>Tunai (Cash)</span>
+                      </div>
+                      {salesPaymentFilter === 'cash' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#10b981', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.payments.cash.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.payments.cash.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.payments.cash.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.payments.cash.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* QRIS */}
+                  <div
+                    onClick={() => setSalesPaymentFilter(prev => prev === 'qris' ? 'ALL' : 'qris')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesPaymentFilter === 'qris' ? '#0284c7' : 'var(--border-color)',
+                      backgroundColor: salesPaymentFilter === 'qris' ? '#f0f9ff' : '#ffffff',
+                      boxShadow: salesPaymentFilter === 'qris' ? '0 0 0 2px rgba(2, 132, 199, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter transaksi QRIS"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#f0f9ff', color: '#0284c7' }}>
+                          <QrCode size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>QRIS</span>
+                      </div>
+                      {salesPaymentFilter === 'qris' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#0284c7', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.payments.qris.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.payments.qris.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.payments.qris.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.payments.qris.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Kartu Debit */}
+                  <div
+                    onClick={() => setSalesPaymentFilter(prev => prev === 'debit' ? 'ALL' : 'debit')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesPaymentFilter === 'debit' ? '#4f46e5' : 'var(--border-color)',
+                      backgroundColor: salesPaymentFilter === 'debit' ? '#eef2ff' : '#ffffff',
+                      boxShadow: salesPaymentFilter === 'debit' ? '0 0 0 2px rgba(79, 70, 229, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter transaksi Kartu Debit"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+                          <CreditCard size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>Kartu Debit</span>
+                      </div>
+                      {salesPaymentFilter === 'debit' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#4f46e5', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.payments.debit.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.payments.debit.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.payments.debit.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.payments.debit.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Kartu Kredit */}
+                  <div
+                    onClick={() => setSalesPaymentFilter(prev => prev === 'card' ? 'ALL' : 'card')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesPaymentFilter === 'card' ? '#9333ea' : 'var(--border-color)',
+                      backgroundColor: salesPaymentFilter === 'card' ? '#faf5ff' : '#ffffff',
+                      boxShadow: salesPaymentFilter === 'card' ? '0 0 0 2px rgba(147, 51, 234, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter transaksi Kartu Kredit"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#faf5ff', color: '#9333ea' }}>
+                          <CreditCard size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>Kartu Kredit</span>
+                      </div>
+                      {salesPaymentFilter === 'card' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#9333ea', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.payments.card.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.payments.card.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.payments.card.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.payments.card.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group B: Summary Tipe Pesanan (Dine In & Take Away) */}
+              <div>
+                <div style={styles.transGroupLabelRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Utensils size={14} color="var(--neutral-500)" />
+                    <span style={styles.transGroupLabel}>Summary Berdasarkan Tipe Pesanan:</span>
+                  </div>
+                  <span style={styles.transGroupSublabel}>Klik card untuk filter tipe pesanan</span>
+                </div>
+                <div className="trans-kpi-grid-2" style={styles.transSummaryGrid2}>
+                  {/* Dine In */}
+                  <div
+                    onClick={() => setSalesOrderTypeFilter(prev => prev === 'dineIn' ? 'ALL' : 'dineIn')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesOrderTypeFilter === 'dineIn' ? '#d97706' : 'var(--border-color)',
+                      backgroundColor: salesOrderTypeFilter === 'dineIn' ? '#fffbeb' : '#ffffff',
+                      boxShadow: salesOrderTypeFilter === 'dineIn' ? '0 0 0 2px rgba(217, 119, 6, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter pesanan Dine In"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#fef3c7', color: '#d97706' }}>
+                          <Utensils size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>Dine In (Makan di Tempat)</span>
+                      </div>
+                      {salesOrderTypeFilter === 'dineIn' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#d97706', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.orderTypes.dineIn.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.orderTypes.dineIn.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.orderTypes.dineIn.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.orderTypes.dineIn.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Take Away */}
+                  <div
+                    onClick={() => setSalesOrderTypeFilter(prev => prev === 'takeaway' ? 'ALL' : 'takeaway')}
+                    style={{
+                      ...styles.transKpiCard,
+                      borderColor: salesOrderTypeFilter === 'takeaway' ? '#e11d48' : 'var(--border-color)',
+                      backgroundColor: salesOrderTypeFilter === 'takeaway' ? '#fff1f2' : '#ffffff',
+                      boxShadow: salesOrderTypeFilter === 'takeaway' ? '0 0 0 2px rgba(225, 29, 72, 0.25)' : undefined
+                    }}
+                    title="Klik untuk filter pesanan Take Away"
+                  >
+                    <div style={styles.transKpiHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ ...styles.transKpiIconBox, backgroundColor: '#ffe4e6', color: '#e11d48' }}>
+                          <ShoppingBag size={15} />
+                        </div>
+                        <span style={styles.transKpiName}>Take Away (Bungkus)</span>
+                      </div>
+                      {salesOrderTypeFilter === 'takeaway' ? (
+                        <span style={{ ...styles.filterActivePill, backgroundColor: '#e11d48', color: '#fff' }}>Aktif</span>
+                      ) : (
+                        <span style={styles.transKpiShareBadge}>
+                          {transactionSummary.totalRevenue > 0
+                            ? `${((transactionSummary.orderTypes.takeaway.total / transactionSummary.totalRevenue) * 100).toFixed(0)}%`
+                            : '0%'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={styles.transKpiNominal}>{formatIDR(transactionSummary.orderTypes.takeaway.total)}</div>
+                    <div style={styles.transKpiFooter}>
+                      <span style={{ fontWeight: 600, color: 'var(--neutral-700)' }}>
+                        {transactionSummary.orderTypes.takeaway.count} transaksi
+                      </span>
+                      <span style={{ color: 'var(--neutral-400)', fontSize: '11px' }}>
+                        {transactionSummary.totalCount > 0
+                          ? `${((transactionSummary.orderTypes.takeaway.count / transactionSummary.totalCount) * 100).toFixed(0)}% porsi`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -746,7 +1164,7 @@ export const SalesReportTab = () => {
                     <tr style={styles.tableHeaderRow}>
                       <th style={styles.th}>No. Invoice & Waktu</th>
                       <th style={styles.th}>Kasir</th>
-                      <th style={styles.th}>Pelanggan & Meja</th>
+                      <th style={styles.th}>Pelanggan & Tipe Pesanan</th>
                       <th style={styles.th}>Rincian Menu & Topping</th>
                       <th style={{ ...styles.th, textAlign: 'right' }}>Total Bayar & Metode</th>
                       {showProfitMetrics && <th style={{ ...styles.th, textAlign: 'right' }}>Estimasi Laba</th>}
@@ -839,10 +1257,32 @@ export const SalesReportTab = () => {
                             </div>
                           </td>
 
-                          {/* 3. Pelanggan & Meja */}
+                          {/* 3. Pelanggan & Tipe Pesanan */}
                           <td style={styles.td}>
                             <div style={{ fontWeight: 600, color: 'var(--neutral-900)' }}>{order.customerName || 'Pelanggan Umum'}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--neutral-500)', marginTop: '2px' }}>{order.tableNumber || 'Takeaway'}</div>
+                            <div style={{ marginTop: '4px' }}>
+                              {(() => {
+                                const table = (order.tableNumber || '').trim().toLowerCase();
+                                const isTake = table.includes('take') || table.includes('bungkus');
+                                return (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    backgroundColor: isTake ? '#fff1f2' : '#fef3c7',
+                                    color: isTake ? '#e11d48' : '#b45309',
+                                    border: isTake ? '1px solid #fecdd3' : '1px solid #fde68a'
+                                  }}>
+                                    {isTake ? <ShoppingBag size={11} /> : <Utensils size={11} />}
+                                    {isTake ? 'Take Away' : (order.tableNumber && order.tableNumber !== 'Dine In' ? `Dine In (${order.tableNumber})` : 'Dine In')}
+                                  </span>
+                                );
+                              })()}
+                            </div>
                           </td>
 
                           {/* 4. Rincian Menu & Topping */}
@@ -884,16 +1324,39 @@ export const SalesReportTab = () => {
                               </div>
                             )}
                             <div style={{ marginTop: '4px', display: 'flex', justifyContent: 'flex-end' }}>
-                              <span style={{
-                                ...styles.paymentBadge,
-                                backgroundColor: order.paymentMethod === 'cash' ? 'var(--green-50)' : order.paymentMethod === 'qris' ? 'var(--blue-50)' : 'var(--purple-50, #f3e8ff)',
-                                color: order.paymentMethod === 'cash' ? 'var(--green-600)' : order.paymentMethod === 'qris' ? 'var(--blue-600)' : '#7e22ce',
-                                fontSize: '10px',
-                                padding: '2px 6px',
-                                fontWeight: 700
-                              }}>
-                                {order.paymentMethod ? order.paymentMethod.toUpperCase() : 'CASH'}
-                              </span>
+                              {(() => {
+                                const method = (order.paymentMethod || '').toLowerCase();
+                                let badgeBg = 'var(--green-50)';
+                                let badgeColor = 'var(--green-600)';
+                                let badgeLabel = 'TUNAI';
+
+                                if (method === 'qris') {
+                                  badgeBg = 'var(--blue-50)';
+                                  badgeColor = 'var(--blue-600)';
+                                  badgeLabel = 'QRIS';
+                                } else if (method === 'debit') {
+                                  badgeBg = '#eef2ff';
+                                  badgeColor = '#4f46e5';
+                                  badgeLabel = 'DEBIT';
+                                } else if (method === 'card' || method.includes('kartu') || method.includes('kredit')) {
+                                  badgeBg = 'var(--purple-50, #f3e8ff)';
+                                  badgeColor = '#7e22ce';
+                                  badgeLabel = 'KARTU';
+                                }
+
+                                return (
+                                  <span style={{
+                                    ...styles.paymentBadge,
+                                    backgroundColor: badgeBg,
+                                    color: badgeColor,
+                                    fontSize: '10px',
+                                    padding: '2px 7px',
+                                    fontWeight: 700
+                                  }}>
+                                    {badgeLabel}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </td>
 
@@ -1018,16 +1481,27 @@ export const SalesReportTab = () => {
                           <span style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>
                             {order.customerName || 'Pelanggan Umum'}
                           </span>
-                          <span style={{
-                            fontSize: '0.688rem',
-                            color: 'var(--neutral-600)',
-                            backgroundColor: '#e2e8f0',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 600
-                          }}>
-                            {order.tableNumber || 'Takeaway'}
-                          </span>
+                          {(() => {
+                            const table = (order.tableNumber || '').trim().toLowerCase();
+                            const isTake = table.includes('take') || table.includes('bungkus');
+                            return (
+                              <span style={{
+                                fontSize: '0.688rem',
+                                color: isTake ? '#e11d48' : '#b45309',
+                                backgroundColor: isTake ? '#fff1f2' : '#fef3c7',
+                                border: isTake ? '1px solid #fecdd3' : '1px solid #fde68a',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}>
+                                {isTake ? <ShoppingBag size={10} /> : <Utensils size={10} />}
+                                {isTake ? 'Take Away' : (order.tableNumber && order.tableNumber !== 'Dine In' ? `Dine In (${order.tableNumber})` : 'Dine In')}
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
@@ -1085,16 +1559,39 @@ export const SalesReportTab = () => {
                         paddingTop: '2px'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            ...styles.paymentBadge,
-                            backgroundColor: order.paymentMethod === 'cash' ? 'var(--green-50)' : order.paymentMethod === 'qris' ? 'var(--blue-50)' : 'var(--purple-50, #f3e8ff)',
-                            color: order.paymentMethod === 'cash' ? 'var(--green-600)' : order.paymentMethod === 'qris' ? 'var(--blue-600)' : '#7e22ce',
-                            fontSize: '10px',
-                            padding: '2px 7px',
-                            fontWeight: 700
-                          }}>
-                            {order.paymentMethod ? order.paymentMethod.toUpperCase() : 'CASH'}
-                          </span>
+                          {(() => {
+                            const method = (order.paymentMethod || '').toLowerCase();
+                            let badgeBg = 'var(--green-50)';
+                            let badgeColor = 'var(--green-600)';
+                            let badgeLabel = 'TUNAI';
+
+                            if (method === 'qris') {
+                              badgeBg = 'var(--blue-50)';
+                              badgeColor = 'var(--blue-600)';
+                              badgeLabel = 'QRIS';
+                            } else if (method === 'debit') {
+                              badgeBg = '#eef2ff';
+                              badgeColor = '#4f46e5';
+                              badgeLabel = 'DEBIT';
+                            } else if (method === 'card' || method.includes('kartu') || method.includes('kredit')) {
+                              badgeBg = 'var(--purple-50, #f3e8ff)';
+                              badgeColor = '#7e22ce';
+                              badgeLabel = 'KARTU';
+                            }
+
+                            return (
+                              <span style={{
+                                ...styles.paymentBadge,
+                                backgroundColor: badgeBg,
+                                color: badgeColor,
+                                fontSize: '10px',
+                                padding: '2px 7px',
+                                fontWeight: 700
+                              }}>
+                                {badgeLabel}
+                              </span>
+                            );
+                          })()}
                           {order.discount > 0 && (
                             <span style={{ fontSize: '0.688rem', color: 'var(--red-500)', fontWeight: 600 }}>
                               Disc: -{formatIDR(order.discount)}
@@ -1372,6 +1869,26 @@ export const SalesReportTab = () => {
           .reports-pill-group,
           .reports-select-wrapper {
             width: 100% !important;
+          }
+
+          .trans-kpi-grid-4 {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .trans-kpi-grid-2 {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .trans-summary-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .trans-kpi-grid-4 {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
@@ -1881,5 +2398,156 @@ const styles = {
     padding: '14px 20px',
     borderTop: '1px solid var(--border-color)',
     backgroundColor: '#f8fafc'
+  },
+
+  // Riwayat Transaksi Summary Cards & Filters
+  resetFilterBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    backgroundColor: '#fff1f2',
+    color: '#e11d48',
+    border: '1px solid #fecdd3',
+    padding: '6px 12px',
+    borderRadius: '8px',
+    fontSize: '12px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease'
+  },
+  transSummaryContainer: {
+    backgroundColor: '#ffffff',
+    border: '1px solid var(--border-color)',
+    borderRadius: '12px',
+    padding: '16px 18px',
+    boxShadow: 'var(--shadow-sm)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    marginBottom: '16px'
+  },
+  transSummaryHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '8px',
+    paddingBottom: '12px',
+    borderBottom: '1px solid var(--border-color)'
+  },
+  transSummaryTitle: {
+    fontSize: '14px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)'
+  },
+  transSummaryPeriodBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    backgroundColor: '#eff6ff',
+    color: 'var(--blue-700)',
+    border: '1px solid #bfdbfe',
+    padding: '2px 8px',
+    borderRadius: '6px',
+    fontSize: '11.5px',
+    fontWeight: 600
+  },
+  transSummaryTotalMeta: {
+    fontSize: '12.5px',
+    color: 'var(--neutral-600)',
+    fontWeight: 500
+  },
+  transSummarySectionGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px'
+  },
+  transGroupLabelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+    flexWrap: 'wrap',
+    gap: '4px'
+  },
+  transGroupLabel: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: 'var(--neutral-700)',
+    letterSpacing: '0.01em'
+  },
+  transGroupSublabel: {
+    fontSize: '11px',
+    color: 'var(--neutral-400)',
+    fontStyle: 'italic'
+  },
+  transSummaryGrid4: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '12px'
+  },
+  transSummaryGrid2: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '12px'
+  },
+  transKpiCard: {
+    border: '1px solid var(--border-color)',
+    borderRadius: '10px',
+    padding: '12px 14px',
+    backgroundColor: '#ffffff',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  },
+  transKpiHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  transKpiIconBox: {
+    width: '26px',
+    height: '26px',
+    borderRadius: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  transKpiName: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: 'var(--neutral-800)'
+  },
+  transKpiNominal: {
+    fontSize: '16px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)',
+    letterSpacing: '-0.3px',
+    marginTop: '2px'
+  },
+  transKpiFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '12px',
+    marginTop: '2px'
+  },
+  transKpiShareBadge: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--neutral-500)',
+    backgroundColor: 'var(--neutral-100)',
+    padding: '1px 6px',
+    borderRadius: '4px'
+  },
+  filterActivePill: {
+    fontSize: '10px',
+    fontWeight: 800,
+    padding: '1px 6px',
+    borderRadius: '4px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px'
   }
 };

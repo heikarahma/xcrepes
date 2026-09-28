@@ -465,9 +465,10 @@ export const KasirOrderView = () => {
             )}
           </div>
 
-          {/* Customer & Table Input Form */}
+          {/* Customer & Order Type (Dine In / Takeaway) Form */}
           <div className="kasir-customer-inputs" style={styles.customerInputRow}>
-            <div style={{ flex: 1.3, position: 'relative' }}>
+            {/* Input Nama Pembeli */}
+            <div style={{ flex: 1.1, position: 'relative' }}>
               <input
                 type="text"
                 className="blue-input"
@@ -477,15 +478,36 @@ export const KasirOrderView = () => {
                 style={{ width: '100%', height: '36px', fontSize: '0.813rem' }}
               />
             </div>
-            <div style={{ flex: 0.8, position: 'relative' }}>
-              <input
-                type="text"
-                className="blue-input"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="No. Meja"
-                style={{ width: '100%', height: '36px', fontSize: '0.813rem' }}
-              />
+
+            {/* Toggle Tipe Pesanan: Dine In vs Takeaway */}
+            <div style={styles.orderTypeToggleContainer}>
+              <button
+                type="button"
+                onClick={() => setTableNumber('Dine In')}
+                className={`order-type-btn ${(tableNumber || 'Dine In') === 'Dine In' ? 'active' : ''}`}
+                style={{
+                  ...styles.orderTypeBtn,
+                  ...((tableNumber || 'Dine In') === 'Dine In' ? styles.orderTypeBtnActive : styles.orderTypeBtnInactive)
+                }}
+                title="Makan di Tempat (Dine In)"
+              >
+                <Utensils size={13} style={{ flexShrink: 0 }} />
+                <span>Dine In</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTableNumber('Takeaway')}
+                className={`order-type-btn ${tableNumber === 'Takeaway' ? 'active' : ''}`}
+                style={{
+                  ...styles.orderTypeBtn,
+                  ...(tableNumber === 'Takeaway' ? styles.orderTypeBtnActive : styles.orderTypeBtnInactive)
+                }}
+                title="Bungkus / Bawa Pulang (Takeaway)"
+              >
+                <ShoppingBag size={13} style={{ flexShrink: 0 }} />
+                <span>Takeaway</span>
+              </button>
             </div>
           </div>
 
@@ -1089,6 +1111,11 @@ export const KasirOrderView = () => {
           transform: none !important;
         }
 
+        .order-type-btn:not(.active):hover {
+          background-color: var(--neutral-200) !important;
+          color: var(--neutral-800) !important;
+        }
+
         @media (max-width: 1024px) {
           .kasir-mobile-floating-cart {
             display: block !important;
@@ -1212,6 +1239,11 @@ export const KasirOrderView = () => {
             height: 34px !important;
             font-size: 0.75rem !important;
             padding: 0 8px !important;
+          }
+          .kasir-customer-inputs .order-type-btn {
+            padding: 0 7px !important;
+            font-size: 0.688rem !important;
+            gap: 3px !important;
           }
           .kasir-cart-items-scroll {
             max-height: 230px !important;
@@ -1552,7 +1584,45 @@ const styles = {
     display: 'flex',
     gap: '8px',
     padding: '12px 0',
-    borderBottom: '1px solid var(--border-color)'
+    borderBottom: '1px solid var(--border-color)',
+    alignItems: 'center'
+  },
+  orderTypeToggleContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: 'var(--neutral-100, #F1F5F9)',
+    border: '1px solid var(--border-color, #E2E8F0)',
+    borderRadius: 'var(--radius-md, 8px)',
+    padding: '3px',
+    height: '36px',
+    boxSizing: 'border-box',
+    flexShrink: 0
+  },
+  orderTypeBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '5px',
+    height: '28px',
+    padding: '0 10px',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '700',
+    cursor: 'pointer',
+    border: 'none',
+    transition: 'all 0.18s ease',
+    whiteSpace: 'nowrap',
+    userSelect: 'none'
+  },
+  orderTypeBtnActive: {
+    backgroundColor: 'var(--blue-500, #0072FF)',
+    color: '#ffffff',
+    boxShadow: '0 2px 6px rgba(0, 114, 255, 0.3)'
+  },
+  orderTypeBtnInactive: {
+    backgroundColor: 'transparent',
+    color: 'var(--neutral-600, #475569)'
   },
   cartItemsScroll: {
     flex: 1,

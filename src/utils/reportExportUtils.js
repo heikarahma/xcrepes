@@ -193,50 +193,50 @@ export const buildProductPerformanceWorksheet = ({
 
   const kpiSection = showProfitMetrics
     ? [
-        ['RINGKASAN UTAMA PENJUALAN PRODUK'],
-        ['Total Omset Penjualan', totalOmset],
-        ['Total Estimasi Biaya HPP Bahan', totalHPP],
-        ['Total Keuntungan Laba Bersih', totalProfit],
-        ['Margin Keuntungan Rata-rata', `${overallMargin}%`],
-        ['Total Jumlah Produk & Topping Terjual', totalQty],
-        []
-      ]
+      ['RINGKASAN UTAMA PENJUALAN PRODUK'],
+      ['Total Omset Penjualan', totalOmset],
+      ['Total Estimasi Biaya HPP Bahan', totalHPP],
+      ['Total Keuntungan Laba Bersih', totalProfit],
+      ['Margin Keuntungan Rata-rata', `${overallMargin}%`],
+      ['Total Jumlah Produk & Topping Terjual', totalQty],
+      []
+    ]
     : [
-        ['RINGKASAN UTAMA PENJUALAN PRODUK'],
-        ['Total Omset Penjualan', totalOmset],
-        ['Total Jumlah Produk & Topping Terjual', totalQty],
-        []
-      ];
+      ['RINGKASAN UTAMA PENJUALAN PRODUK'],
+      ['Total Omset Penjualan', totalOmset],
+      ['Total Jumlah Produk & Topping Terjual', totalQty],
+      []
+    ];
 
   const tableHeaders = showProfitMetrics
     ? [
-        'No',
-        'Nama Menu / Topping',
-        'Kategori',
-        'Tipe Item',
-        'Qty Terjual',
-        'Harga Satuan (Rp)',
-        'Topping Terpasang (Rincian)',
-        'Omset Menu Dasar (Rp)',
-        'Omset Topping (Rp)',
-        'Total Omset Gabungan (Rp)',
-        'Estimasi HPP/Porsi (Rp)',
-        'Total Estimasi HPP (Rp)',
-        'Laba Bersih (Rp)',
-        'Margin Laba (%)'
-      ]
+      'No',
+      'Nama Menu / Topping',
+      'Kategori',
+      'Tipe Item',
+      'Qty Terjual',
+      'Harga Satuan (Rp)',
+      'Topping Terpasang (Rincian)',
+      'Omset Menu Dasar (Rp)',
+      'Omset Topping (Rp)',
+      'Total Omset Gabungan (Rp)',
+      'Estimasi HPP/Porsi (Rp)',
+      'Total Estimasi HPP (Rp)',
+      'Laba Bersih (Rp)',
+      'Margin Laba (%)'
+    ]
     : [
-        'No',
-        'Nama Menu / Topping',
-        'Kategori',
-        'Tipe Item',
-        'Qty Terjual',
-        'Harga Satuan (Rp)',
-        'Topping Terpasang (Rincian)',
-        'Omset Menu Dasar (Rp)',
-        'Omset Topping (Rp)',
-        'Total Omset Gabungan (Rp)'
-      ];
+      'No',
+      'Nama Menu / Topping',
+      'Kategori',
+      'Tipe Item',
+      'Qty Terjual',
+      'Harga Satuan (Rp)',
+      'Topping Terpasang (Rincian)',
+      'Omset Menu Dasar (Rp)',
+      'Omset Topping (Rp)',
+      'Total Omset Gabungan (Rp)'
+    ];
 
   const rows = [
     [headerTitle],
@@ -589,49 +589,49 @@ export const buildTransactionHistoryWorksheet = ({
 
   const kpiSection = showProfitMetrics
     ? [
-        ['RINGKASAN AUDIT PENJUALAN KASIR'],
-        ['Total Omset Kasir', totalRevenue],
-        ['Total Estimasi Biaya HPP', totalHPP],
-        ['Total Keuntungan Bersih', totalProfit],
-        ['Rata-rata Margin', `${overallMargin}%`],
-        ['Total Transaksi Selesai', orders.length],
-        []
-      ]
+      ['RINGKASAN AUDIT PENJUALAN KASIR'],
+      ['Total Omset Kasir', totalRevenue],
+      ['Total Estimasi Biaya HPP', totalHPP],
+      ['Total Keuntungan Bersih', totalProfit],
+      ['Rata-rata Margin', `${overallMargin}%`],
+      ['Total Transaksi Selesai', orders.length],
+      []
+    ]
     : [
-        ['RINGKASAN AUDIT PENJUALAN KASIR'],
-        ['Total Omset Kasir', totalRevenue],
-        ['Total Transaksi Selesai', orders.length],
-        []
-      ];
+      ['RINGKASAN AUDIT PENJUALAN KASIR'],
+      ['Total Omset Kasir', totalRevenue],
+      ['Total Transaksi Selesai', orders.length],
+      []
+    ];
 
   const tableHeaders = showProfitMetrics
     ? [
-        'No',
-        'No. Invoice',
-        'Tanggal & Waktu',
-        'Nama Kasir',
-        'Nama Pelanggan',
-        'Meja / Tipe',
-        'Metode Bayar',
-        'Rincian Pesanan (Menu & Topping)',
-        'Total Item',
-        'Total Omset (Rp)',
-        'Total Estimasi HPP (Rp)',
-        'Estimasi Laba Bersih (Rp)',
-        'Margin (%)'
-      ]
+      'No',
+      'No. Invoice',
+      'Tanggal & Waktu',
+      'Nama Kasir',
+      'Nama Pelanggan',
+      'Meja / Tipe',
+      'Metode Bayar',
+      'Rincian Pesanan (Menu & Topping)',
+      'Total Item',
+      'Total Omset (Rp)',
+      'Total Estimasi HPP (Rp)',
+      'Estimasi Laba Bersih (Rp)',
+      'Margin (%)'
+    ]
     : [
-        'No',
-        'No. Invoice',
-        'Tanggal & Waktu',
-        'Nama Kasir',
-        'Nama Pelanggan',
-        'Meja / Tipe',
-        'Metode Bayar',
-        'Rincian Pesanan (Menu & Topping)',
-        'Total Item',
-        'Total Omset (Rp)'
-      ];
+      'No',
+      'No. Invoice',
+      'Tanggal & Waktu',
+      'Nama Kasir',
+      'Nama Pelanggan',
+      'Meja / Tipe',
+      'Metode Bayar',
+      'Rincian Pesanan (Menu & Topping)',
+      'Total Item',
+      'Total Omset (Rp)'
+    ];
 
   const rows = [
     [`LAPORAN RIWAYAT TRANSAKSI PENJUALAN - ${storeName.toUpperCase()}`],
@@ -659,15 +659,17 @@ export const buildTransactionHistoryWorksheet = ({
       return line;
     }).join('; ');
 
-    const paymentLabel = order.paymentMethod === 'cash' 
-      ? 'Tunai (Cash)' 
-      : order.paymentMethod === 'qris' 
-      ? 'QRIS' 
-      : order.paymentMethod === 'card' 
-      ? 'Kartu' 
-      : (order.paymentMethod || 'Lainnya');
+    const paymentLabel = order.paymentMethod === 'cash'
+      ? 'Tunai (Cash)'
+      : order.paymentMethod === 'qris'
+        ? 'QRIS'
+        : order.paymentMethod === 'debit'
+          ? 'Kartu Debit'
+          : order.paymentMethod === 'card'
+            ? 'Kartu Kredit'
+            : (order.paymentMethod || 'Lainnya');
 
-    const invoiceDisplay = order.invoiceNumber 
+    const invoiceDisplay = order.invoiceNumber
       ? `${order.invoiceNumber}${order.status === 'cancelled' ? ' [DIBATALKAN]' : order.status === 'returned' ? ' [DIRETUR]' : ''}`
       : '-';
 
@@ -861,17 +863,19 @@ export const exportTransactionHistoryToPDF = ({
       return line;
     }).join('\n');
 
-    const paymentLabel = order.paymentMethod === 'cash' 
-      ? 'Tunai' 
-      : order.paymentMethod === 'qris' 
-      ? 'QRIS' 
-      : order.paymentMethod === 'card' 
-      ? 'Kartu' 
-      : (order.paymentMethod || '-');
+    const paymentLabel = order.paymentMethod === 'cash'
+      ? 'Tunai'
+      : order.paymentMethod === 'qris'
+        ? 'QRIS'
+        : order.paymentMethod === 'debit'
+          ? 'Kartu Debit'
+          : order.paymentMethod === 'card'
+            ? 'Kartu Kredit'
+            : (order.paymentMethod || '-');
 
     const customerDisplay = `${order.customerName || 'Pelanggan Umum'}${order.tableNumber && order.tableNumber !== 'Takeaway' ? ` (${order.tableNumber})` : ''}`;
 
-    const invoiceDisplay = order.invoiceNumber 
+    const invoiceDisplay = order.invoiceNumber
       ? `${order.invoiceNumber}${order.status === 'cancelled' ? ' [DIBATALKAN]' : order.status === 'returned' ? ' [DIRETUR]' : ''}`
       : '-';
 
@@ -1056,10 +1060,10 @@ export const exportMaterialUsageToExcel = ({
   logs.forEach((log, idx) => {
     const eventName = log.eventBadgeText || (
       log.eventType === 'SALE' ? 'Penjualan Kasir POS' :
-      log.eventType === 'MANUAL_OUT' ? 'Dapur / Manual' :
-      log.eventType === 'ADJUST' ? 'Penyesuaian Opname' :
-      log.eventType === 'WASTE' ? 'Bahan Rusak (Waste)' :
-      (log.type === 'OUT' ? 'Pemakaian Stok' : 'Penyesuaian')
+        log.eventType === 'MANUAL_OUT' ? 'Dapur / Manual' :
+          log.eventType === 'ADJUST' ? 'Penyesuaian Opname' :
+            log.eventType === 'WASTE' ? 'Bahan Rusak (Waste)' :
+              (log.type === 'OUT' ? 'Pemakaian Stok' : 'Penyesuaian')
     );
 
     const qty = Number(log.amount ?? log.quantityDeducted ?? 0);
@@ -1164,9 +1168,9 @@ export const exportMaterialUsageToPDF = ({
   const tableBody = logs.map((log, idx) => {
     const eventName = log.eventBadgeText || (
       log.eventType === 'SALE' ? 'Penjualan Kasir' :
-      log.eventType === 'MANUAL_OUT' ? 'Dapur / Manual' :
-      log.eventType === 'ADJUST' ? 'Penyesuaian Opname' :
-      'Pemakaian Stok'
+        log.eventType === 'MANUAL_OUT' ? 'Dapur / Manual' :
+          log.eventType === 'ADJUST' ? 'Penyesuaian Opname' :
+            'Pemakaian Stok'
     );
 
     const qty = Number(log.amount ?? log.quantityDeducted ?? 0);
@@ -1862,4 +1866,8 @@ export const exportOpnameSummaryReportToPDF = ({
   const filename = `Summary_Stock_Opname_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 };
+
+
+
+
 

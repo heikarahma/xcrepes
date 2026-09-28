@@ -74,9 +74,9 @@ export const OrderProvider = ({ children }) => {
     }
   });
 
-  // Customer / Table info for active cart
+  // Customer / Table info for active cart (Order type: 'Dine In' | 'Takeaway')
   const [customerName, setCustomerName] = useState('');
-  const [tableNumber, setTableNumber] = useState('');
+  const [tableNumber, setTableNumber] = useState('Dine In');
 
   // Order-level Discount State (Nominal vs Persentase)
   const [orderDiscountType, setOrderDiscountType] = useState('fixed'); // 'fixed' (Rp) | 'percent' (%)
@@ -390,7 +390,7 @@ export const OrderProvider = ({ children }) => {
   const clearCart = () => {
     setCart([]);
     setCustomerName('');
-    setTableNumber('');
+    setTableNumber('Dine In');
     setOrderDiscountType('fixed');
     setOrderDiscountValue(0);
     setSelectedDiscountPreset(null);
@@ -515,7 +515,7 @@ export const OrderProvider = ({ children }) => {
       status: 'completed',
       cashierName: cashierDisplayName,
       customerName: customerName.trim() || 'Pelanggan Umum',
-      tableNumber: tableNumber.trim() && tableNumber.trim() !== '-' ? tableNumber.trim() : 'Takeaway',
+      tableNumber: tableNumber && tableNumber.trim() && tableNumber.trim() !== '-' ? tableNumber.trim() : 'Dine In',
       items: safeCart.map(item => ({
         ...item,
         lineGross: item.unitPrice * item.quantity,
