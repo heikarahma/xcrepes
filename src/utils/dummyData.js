@@ -61,7 +61,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-008",
     "name": "Selai Srikaya",
     "unit_name": "Gram",
-    "stock": 1408,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -70,7 +70,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-012",
     "name": "Selai Pistachio",
     "unit_name": "Gram",
-    "stock": 200,
+    "stock": 100,
     "price_per_unit": 600,
     "min_stock": 10,
     "note": ""
@@ -79,7 +79,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-021",
     "name": "Kacang tabur",
     "unit_name": "Gram",
-    "stock": 0,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -88,7 +88,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-024",
     "name": "Cone",
     "unit_name": "Pcs",
-    "stock": 16,
+    "stock": 100,
     "price_per_unit": 800,
     "min_stock": 10,
     "note": ""
@@ -97,7 +97,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-025",
     "name": "Choco Stick",
     "unit_name": "Pcs",
-    "stock": 7,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -106,7 +106,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-040",
     "name": "Cheese Slice",
     "unit_name": "Pcs",
-    "stock": 12,
+    "stock": 100,
     "price_per_unit": 1600,
     "min_stock": 10,
     "note": ""
@@ -115,7 +115,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-020",
     "name": "Chacha",
     "unit_name": "Gram",
-    "stock": 142,
+    "stock": 100,
     "price_per_unit": 139,
     "min_stock": 10,
     "note": ""
@@ -124,7 +124,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-022",
     "name": "Yupi",
     "unit_name": "Pcs",
-    "stock": 10,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -133,7 +133,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-023",
     "name": "Astor",
     "unit_name": "Batang",
-    "stock": 176,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -142,7 +142,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-010",
     "name": "Silverqueen",
     "unit_name": "Bungkus",
-    "stock": 12,
+    "stock": 100,
     "price_per_unit": 7500,
     "min_stock": 10,
     "note": ""
@@ -151,7 +151,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-039",
     "name": "Mayonaise",
     "unit_name": "Gram",
-    "stock": 941,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -160,7 +160,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-027",
     "name": "Selai Top Blueberry",
     "unit_name": "Gram",
-    "stock": 255,
+    "stock": 100,
     "price_per_unit": 79,
     "min_stock": 10,
     "note": ""
@@ -169,7 +169,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-028",
     "name": "Selai Top Strawberry",
     "unit_name": "Gram",
-    "stock": 292,
+    "stock": 100,
     "price_per_unit": 79,
     "min_stock": 10,
     "note": ""
@@ -178,7 +178,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-026",
     "name": "Selai Top Chocolate",
     "unit_name": "Gram",
-    "stock": 257,
+    "stock": 100,
     "price_per_unit": 79,
     "min_stock": 10,
     "note": ""
@@ -187,7 +187,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-016",
     "name": "Choco Crunchy",
     "unit_name": "Gram",
-    "stock": 1389,
+    "stock": 100,
     "price_per_unit": 243,
     "min_stock": 10,
     "note": ""
@@ -196,7 +196,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-035",
     "name": "Tuna",
     "unit_name": "Gram",
-    "stock": 7,
+    "stock": 100,
     "price_per_unit": 3333,
     "min_stock": 10,
     "note": ""
@@ -205,7 +205,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-034",
     "name": "Sosis",
     "unit_name": "Pcs",
-    "stock": 11,
+    "stock": 100,
     "price_per_unit": 7000,
     "min_stock": 10,
     "note": ""
@@ -214,7 +214,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-006",
     "name": "Selai Blueberry",
     "unit_name": "Gram",
-    "stock": 300,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -223,7 +223,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-011",
     "name": "Silverqueen Matcha",
     "unit_name": "Bungkus",
-    "stock": 8,
+    "stock": 100,
     "price_per_unit": 7500,
     "min_stock": 10,
     "note": ""
@@ -232,7 +232,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-019",
     "name": "Ice Cream",
     "unit_name": "Gram",
-    "stock": 1001,
+    "stock": 100,
     "price_per_unit": 30,
     "min_stock": 10,
     "note": ""
@@ -241,7 +241,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-007",
     "name": "Selai Peanut",
     "unit_name": "Gram",
-    "stock": 747,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -250,7 +250,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-029",
     "name": "Sendok Plastik",
     "unit_name": "Pcs",
-    "stock": 23,
+    "stock": 100,
     "price_per_unit": 500,
     "min_stock": 10,
     "note": ""
@@ -259,7 +259,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-032",
     "name": "Beef Burger",
     "unit_name": "Pcs",
-    "stock": 5,
+    "stock": 100,
     "price_per_unit": 7100,
     "min_stock": 10,
     "note": ""
@@ -268,7 +268,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-004",
     "name": "Oreo",
     "unit_name": "Bungkus",
-    "stock": 49,
+    "stock": 100,
     "price_per_unit": 800,
     "min_stock": 10,
     "note": ""
@@ -277,7 +277,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-002",
     "name": "Coklat",
     "unit_name": "Bungkus",
-    "stock": 22,
+    "stock": 100,
     "price_per_unit": 1625,
     "min_stock": 10,
     "note": ""
@@ -286,7 +286,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-041",
     "name": "Dus Crepes",
     "unit_name": "Pcs",
-    "stock": 116,
+    "stock": 100,
     "price_per_unit": 1500,
     "min_stock": 10,
     "note": ""
@@ -295,7 +295,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-003",
     "name": "Cheese",
     "unit_name": "Pcs",
-    "stock": 36,
+    "stock": 100,
     "price_per_unit": 900,
     "min_stock": 10,
     "note": ""
@@ -304,7 +304,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-017",
     "name": "Ovomaltine",
     "unit_name": "Gram",
-    "stock": 831,
+    "stock": 100,
     "price_per_unit": 243,
     "min_stock": 10,
     "note": ""
@@ -313,7 +313,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-013",
     "name": "pisang",
     "unit_name": "Pcs",
-    "stock": 7,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -322,7 +322,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-005",
     "name": "Selai strawberry",
     "unit_name": "Gram",
-    "stock": 482,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -331,7 +331,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-001",
     "name": "Adonan",
     "unit_name": "Gram",
-    "stock": 2672,
+    "stock": 100,
     "price_per_unit": 67,
     "min_stock": 10,
     "note": ""
@@ -340,7 +340,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-014",
     "name": "Milk",
     "unit_name": "Gram",
-    "stock": 233,
+    "stock": 100,
     "price_per_unit": 30,
     "min_stock": 10,
     "note": ""
@@ -349,7 +349,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-018",
     "name": "marsmallow",
     "unit_name": "Bungkus",
-    "stock": 15,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -358,7 +358,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-043",
     "name": "Dus Mini",
     "unit_name": "Pcs",
-    "stock": 11,
+    "stock": 100,
     "price_per_unit": 500,
     "min_stock": 10,
     "note": ""
@@ -367,7 +367,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-042",
     "name": "Cup Xcrepes",
     "unit_name": "Pcs",
-    "stock": 23,
+    "stock": 100,
     "price_per_unit": 200,
     "min_stock": 10,
     "note": ""
@@ -376,7 +376,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-030",
     "name": "Cherry",
     "unit_name": "Pcs",
-    "stock": 30,
+    "stock": 100,
     "price_per_unit": 1000,
     "min_stock": 10,
     "note": ""
@@ -385,7 +385,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-038",
     "name": "Saos Sambal",
     "unit_name": "Gram",
-    "stock": 898,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -394,7 +394,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-036",
     "name": "Lettuce",
     "unit_name": "Gram",
-    "stock": 99,
+    "stock": 100,
     "price_per_unit": 200,
     "min_stock": 10,
     "note": ""
@@ -403,7 +403,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-037",
     "name": "Saus Tomat",
     "unit_name": "Gram",
-    "stock": 629,
+    "stock": 100,
     "price_per_unit": 50,
     "min_stock": 10,
     "note": ""
@@ -412,7 +412,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-015",
     "name": "Nuttella",
     "unit_name": "Gram",
-    "stock": 833,
+    "stock": 100,
     "price_per_unit": 198,
     "min_stock": 10,
     "note": ""
@@ -421,7 +421,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-033",
     "name": "Smoke Beef",
     "unit_name": "Pcs",
-    "stock": 8,
+    "stock": 100,
     "price_per_unit": 3043,
     "min_stock": 10,
     "note": ""
@@ -430,7 +430,7 @@ export const DUMMY_RAW_MATERIALS = [
     "id": "RAW-009",
     "name": "Selai Pistachio K",
     "unit_name": "Gram",
-    "stock": 130,
+    "stock": 100,
     "price_per_unit": 425,
     "min_stock": 10,
     "note": ""

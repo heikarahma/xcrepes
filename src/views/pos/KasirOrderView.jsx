@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useProductMenu } from '../../controllers/ProductMenuController';
 import { useCategory } from '../../controllers/CategoryController';
 import { useOrder } from '../../controllers/OrderController';
@@ -88,10 +89,77 @@ export const KasirOrderView = () => {
     clearCart,
     openToppingModal,
     openEditModal,
-    openPaymentModal
+    openPaymentModal,
+    toppingModalState,
+    isPaymentModalOpen,
+    isReceiptModalOpen,
+    orderReturnModalState,
+    orderCancelModalState,
+    orderRevisionModalState
   } = useOrder();
 
+  // Cek apakah ada modal yang sedang aktif (modal topping/menu, bayar, struk, retur, dll)
+  const isAnyModalOpen = Boolean(
+    toppingModalState?.isOpen ||
+    isPaymentModalOpen ||
+    isReceiptModalOpen ||
+    orderReturnModalState?.isOpen ||
+    orderCancelModalState?.isOpen ||
+    orderRevisionModalState?.isOpen
+  );
+
   const safeCart = Array.isArray(cart) ? cart : [];
+  const cartSectionRef = useRef(null);
+  const [isCartInView, setIsCartInView] = useState(false);
+
+  const scrollToCart = () => {
+    // Sembunyikan section floating segera saat tombol ditekan
+    setIsCartInView(true);
+    if (cartSectionRef.current) {
+      cartSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Auto-hide floating cart saat posisi layar berada di section "Pesanan Pembeli"
+  useEffect(() => {
+    const checkCartInView = () => {
+      if (!cartSectionRef.current) return;
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      // Jika kasir berada di bagian paling atas (katalog menu), floating cart selalu tampil
+      if (scrollY < 60) {
+        setIsCartInView(false);
+        return;
+      }
+      const rect = cartSectionRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight || 800;
+      const docHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight
+      );
+      const isNearBottom = scrollY + viewportHeight >= docHeight - 80;
+      const isCartScrolledUp = rect.top <= viewportHeight * 0.6;
+      // Sembunyikan floating bar saat user sudah scroll ke section pesanan atau mencapai bawah halaman
+      const isViewingCart = isNearBottom || isCartScrolledUp;
+      setIsCartInView(isViewingCart);
+    };
+
+    window.addEventListener('scroll', checkCartInView, { passive: true });
+    window.addEventListener('touchmove', checkCartInView, { passive: true });
+    window.addEventListener('resize', checkCartInView, { passive: true });
+    document.addEventListener('scroll', checkCartInView, { passive: true });
+
+    // Initial check
+    checkCartInView();
+
+    return () => {
+      window.removeEventListener('scroll', checkCartInView);
+      window.removeEventListener('touchmove', checkCartInView);
+      window.removeEventListener('resize', checkCartInView);
+      document.removeEventListener('scroll', checkCartInView);
+    };
+  }, []);
 
   // Search & Category Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +188,7 @@ export const KasirOrderView = () => {
   });
 
   return (
-    <div className="kasir-order-page animate-fade-in" style={styles.pageLayout}>
+    <div className="kasir-order-page" style={styles.pageLayout}>
       {/* LEFT SECTION: MENU CATALOG */}
       <div className="kasir-catalog-section" style={styles.catalogSection}>
         {/* Catalog Header & Filters */}
@@ -377,7 +445,12 @@ export const KasirOrderView = () => {
       </div>
 
       {/* RIGHT SECTION: CART / ORDER SUMMARY */}
-      <div className="kasir-cart-section" style={styles.cartSection}>
+      <div 
+        ref={cartSectionRef}
+        id="kasir-cart-section"
+        className="kasir-cart-section" 
+        style={styles.cartSection}
+      >
         <div className="blue-card kasir-cart-card" style={styles.cartCard}>
           {/* Cart Header */}
           <div style={styles.cartHeader}>
@@ -954,12 +1027,104 @@ export const KasirOrderView = () => {
         </div>
       </div>
 
+      {/* MOBILE FLOATING CART BAR (Rendered via Portal to document.body to guarantee floating over entire viewport) */}
+      {typeof document !== 'undefined' && createPortal(
+        <div className={`kasir-mobile-floating-cart ${isCartInView || isAnyModalOpen ? 'cart-hidden' : ''}`}>
+          <div style={styles.floatingCartContainer}>
+            {/* Sisi Kiri: Total Harga */}
+            <div 
+              style={styles.floatingCartLeft} 
+              onClick={scrollToCart} 
+              role="button" 
+              tabIndex={0}
+              title="Klik untuk melihat pesanan pembeli"
+            >
+              <span style={styles.floatingCartLabel}>Total Harga</span>
+              <span style={styles.floatingCartPrice}>
+                {formatIDR(totalAmount || 0)}
+              </span>
+            </div>
+
+            {/* Sisi Kanan: Tombol 'Lihat Pesanan' Mengikuti Sistem Warna Aplikasi */}
+            <div style={styles.floatingCartRight}>
+              <button
+                type="button"
+                className="floating-cart-btn"
+                onClick={scrollToCart}
+                style={styles.floatingCartBtn}
+                title="Lihat Pesanan di Keranjang"
+              >
+                <span>Lihat Pesanan</span>
+                {/* Badge Merah Jumlah Item */}
+                <span style={styles.floatingCartBadge}>
+                  {totalItemsCount || 0}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <style>{`
+        /* Mobile Floating Cart (Prompt v28.1) */
+        .kasir-mobile-floating-cart {
+          display: none;
+        }
+
+        /* Sembunyikan floating cart seketika jika ada modal apa pun yang terbuka */
+        body:has(.blue-modal-backdrop) .kasir-mobile-floating-cart,
+        body:has(.modal-backdrop) .kasir-mobile-floating-cart {
+          display: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+
+        .kasir-cart-section {
+          scroll-margin-top: 70px;
+        }
+
+        .kasir-order-page {
+          transform: none !important;
+        }
+
         @media (max-width: 1024px) {
+          .kasir-mobile-floating-cart {
+            display: block !important;
+            position: fixed !important;
+            bottom: 16px !important;
+            bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+            left: 14px !important;
+            right: 14px !important;
+            max-width: 480px !important;
+            margin: 0 auto !important;
+            z-index: 9999 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0) !important;
+            transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease !important;
+            pointer-events: auto !important;
+          }
+
+          .kasir-mobile-floating-cart.cart-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            transform: translateY(28px) !important;
+            pointer-events: none !important;
+          }
+
+          .kasir-mobile-floating-cart .floating-cart-btn:hover {
+            background-color: var(--blue-600, #005BC6) !important;
+            box-shadow: 0 6px 18px rgba(0, 114, 255, 0.45) !important;
+          }
+
+          .kasir-mobile-floating-cart .floating-cart-btn:active {
+            transform: scale(0.97) !important;
+          }
           .kasir-order-page {
             flex-direction: column !important;
-            padding: 0 0 16px 0 !important;
+            padding: 0 0 90px 0 !important;
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
@@ -1568,5 +1733,74 @@ const styles = {
     justifyContent: 'space-between',
     borderBottom: '1px solid var(--border-color)',
     backgroundColor: 'var(--neutral-50)'
+  },
+  // Floating Cart Styles (Prompt v28.1 - Floating & System Colors)
+  floatingCartContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '12px 18px',
+    backgroundColor: 'var(--bg-surface, #ffffff)',
+    borderRadius: '16px',
+    boxShadow: '0 10px 25px -5px rgba(0, 114, 255, 0.16), 0 8px 16px -6px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(0, 114, 255, 0.08)',
+    border: '1px solid var(--border-color, #E2E8F0)',
+    boxSizing: 'border-box'
+  },
+  floatingCartLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    cursor: 'pointer',
+    userSelect: 'none'
+  },
+  floatingCartLabel: {
+    fontSize: '0.813rem',
+    fontWeight: 'var(--font-weight-medium, 500)',
+    color: 'var(--text-secondary, #64748B)',
+    lineHeight: 1.2,
+    marginBottom: '3px'
+  },
+  floatingCartPrice: {
+    fontSize: '1.125rem',
+    fontWeight: 'var(--font-weight-extrabold, 800)',
+    color: 'var(--neutral-900, #0F172A)',
+    lineHeight: 1.2
+  },
+  floatingCartRight: {
+    position: 'relative'
+  },
+  floatingCartBtn: {
+    position: 'relative',
+    backgroundColor: 'var(--blue-500, #0072FF)',
+    color: 'var(--neutral-white, #FFFFFF)',
+    border: 'none',
+    borderRadius: 'var(--radius-md, 10px)',
+    padding: '10px 22px',
+    fontSize: '0.875rem',
+    fontWeight: 'var(--font-weight-bold, 700)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: 'var(--shadow-primary-btn, 0 4px 14px rgba(0, 114, 255, 0.35))',
+    transition: 'all 0.2s ease'
+  },
+  floatingCartBadge: {
+    position: 'absolute',
+    top: '-7px',
+    right: '-7px',
+    backgroundColor: 'var(--red-500, #E02020)',
+    color: 'var(--neutral-white, #FFFFFF)',
+    fontSize: '0.75rem',
+    fontWeight: 'var(--font-weight-extrabold, 800)',
+    minWidth: '22px',
+    height: '22px',
+    borderRadius: '9999px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 4px',
+    border: '2px solid var(--neutral-white, #FFFFFF)',
+    boxShadow: '0 2px 5px rgba(224, 32, 32, 0.35)',
+    boxSizing: 'border-box'
   }
 };
