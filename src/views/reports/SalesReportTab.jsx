@@ -306,7 +306,7 @@ export const SalesReportTab = () => {
           {showProfitMetrics && (
             <div style={{ ...styles.kpiCard, borderLeft: '4px solid var(--green-500)' }}>
               <div style={styles.kpiHeader}>
-                <span style={styles.kpiLabel}>Pendapatan Bersih (Laba Kotor)</span>
+                <span style={styles.kpiLabel}>Pendapatan Bersih (Margin)</span>
                 <div style={{ ...styles.kpiIconWrapper, backgroundColor: 'var(--green-50)', color: 'var(--green-600)' }}>
                   <TrendingUp size={18} />
                 </div>
