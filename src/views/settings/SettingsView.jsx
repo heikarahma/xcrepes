@@ -350,6 +350,9 @@ export const SettingsView = () => {
       return;
     }
 
+    const paperWidth = formData.paperSize === '80mm' ? '80mm' : '58mm';
+    const paperContentWidth = formData.paperSize === '80mm' ? '76mm' : '54mm';
+
     const html = `
       <!DOCTYPE html>
       <html lang="id">
@@ -357,21 +360,164 @@ export const SettingsView = () => {
           <meta charset="UTF-8" />
           <title>Uji Coba Struk - ${formData.receiptTitle || formData.storeName}</title>
           <style>
-            @page { size: ${formData.paperSize === '80mm' ? '80mm' : '58mm'} auto; margin: 0; }
-            body { margin: 0; padding: 10px; font-family: 'Courier New', Courier, monospace; font-size: 8.5pt; color: #000; }
-            .receipt-wrap { width: ${formData.paperSize === '80mm' ? '76mm' : '54mm'}; margin: 0 auto; }
+            :root {
+              --neutral-900: #0f172a;
+              --neutral-800: #1e293b;
+              --neutral-700: #334155;
+              --neutral-600: #475569;
+              --neutral-500: #64748b;
+              --neutral-400: #94a3b8;
+              --neutral-300: #cbd5e1;
+              --emerald-700: #047857;
+              --emerald-600: #059669;
+              --amber-700: #b45309;
+            }
+            @page {
+              size: ${paperWidth} auto;
+              margin: 0mm;
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+            html {
+              margin: 0;
+              padding: 0;
+            }
+            body {
+              margin: 0;
+              padding: 16px 10px 40px;
+              font-family: 'Courier New', Courier, monospace, -apple-system, BlinkMacSystemFont, sans-serif;
+              font-size: 8.5pt;
+              color: #000;
+              background-color: #f1f5f9;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              min-height: 100vh;
+            }
+            .toolbar {
+              display: flex;
+              gap: 10px;
+              margin-bottom: 16px;
+              position: sticky;
+              top: 10px;
+              z-index: 100;
+              background: rgba(255, 255, 255, 0.92);
+              backdrop-filter: blur(8px);
+              padding: 8px 14px;
+              border-radius: 30px;
+              box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+            }
+            .btn {
+              padding: 8px 18px;
+              font-size: 13px;
+              font-weight: 700;
+              border-radius: 20px;
+              cursor: pointer;
+              border: none;
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              transition: all 0.15s ease;
+            }
+            .btn-print {
+              background-color: #0072FF;
+              color: #ffffff;
+            }
+            .btn-print:hover {
+              background-color: #005BC6;
+            }
+            .btn-close {
+              background-color: #f1f5f9;
+              color: #475569;
+              border: 1px solid #cbd5e1;
+            }
+            .btn-close:hover {
+              background-color: #e2e8f0;
+            }
+            .receipt-wrap {
+              width: ${paperContentWidth};
+              min-width: ${paperContentWidth};
+              max-width: ${paperContentWidth};
+              margin: 0 auto;
+              background: #ffffff;
+              padding: 4mm 3mm 4mm 3mm;
+              border-radius: 4px;
+              box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+              line-height: 1.3;
+              color: #000000;
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
+            svg {
+              display: inline-block;
+              vertical-align: middle;
+            }
             @media print {
-              body { padding: 0; }
+              @page {
+                size: ${paperWidth} auto;
+                margin: 0mm;
+              }
+              html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                display: block !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .toolbar {
+                display: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 0 !important;
+              }
+              .receipt-wrap {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                border: none !important;
+                padding: 1mm 2mm 2mm 2mm !important;
+                width: ${paperContentWidth} !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-wrap * {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-wrap > *:last-child {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
+              }
             }
           </style>
         </head>
         <body>
+          <div class="toolbar">
+            <button class="btn btn-print" onclick="window.print()">🖨️ Cetak / Simpan PDF</button>
+            <button class="btn btn-close" onclick="window.close()">Tutup</button>
+          </div>
           <div class="receipt-wrap">
             ${printContent.innerHTML}
           </div>
           <script>
             window.addEventListener('load', function() {
-              setTimeout(function() { window.print(); }, 250);
+              setTimeout(function() { window.print(); }, 350);
             });
           </script>
         </body>

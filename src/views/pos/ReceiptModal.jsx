@@ -46,7 +46,7 @@ export const ReceiptModal = () => {
     }
 
     const paperWidth = settings.paperSize === '80mm' ? '80mm' : '58mm';
-    const paperContentWidth = settings.paperSize === '80mm' ? '76mm' : '58mm';
+    const paperContentWidth = settings.paperSize === '80mm' ? '76mm' : '54mm';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -56,18 +56,34 @@ export const ReceiptModal = () => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Pratinjau Struk - ${completedReceipt.invoiceNumber}</title>
           <style>
+            :root {
+              --neutral-900: #0f172a;
+              --neutral-800: #1e293b;
+              --neutral-700: #334155;
+              --neutral-600: #475569;
+              --neutral-500: #64748b;
+              --neutral-400: #94a3b8;
+              --neutral-300: #cbd5e1;
+              --emerald-700: #047857;
+              --emerald-600: #059669;
+              --amber-700: #b45309;
+            }
             @page {
               size: ${paperWidth} auto;
-              margin: 0;
+              margin: 0mm;
             }
             * {
               box-sizing: border-box;
               margin: 0;
               padding: 0;
             }
+            html {
+              margin: 0;
+              padding: 0;
+            }
             body {
               background-color: #e2e8f0;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Courier New", monospace;
+              font-family: 'Courier New', Courier, monospace, -apple-system, BlinkMacSystemFont, sans-serif;
               color: #000000;
               padding: 16px 10px 40px;
               display: flex;
@@ -120,7 +136,7 @@ export const ReceiptModal = () => {
               width: ${paperContentWidth};
               min-width: ${paperContentWidth};
               max-width: ${paperContentWidth};
-              padding: 4mm 3mm 8mm 3mm;
+              padding: 4mm 3mm 4mm 3mm;
               border-radius: 4px;
               box-shadow: 0 4px 18px rgba(0,0,0,0.12);
               font-family: 'Courier New', Courier, monospace, sans-serif;
@@ -138,21 +154,50 @@ export const ReceiptModal = () => {
             @media print {
               @page {
                 size: ${paperWidth} auto;
-                margin: 0;
+                margin: 0mm;
               }
-              body {
-                background: #ffffff !important;
+              html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                margin: 0 !important;
                 padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                display: block !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
               }
               .toolbar {
                 display: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 0 !important;
               }
               .receipt-paper {
                 box-shadow: none !important;
                 border-radius: 0 !important;
-                padding: 2mm 3mm 6mm 3mm !important;
+                border: none !important;
+                padding: 1mm 2mm 2mm 2mm !important;
                 width: ${paperContentWidth} !important;
-                max-width: ${paperContentWidth} !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-paper * {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .receipt-paper > *:last-child {
+                margin-bottom: 0 !important;
+                padding-bottom: 0 !important;
               }
             }
           </style>
@@ -466,18 +511,22 @@ export const ReceiptModal = () => {
           }
           @media print {
             @page {
-              size: 58mm auto;
-              margin: 0;
+              size: ${settings.paperSize === '80mm' ? '80mm' : '58mm'} auto;
+              margin: 0mm;
             }
             html, body {
-              width: 58mm !important;
+              width: 100% !important;
               margin: 0 !important;
               padding: 0 !important;
               height: auto !important;
-              min-height: auto !important;
+              min-height: 0 !important;
+              max-height: none !important;
               overflow: visible !important;
               background: #ffffff !important;
               color: #000000 !important;
+              display: block !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .blue-modal-backdrop, .blue-modal, .blue-modal-body,
             .app-container, .app-main, .app-content {
@@ -485,8 +534,9 @@ export const ReceiptModal = () => {
               display: block !important;
               inset: auto !important;
               width: 100% !important;
-              max-width: 58mm !important;
+              max-width: 100% !important;
               height: auto !important;
+              min-height: 0 !important;
               max-height: none !important;
               overflow: visible !important;
               padding: 0 !important;
@@ -499,6 +549,9 @@ export const ReceiptModal = () => {
             }
             .app-navbar, .app-sidebar, .blue-modal-header, .blue-modal-footer, .no-print {
               display: none !important;
+              height: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
             body * {
               visibility: hidden !important;
@@ -507,26 +560,38 @@ export const ReceiptModal = () => {
               visibility: visible !important;
             }
             #printable-receipt {
-              position: relative !important;
+              position: absolute !important;
               left: 0 !important;
               top: 0 !important;
-              width: 58mm !important;
-              max-width: 58mm !important;
-              min-width: 58mm !important;
-              margin: 0 !important;
-              padding: 2mm 3mm 8mm 3mm !important;
+              width: ${settings.paperSize === '80mm' ? '76mm' : '54mm'} !important;
+              max-width: 100% !important;
+              min-width: auto !important;
+              margin: 0 auto !important;
+              padding: 1mm 2mm 2mm 2mm !important;
               border: none !important;
               border-radius: 0 !important;
               box-shadow: none !important;
               background: #ffffff !important;
               color: #000000 !important;
-              font-family: 'Courier New', Courier, monospace, monospace !important;
+              font-family: 'Courier New', Courier, monospace !important;
               font-size: 8.5pt !important;
               line-height: 1.25 !important;
               box-sizing: border-box !important;
+              page-break-before: avoid !important;
+              break-before: avoid !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             #printable-receipt * {
               color: #000000 !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            #printable-receipt > *:last-child {
+              margin-bottom: 0 !important;
+              padding-bottom: 0 !important;
             }
           }
         `}</style>
