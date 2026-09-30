@@ -8,8 +8,6 @@ export const toast = {
   success: (message, title = 'Berhasil') => {
     if (typeof globalShowToast === 'function') {
       globalShowToast(message, 'success', title);
-    } else {
-      console.log(`[Toast Success] ${message}`);
     }
   },
   error: (message, title = 'Peringatan') => {

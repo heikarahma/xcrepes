@@ -1050,7 +1050,7 @@ export const KasirOrderView = () => {
       </div>
 
       {/* MOBILE FLOATING CART BAR (Rendered via Portal to document.body to guarantee floating over entire viewport) */}
-      {typeof document !== 'undefined' && createPortal(
+      {typeof document !== 'undefined' && safeCart.length > 0 && createPortal(
         <div className={`kasir-mobile-floating-cart ${isCartInView || isAnyModalOpen ? 'cart-hidden' : ''}`}>
           <div style={styles.floatingCartContainer}>
             {/* Sisi Kiri: Total Harga */}
@@ -1187,9 +1187,11 @@ export const KasirOrderView = () => {
           }
           .kasir-cart-card {
             padding: 14px 16px !important;
+            max-height: none !important;
           }
           .kasir-cart-items-scroll {
-            max-height: 320px !important;
+            max-height: none !important;
+            min-height: 0 !important;
           }
         }
         @media (max-width: 600px) {
@@ -1246,7 +1248,8 @@ export const KasirOrderView = () => {
             gap: 3px !important;
           }
           .kasir-cart-items-scroll {
-            max-height: 230px !important;
+            max-height: none !important;
+            min-height: 0 !important;
             gap: 6px !important;
           }
           .kasir-cart-item-card {
@@ -1277,17 +1280,18 @@ export const KasirOrderView = () => {
         }
         @media (max-width: 390px) {
           .kasir-order-page {
-            padding: 8px 6px 16px 6px !important;
+            padding: 0 0 16px 0 !important;
           }
           .kasir-menu-grid {
-            gap: 6px !important;
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
           }
           .kasir-menu-card img,
           .kasir-menu-card > div:first-child {
-            height: 85px !important;
+            height: 112px !important;
           }
           .kasir-card-title {
-            font-size: 0.75rem !important;
+            font-size: 0.875rem !important;
           }
           .discount-unified-group select {
             font-size: 0.65rem !important;

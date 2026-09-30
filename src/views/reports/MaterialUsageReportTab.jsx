@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useReport } from '../../controllers/ReportController';
 import { useOrder } from '../../controllers/OrderController';
 import { EmptyState } from '../components/EmptyState';
@@ -11,10 +11,8 @@ import {
   Receipt, 
   Coins, 
   TrendingDown, 
-  AlertCircle, 
   ShoppingBag, 
   Sparkles,
-  User,
   Calendar
 } from 'lucide-react';
 
@@ -176,7 +174,9 @@ export const MaterialUsageReportTab = () => {
         </div>
       </div>
 
-      {/* 3. AUDIT TRAIL TABLE */}
+      {/* 3. AUDIT TRAIL
+          Desktop keeps the dense table for scanning; <=1024px switches to cards
+          so each mutation remains readable without horizontal scrolling. */}
       <div style={styles.tableCard}>
         {materialDeductionLogs.length === 0 ? (
           <EmptyState
@@ -185,7 +185,8 @@ export const MaterialUsageReportTab = () => {
             icon={Package}
           />
         ) : (
-          <div style={styles.tableResponsive}>
+          <>
+          <div className="material-desktop-table" style={styles.tableResponsive}>
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeaderRow}>
@@ -318,10 +319,96 @@ export const MaterialUsageReportTab = () => {
               </tbody>
             </table>
           </div>
+          <div className="material-mobile-cards">
+            {materialDeductionLogs.map((log) => {
+              const isSale = Boolean(log.referenceInvoice || log.orderId);
+              const valueText = formatIDR(log.totalEstimatedValue);
+
+              return (
+                <div className="material-mobile-card" key={`mobile-${log.id}`}>
+                  <div className="material-mobile-card-top">
+                    <div className="material-mobile-date">
+                      <Calendar size={13} />
+                      <span>{formatDate(log.createdAt)}</span>
+                    </div>
+                    <span style={{
+                      ...styles.eventTypeBadge,
+                      backgroundColor: log.badgeColor === 'blue' ? 'var(--blue-50)' : log.badgeColor === 'green' ? 'var(--green-50)' : log.badgeColor === 'purple' ? '#f3e8ff' : log.badgeColor === 'red' ? '#fef2f2' : 'var(--amber-50)',
+                      color: log.badgeColor === 'blue' ? 'var(--blue-600)' : log.badgeColor === 'green' ? 'var(--green-600)' : log.badgeColor === 'purple' ? '#7e22ce' : log.badgeColor === 'red' ? '#b91c1c' : 'var(--amber-700)',
+                      border: log.badgeColor === 'red' ? '1px solid #fecaca' : undefined
+                    }}>
+                      {log.eventBadgeText}
+                    </span>
+                  </div>
+
+                  <div className="material-mobile-title-row">
+                    <div>
+                      <h3 className="material-mobile-title">{log.rawMaterialName}</h3>
+                      <p className="material-mobile-subtitle">Satuan: {log.unitName} • Oleh: {log.user || 'Sistem'}</p>
+                    </div>
+                    <strong className="material-mobile-cost">{valueText}</strong>
+                  </div>
+
+                  <div className="material-mobile-stock-box">
+                    <div>
+                      <span>Stok Awal</span>
+                      <strong>{log.previousStock} {log.unitName}</strong>
+                    </div>
+                    <ArrowRight size={14} color="var(--neutral-400)" />
+                    <div>
+                      <span>Stok Akhir</span>
+                      <strong>{log.currentStock} {log.unitName}</strong>
+                    </div>
+                    <div className="material-mobile-delta">
+                      {log.type === 'OUT' ? '-' : log.type === 'IN' ? '+' : 'Δ '}{log.amount} {log.unitName}
+                    </div>
+                  </div>
+
+                  <div className="material-mobile-detail-grid">
+                    <div className="material-mobile-detail">
+                      <span>Digunakan Ke</span>
+                      {log.sourceMenu ? (
+                        <strong>{log.sourceMenu}{log.toppingName ? ` • ${log.toppingName}` : ''}</strong>
+                      ) : (
+                        <strong>{log.note || 'Penyesuaian stok langsung'}</strong>
+                      )}
+                    </div>
+                    <div className="material-mobile-detail">
+                      <span>Harga Satuan</span>
+                      <strong>@{formatIDR(log.pricePerUnit)}/{log.unitName}</strong>
+                    </div>
+                  </div>
+
+                  <div className="material-mobile-footer">
+                    {log.referenceInvoice ? (
+                      <button
+                        type="button"
+                        onClick={() => handleViewInvoice(log.referenceInvoice)}
+                        style={styles.invoiceButton}
+                        title="Klik untuk lihat struk transaksi"
+                      >
+                        <Receipt size={13} />
+                        <span>{log.referenceInvoice}</span>
+                      </button>
+                    ) : (
+                      <span className="material-mobile-muted">Non-Kasir</span>
+                    )}
+                    {isSale && log.customerName && (
+                      <span className="material-mobile-muted">{log.customerName}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          </>
         )}
       </div>
 
       <style>{`
+        .material-mobile-cards {
+          display: none;
+        }
         @media (max-width: 1024px) {
           .material-report-tab {
             padding: 0 !important;
@@ -348,12 +435,133 @@ export const MaterialUsageReportTab = () => {
             width: 100% !important;
             gap: 10px !important;
           }
+          .reports-filter-group > div {
+            width: 100% !important;
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+          }
           .reports-select-wrapper {
             width: 100% !important;
             min-width: 100% !important;
           }
           .reports-select-wrapper select {
             width: 100% !important;
+          }
+          .material-desktop-table {
+            display: none !important;
+          }
+          .material-mobile-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 12px !important;
+            background-color: #f8fafc !important;
+          }
+          .material-mobile-card {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 14px !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--border-color) !important;
+            background-color: #FFFFFF !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+            min-width: 0 !important;
+          }
+          .material-mobile-card-top,
+          .material-mobile-title-row,
+          .material-mobile-footer {
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            min-width: 0 !important;
+          }
+          .material-mobile-date {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 5px !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.75rem !important;
+            min-width: 0 !important;
+          }
+          .material-mobile-title {
+            margin: 0 !important;
+            color: var(--neutral-900) !important;
+            font-size: 0.938rem !important;
+            font-weight: 800 !important;
+            line-height: 1.3 !important;
+          }
+          .material-mobile-subtitle {
+            margin: 3px 0 0 0 !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.75rem !important;
+          }
+          .material-mobile-cost {
+            color: var(--neutral-900) !important;
+            font-size: 0.875rem !important;
+            white-space: nowrap !important;
+          }
+          .material-mobile-stock-box {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 10px !important;
+            border-radius: 10px !important;
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+          }
+          .material-mobile-stock-box span,
+          .material-mobile-detail span {
+            display: block !important;
+            margin-bottom: 3px !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.688rem !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+          }
+          .material-mobile-stock-box strong,
+          .material-mobile-detail strong {
+            color: var(--neutral-900) !important;
+            font-size: 0.813rem !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere !important;
+          }
+          .material-mobile-delta {
+            grid-column: 1 / -1 !important;
+            color: var(--red-500) !important;
+            font-size: 0.813rem !important;
+            font-weight: 800 !important;
+            padding-top: 8px !important;
+            border-top: 1px dashed #cbd5e1 !important;
+          }
+          .material-mobile-detail-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+          .material-mobile-detail {
+            padding: 9px 10px !important;
+            border-radius: 9px !important;
+            border: 1px solid #e2e8f0 !important;
+            background-color: #f8fafc !important;
+            min-width: 0 !important;
+          }
+          .material-mobile-muted {
+            color: var(--neutral-500) !important;
+            font-size: 0.75rem !important;
+          }
+        }
+        @media (max-width: 420px) {
+          .material-mobile-title-row,
+          .material-mobile-card-top,
+          .material-mobile-footer {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .material-mobile-detail-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
