@@ -175,6 +175,16 @@ a:hover {
     margin-left: 0 !important;
   }
 
+  .app-sidebar:not(.sidebar-open) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .app-sidebar.sidebar-open {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
   .sidebar-backdrop {
     display: block;
     position: fixed;
@@ -289,6 +299,466 @@ a:hover {
     margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+  }
+}
+
+/* ==========================================================
+   RESPONSIVE UX SAFETY NETS
+   Keep dense admin/POS screens usable across desktop, tablet,
+   and narrow phones without forcing every view to be refactored.
+   ========================================================== */
+.app-content,
+.blue-card,
+.blue-modal,
+.bottom-sheet-surface {
+  min-width: 0;
+}
+
+.blue-card-header,
+.page-header,
+.list-header,
+.toolbar,
+.filter-row,
+.action-row {
+  min-width: 0;
+}
+
+.blue-table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.blue-table {
+  min-width: 720px;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.blue-input,
+.btn,
+select,
+textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .blue-card {
+    padding: 16px !important;
+  }
+
+  .blue-card-header {
+    align-items: flex-start !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .blue-card-header > * {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  html, body {
+    font-size: 14px;
+  }
+
+  .blue-card {
+    border-radius: 10px !important;
+    padding: 14px !important;
+  }
+
+  .blue-card-header {
+    margin-bottom: 12px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .blue-card-title {
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .btn {
+    min-height: 42px;
+    white-space: normal;
+  }
+
+  .btn-icon {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .blue-input {
+    min-height: 42px;
+  }
+
+  .blue-table {
+    min-width: 640px;
+  }
+}
+
+/* Cross-module responsive layout polish */
+.unit-header-section,
+.category-header-section,
+.topping-header-section,
+.page-header-section,
+.raw-material-header-section,
+.stock-opname-header,
+.stock-opname-header-card,
+.settings-header,
+.page-header-flex,
+.reports-section-box-header,
+.history-card-header,
+.today-card-header,
+.transaction-detail-header-card {
+  min-width: 0;
+}
+
+.unit-toolbar,
+.category-toolbar,
+.topping-toolbar,
+.product-menu-toolbar,
+.raw-material-toolbar,
+.stock-history-toolbar,
+.table-toolbar,
+.reports-date-filter-card,
+.reports-filter-bar,
+.filter-controls-row,
+.stock-opname-controls {
+  min-width: 0;
+}
+
+.unit-toolbar-inputs,
+.category-toolbar-inputs,
+.topping-toolbar-inputs,
+.product-menu-toolbar-inner,
+.raw-material-toolbar-inner,
+.raw-material-header-actions,
+.header-action-buttons,
+.reports-date-filter-left,
+.reports-export-actions,
+.reports-section-controls,
+.reports-pill-group,
+.stock-opname-pill-group,
+.stock-opname-bottom-inner,
+.stock-opname-bottom-buttons,
+.settings-save-btn-wrap {
+  min-width: 0;
+}
+
+.unit-search-box,
+.category-search-box,
+.topping-search-box,
+.product-menu-search-wrapper,
+.product-menu-category-wrapper,
+.product-menu-sort-wrapper,
+.raw-material-search-wrapper,
+.raw-material-status-wrapper,
+.raw-material-sort-wrapper,
+.reports-search-wrapper,
+.search-box-wrapper,
+.stock-opname-search,
+.returns-custom-date-wrapper {
+  min-width: 0;
+}
+
+.desktop-table-wrapper,
+.table-responsive,
+.transaction-desktop-table,
+.transaction-detail-desktop-table,
+.desktop-history-table-wrapper,
+.admin-history-desktop-table,
+.admin-detail-desktop-table,
+.blue-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-menu-grid,
+.reports-kpi-grid,
+.menu-topping-insights-grid,
+.cashier-stats-grid,
+.raw-material-stats-grid,
+.stats-grid,
+.settings-main-grid,
+.settings-radio-grid,
+.settings-toggle-grid,
+.stock-history-stats-grid {
+  min-width: 0;
+}
+
+.product-menu-card,
+.product-menu-list-card,
+.stat-card,
+.transaction-mobile-card,
+.mobile-cashier-card,
+.stock-opname-card,
+.admin-history-mobile-card,
+.admin-detail-item-card,
+.transaction-detail-card,
+.settings-card {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .unit-header-section,
+  .category-header-section,
+  .topping-header-section,
+  .page-header-section,
+  .raw-material-header-section,
+  .stock-opname-header,
+  .settings-header,
+  .page-header-flex {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .unit-toolbar,
+  .category-toolbar,
+  .topping-toolbar,
+  .product-menu-toolbar,
+  .raw-material-toolbar,
+  .stock-history-toolbar,
+  .table-toolbar,
+  .reports-date-filter-card,
+  .reports-filter-bar,
+  .filter-controls-row {
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .unit-toolbar-inputs,
+  .category-toolbar-inputs,
+  .topping-toolbar-inputs,
+  .product-menu-toolbar-inner,
+  .raw-material-toolbar-inner,
+  .reports-date-filter-left,
+  .reports-section-controls,
+  .filter-controls-row {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .settings-main-grid,
+  .transaction-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reports-kpi-grid,
+  .cashier-stats-grid,
+  .raw-material-stats-grid,
+  .stats-grid,
+  .stock-history-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .product-menu-grid {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .unit-header-section,
+  .category-header-section,
+  .topping-header-section,
+  .page-header-section,
+  .raw-material-header-section,
+  .stock-opname-header,
+  .settings-header,
+  .page-header-flex,
+  .reports-section-box-header,
+  .history-card-header,
+  .today-card-header,
+  .transaction-detail-header-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .unit-add-btn,
+  .category-add-btn,
+  .topping-add-btn,
+  .raw-material-add-btn,
+  .raw-material-adjust-btn,
+  .raw-material-waste-btn,
+  .add-cashier-btn,
+  .settings-superadmin-btn,
+  .reports-export-btn,
+  .settings-save-btn,
+  .header-action-buttons > .btn,
+  .raw-material-header-actions > .btn,
+  .raw-material-sub-actions > .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .unit-toolbar-inputs,
+  .category-toolbar-inputs,
+  .topping-toolbar-inputs,
+  .product-menu-toolbar-inner,
+  .raw-material-toolbar-inner,
+  .reports-date-filter-left,
+  .reports-export-actions,
+  .reports-section-controls,
+  .stock-opname-controls,
+  .stock-opname-bottom-inner,
+  .stock-opname-bottom-buttons,
+  .settings-save-btn-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .unit-search-box,
+  .unit-sort-box,
+  .category-search-box,
+  .category-sort-box,
+  .topping-search-box,
+  .topping-sort-box,
+  .product-menu-search-wrapper,
+  .product-menu-category-wrapper,
+  .product-menu-sort-wrapper,
+  .product-menu-sort-and-view-row,
+  .product-menu-view-wrapper,
+  .raw-material-search-wrapper,
+  .raw-material-status-wrapper,
+  .raw-material-sort-wrapper,
+  .reports-search-wrapper,
+  .search-box-wrapper,
+  .stock-opname-search,
+  .reports-custom-date-wrapper,
+  .returns-custom-date-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .product-menu-sort-and-view-row,
+  .raw-material-header-actions,
+  .raw-material-sub-actions,
+  .header-action-buttons,
+  .transaction-detail-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .product-menu-view-switcher {
+    width: 100% !important;
+  }
+
+  .product-menu-view-btn {
+    flex: 1 1 0 !important;
+  }
+
+  .unit-batch-bar,
+  .category-batch-bar,
+  .topping-batch-bar,
+  .raw-material-batch-bar {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  .reports-kpi-grid,
+  .cashier-stats-grid,
+  .raw-material-stats-grid,
+  .stats-grid,
+  .stock-history-stats-grid,
+  .menu-topping-insights-grid,
+  .settings-radio-grid,
+  .settings-toggle-grid,
+  .settings-form-row2,
+  .raw-material-grid,
+  .mobile-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .product-menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .reports-pill-group,
+  .stock-opname-pill-group,
+  .kasir-category-scroll,
+  .raw-material-tab-container {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .unit-list-page,
+  .category-list-page,
+  .topping-list-page,
+  .product-menu-list-page,
+  .raw-material-list-page,
+  .stock-history-view,
+  .reports-page,
+  .sales-report-tab,
+  .material-report-tab,
+  .cashier-view-container,
+  .settings-page,
+  .stock-opname-page,
+  .stock-opname-admin-page,
+  .stock-opname-detail-page,
+  .transaction-detail-page {
+    padding-bottom: 20px !important;
+  }
+
+  .product-menu-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .product-menu-card,
+  .product-menu-list-card,
+  .mobile-unit-card,
+  .mobile-cashier-card,
+  .transaction-mobile-card,
+  .admin-history-mobile-card,
+  .admin-detail-item-card {
+    border-radius: 10px !important;
+  }
+
+  .mobile-unit-card {
+    align-items: flex-start !important;
+  }
+
+  .mobile-unit-left {
+    min-width: 0 !important;
+  }
+
+  .mobile-unit-actions {
+    gap: 6px !important;
+  }
+
+  .mobile-action-btn,
+  .row-action-btn,
+  .product-menu-action-btn {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .pagination-controls {
+    overflow-x: auto;
+    justify-content: flex-start !important;
+    max-width: 100%;
   }
 }
 

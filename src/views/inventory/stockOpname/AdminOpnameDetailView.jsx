@@ -1013,12 +1013,12 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
           }
 
           .admin-opname-modal-footer {
-            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)) 16px !important;
+            padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px !important;
             flex-shrink: 0 !important;
             background-color: #FFFFFF !important;
             border-top: 1px solid var(--border-color, #e2e8f0) !important;
             display: flex !important;
-            gap: 10px !important;
+            gap: 16px !important;
           }
 
           .admin-opname-modal-footer > button {
@@ -1422,11 +1422,11 @@ const styles = {
     flex: 1
   },
   modalFooter: {
-    padding: '14px 20px',
+    padding: '16px 20px',
     borderTop: '1px solid var(--border-color)',
     display: 'flex',
     justifyContent: 'flex-end',
-    gap: '10px'
+    gap: '16px'
   },
 
   // Diff Box

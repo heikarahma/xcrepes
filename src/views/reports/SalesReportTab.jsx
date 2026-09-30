@@ -115,6 +115,12 @@ export const SalesReportTab = () => {
   const attachRate = menuSalesWithToppings?.toppingAttachRate || 0;
   const totalToppingRev = menuSalesWithToppings?.totalToppingRevenue || 0;
   const toppingShare = menuSalesWithToppings?.toppingRevenueShare || 0;
+  const topSellingMenuList = useMemo(() => {
+    return [...combinedList]
+      .sort((a, b) => (Number(b.qtySold) || 0) - (Number(a.qtySold) || 0))
+      .slice(0, 5);
+  }, [combinedList]);
+  const topSellingMenuMaxQty = topSellingMenuList[0]?.qtySold || 0;
 
   // Filtered lists by menuSearchTerm
   const filteredCombinedList = useMemo(() => {
@@ -343,12 +349,12 @@ export const SalesReportTab = () => {
         <div className="reports-section-box animate-fade-in" style={styles.sectionBox}>
           {/* Section 1 Header */}
           <div className="reports-section-box-header" style={styles.sectionBoxHeader}>
-            <div style={styles.sectionHeaderLeft}>
-              <div style={{ ...styles.sectionIconBadge, backgroundColor: '#fff7ed', color: '#ea580c' }}>
+            <div className="sales-summary-header-left" style={styles.sectionHeaderLeft}>
+              <div className="sales-summary-icon-badge" style={{ ...styles.sectionIconBadge, backgroundColor: '#fff7ed', color: '#ea580c' }}>
                 <Cookie size={22} />
               </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="sales-summary-title-block">
+                <div className="sales-summary-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h2 style={styles.sectionMainTitle}>Summary Penjualan Menu & Topping</h2>
                   <span style={styles.sectionCounterBadge}>
                     {salesItemTypeFilter === 'COMBINED' ? `${filteredCombinedList.length} Menu Terjual` : `${filteredProductPerformanceList.length} Item`}
@@ -500,16 +506,64 @@ export const SalesReportTab = () => {
             </div>
           </div>
 
+          <div className="top-selling-menu-summary" style={styles.topSellingMenuSummary}>
+            <div className="top-selling-menu-summary-header" style={styles.topSellingMenuSummaryHeader}>
+              <div className="top-selling-menu-title-wrap" style={styles.topSellingMenuTitleWrap}>
+                <div style={{ ...styles.insightIconWrap, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
+                  <TrendingUp size={16} />
+                </div>
+                <div>
+                  <h3 style={styles.topSellingMenuTitle}>Menu Terbanyak Terjual</h3>
+                  <p style={styles.topSellingMenuSubtitle}>Urutan menu berdasarkan jumlah porsi yang berhasil terjual.</p>
+                </div>
+              </div>
+              <Badge variant="primary" className="top-selling-menu-count-badge">
+                Top {topSellingMenuList.length || 0}
+              </Badge>
+            </div>
+
+            {topSellingMenuList.length === 0 ? (
+              <div className="top-selling-menu-empty" style={styles.topSellingMenuEmpty}>
+                Belum ada menu yang terjual pada periode ini.
+              </div>
+            ) : (
+              <div className="top-selling-menu-list" style={styles.topSellingMenuList}>
+                {topSellingMenuList.map((item, index) => {
+                  const qty = Number(item.qtySold) || 0;
+                  const progress = topSellingMenuMaxQty > 0 ? Math.max((qty / topSellingMenuMaxQty) * 100, 6) : 0;
+                  return (
+                    <div className="top-selling-menu-row" style={styles.topSellingMenuRow} key={`top-menu-${item.id}`}>
+                      <div className="top-selling-menu-rank" style={styles.topSellingMenuRank}>#{index + 1}</div>
+                      <div className="top-selling-menu-main" style={styles.topSellingMenuMain}>
+                        <div className="top-selling-menu-name-row" style={styles.topSellingMenuNameRow}>
+                          <span className="top-selling-menu-name" style={styles.topSellingMenuName}>{item.name}</span>
+                          <span className="top-selling-menu-qty" style={styles.topSellingMenuQty}>{qty} porsi</span>
+                        </div>
+                        <div className="top-selling-menu-meta" style={styles.topSellingMenuMeta}>
+                          <span>{item.categoryName}</span>
+                          <span>Omset {formatIDR(item.menuGrossRevenue)}</span>
+                        </div>
+                        <div className="top-selling-menu-bar" style={styles.topSellingMenuBar}>
+                          <div style={{ ...styles.topSellingMenuBarFill, width: `${progress}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Table Content: COMBINED vs Standard Products List */}
           {salesItemTypeFilter === 'COMBINED' ? (
             /* TAMPILAN 1: RINGKASAN MENU & TOPPING (KOMBINASI BERIKUT TOPPING) */
             <div style={styles.tableCard}>
-              <div style={styles.tableCardHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="sales-data-table-header" style={styles.tableCardHeader}>
+                <div className="sales-data-table-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Cookie size={18} color="var(--blue-600)" />
                   <h3 style={styles.cardHeaderTitle}>Ringkasan Penjualan Menu & Rincian Topping Terpasang</h3>
                 </div>
-                <Badge variant="primary">
+                <Badge variant="primary" className="sales-table-count-badge">
                   {filteredCombinedList.length} Menu Terdaftar
                 </Badge>
               </div>
@@ -521,7 +575,8 @@ export const SalesReportTab = () => {
                   icon={ShoppingBag}
                 />
               ) : (
-                <div style={styles.tableResponsive}>
+                <>
+                <div className="sales-desktop-table" style={styles.tableResponsive}>
                   <table style={styles.table}>
                     <thead>
                       <tr style={styles.tableHeaderRow}>
@@ -630,19 +685,114 @@ export const SalesReportTab = () => {
                     </tbody>
                   </table>
                 </div>
+                <div className="sales-mobile-data-cards">
+                  {filteredCombinedList.map((item, index) => {
+                    const hasToppings = Array.isArray(item.toppingsList) && item.toppingsList.length > 0;
+                    const visibleToppings = hasToppings ? item.toppingsList.slice(0, 3) : [];
+                    const hiddenToppingCount = hasToppings ? item.toppingsList.length - visibleToppings.length : 0;
+
+                    return (
+                      <div className="sales-mobile-data-card" key={`mobile-combined-${item.id}`}>
+                        <div className="sales-mobile-card-top">
+                          <span className="sales-mobile-card-index">#{index + 1}</span>
+                          <div className="sales-mobile-card-title-block">
+                            <h4 className="sales-mobile-card-title">{item.name}</h4>
+                            <div className="sales-mobile-card-meta">
+                              <span style={styles.categoryBadge}>{item.categoryName}</span>
+                              {showProfitMetrics && (
+                                <span>HPP: {formatIDR(item.unitHpp)}/porsi</span>
+                              )}
+                            </div>
+                          </div>
+                          <span style={styles.qtyPill}>{item.qtySold}x</span>
+                        </div>
+
+                        <div className="sales-mobile-metrics-grid">
+                          <div className="sales-mobile-metric">
+                            <span>Harga</span>
+                            <strong>{formatIDR(item.basePrice)}</strong>
+                          </div>
+                          <div className="sales-mobile-metric">
+                            <span>Omset Menu</span>
+                            <strong>{formatIDR(item.menuGrossRevenue)}</strong>
+                          </div>
+                          <div className="sales-mobile-metric">
+                            <span>Omset Topping</span>
+                            <strong className={item.totalToppingRevenue > 0 ? 'is-orange' : ''}>{formatIDR(item.totalToppingRevenue)}</strong>
+                          </div>
+                          <div className="sales-mobile-metric is-primary">
+                            <span>Total Omset</span>
+                            <strong>{formatIDR(item.totalCombinedRevenue)}</strong>
+                          </div>
+                          {showProfitMetrics && (
+                            <>
+                              <div className="sales-mobile-metric">
+                                <span>Laba Bersih</span>
+                                <strong className={item.totalCombinedNetProfit >= 0 ? 'is-green' : 'is-red'}>
+                                  {formatIDR(item.totalCombinedNetProfit)}
+                                </strong>
+                              </div>
+                              <div className="sales-mobile-metric">
+                                <span>Margin</span>
+                                <strong>{item.combinedMargin.toFixed(1)}%</strong>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="sales-mobile-toppings-block">
+                          <span className="sales-mobile-section-label">Topping</span>
+                          {hasToppings ? (
+                            <div className="sales-mobile-topping-pills">
+                              {visibleToppings.map((top, tIdx) => (
+                                <span
+                                  key={tIdx}
+                                  className="sales-mobile-topping-pill"
+                                  title={`${top.name}: Terjual ${top.qtySold}x @ ${formatIDR(top.price)} = ${formatIDR(top.grossRevenue)}`}
+                                >
+                                  <Sparkles size={11} />
+                                  <span>{top.name}</span>
+                                  <strong>({top.qtySold}x)</strong>
+                                </span>
+                              ))}
+                              {hiddenToppingCount > 0 && (
+                                <span className="sales-mobile-more-pill">+{hiddenToppingCount} topping</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="sales-mobile-muted">Tanpa extra topping</span>
+                          )}
+                        </div>
+
+                        {hasToppings && (
+                          <button
+                            type="button"
+                            className="sales-mobile-detail-btn"
+                            onClick={() => setSelectedMenuForToppingDetail(item)}
+                            title="Lihat rincian lengkap penjualan topping pada menu ini"
+                          >
+                            <Eye size={14} />
+                            <span>Lihat rincian topping</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                </>
               )}
             </div>
           ) : (
             /* TAMPILAN 2: LIST PRODUK STANDAR (Semua / Menu / Topping Terpisah) */
             <div style={styles.tableCard}>
-              <div style={styles.tableCardHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="sales-data-table-header" style={styles.tableCardHeader}>
+                <div className="sales-data-table-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <ShoppingBag size={18} color="var(--blue-600)" />
                   <h3 style={styles.cardHeaderTitle}>
                     {salesItemTypeFilter === 'MENU' ? 'Daftar Penjualan Menu Utama' : salesItemTypeFilter === 'TOPPING' ? 'Daftar Penjualan Extra Topping' : 'Daftar Penjualan Seluruh Item'}
                   </h3>
                 </div>
-                <Badge variant="primary">
+                <Badge variant="primary" className="sales-table-count-badge">
                   {filteredProductPerformanceList.length} Item Terdaftar
                 </Badge>
               </div>
@@ -654,7 +804,8 @@ export const SalesReportTab = () => {
                   icon={ShoppingBag}
                 />
               ) : (
-                <div style={styles.tableResponsive}>
+                <>
+                <div className="sales-desktop-table" style={styles.tableResponsive}>
                   <table style={styles.table}>
                     <thead>
                       <tr style={styles.tableHeaderRow}>
@@ -730,6 +881,62 @@ export const SalesReportTab = () => {
                     </tbody>
                   </table>
                 </div>
+                <div className="sales-mobile-data-cards">
+                  {filteredProductPerformanceList.map((item, index) => (
+                    <div className="sales-mobile-data-card" key={`mobile-product-${item.type}-${item.id}`}>
+                      <div className="sales-mobile-card-top">
+                        <span className="sales-mobile-card-index">#{index + 1}</span>
+                        <div
+                          className="sales-mobile-type-badge"
+                          style={{
+                            backgroundColor: item.type === 'TOPPING' ? 'var(--orange-50)' : 'var(--blue-50)',
+                            color: item.type === 'TOPPING' ? 'var(--orange-600)' : 'var(--blue-600)'
+                          }}
+                        >
+                          {item.type === 'TOPPING' ? <Sparkles size={13} /> : <Cookie size={13} />}
+                        </div>
+                        <div className="sales-mobile-card-title-block">
+                          <h4 className="sales-mobile-card-title">{item.name}</h4>
+                          <div className="sales-mobile-card-meta">
+                            <span>{item.type === 'TOPPING' ? 'Extra Topping' : 'Menu Utama'}</span>
+                            <span style={styles.categoryBadge}>{item.categoryName}</span>
+                          </div>
+                        </div>
+                        <span style={styles.qtyPill}>{item.qtySold}x</span>
+                      </div>
+
+                      <div className="sales-mobile-metrics-grid">
+                        <div className="sales-mobile-metric">
+                          <span>Harga</span>
+                          <strong>{formatIDR(item.basePrice)}</strong>
+                        </div>
+                        <div className="sales-mobile-metric is-primary">
+                          <span>Total Omset</span>
+                          <strong>{formatIDR(item.grossRevenue)}</strong>
+                        </div>
+                        {showProfitMetrics && (
+                          <>
+                            <div className="sales-mobile-metric">
+                              <span>Estimasi HPP</span>
+                              <strong>{formatIDR(item.totalHpp)}</strong>
+                            </div>
+                            <div className="sales-mobile-metric">
+                              <span>Laba Bersih</span>
+                              <strong className={item.netProfit >= 0 ? 'is-green' : 'is-red'}>
+                                {formatIDR(item.netProfit)}
+                              </strong>
+                            </div>
+                            <div className="sales-mobile-metric">
+                              <span>Margin</span>
+                              <strong>{item.margin.toFixed(1)}%</strong>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                </>
               )}
             </div>
           )}
@@ -757,12 +964,12 @@ export const SalesReportTab = () => {
         <div className="reports-section-box animate-fade-in" style={styles.sectionBox}>
           {/* Section 2 Header */}
           <div className="reports-section-box-header" style={styles.sectionBoxHeader}>
-            <div style={styles.sectionHeaderLeft}>
-              <div style={{ ...styles.sectionIconBadge, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
+            <div className="transaction-summary-header-left" style={styles.sectionHeaderLeft}>
+              <div className="transaction-summary-icon-badge" style={{ ...styles.sectionIconBadge, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
                 <Receipt size={22} />
               </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="transaction-summary-title-block">
+                <div className="transaction-summary-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h2 style={styles.sectionMainTitle}>Riwayat Transaksi Penjualan</h2>
                   <span style={{ ...styles.sectionCounterBadge, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
                     {filteredTransactionOrders.length} Transaksi
@@ -1785,8 +1992,35 @@ export const SalesReportTab = () => {
           width: 100%;
           overflow-x: auto;
         }
+        .sales-desktop-table {
+          display: block;
+          width: 100%;
+          overflow-x: auto;
+        }
         .transaction-mobile-cards {
           display: none;
+        }
+        .sales-mobile-data-cards {
+          display: none;
+        }
+        .sales-summary-title-block,
+        .sales-data-table-title-row {
+          min-width: 0;
+        }
+        .sales-data-table-title-row h3 {
+          min-width: 0;
+          line-height: 1.25;
+        }
+        .reports-pill-btn {
+          min-width: 0;
+        }
+        .sales-table-count-badge,
+        .top-selling-menu-count-badge {
+          width: fit-content !important;
+          max-width: 100% !important;
+          flex: 0 0 auto !important;
+          align-self: flex-start !important;
+          white-space: nowrap !important;
         }
 
         @media (max-width: 1024px) {
@@ -1870,6 +2104,208 @@ export const SalesReportTab = () => {
           .reports-select-wrapper {
             width: 100% !important;
           }
+          .reports-pill-group {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            flex-wrap: nowrap !important;
+          }
+          .reports-pill-btn {
+            width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+          }
+          .sales-data-table-header {
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .sales-table-count-badge {
+            display: inline-flex !important;
+          }
+          .sales-data-table-title-row {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            align-items: flex-start !important;
+          }
+          /* Summary sales tables switch to cards on tablet/mobile to avoid horizontal scrolling. */
+          .sales-desktop-table {
+            display: none !important;
+          }
+          .sales-mobile-data-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            padding: 12px !important;
+            background-color: #f8fafc !important;
+          }
+          .sales-mobile-data-card {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 14px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+            box-sizing: border-box !important;
+          }
+          .sales-mobile-card-top {
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+            min-width: 0 !important;
+          }
+          .sales-mobile-card-index {
+            flex: 0 0 auto !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 34px !important;
+            height: 28px !important;
+            padding: 0 8px !important;
+            border-radius: 999px !important;
+            background-color: var(--blue-50) !important;
+            color: var(--blue-600) !important;
+            font-size: 0.75rem !important;
+            font-weight: 800 !important;
+          }
+          .sales-mobile-card-title-block {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+          .sales-mobile-card-title {
+            margin: 0 !important;
+            color: var(--neutral-900) !important;
+            font-size: 0.938rem !important;
+            font-weight: 800 !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere !important;
+          }
+          .sales-mobile-card-meta {
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+            margin-top: 5px !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.719rem !important;
+          }
+          .sales-mobile-type-badge {
+            flex: 0 0 auto !important;
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .sales-mobile-metrics-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+          .sales-mobile-metric {
+            min-width: 0 !important;
+            padding: 9px 10px !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 9px !important;
+            background-color: #f8fafc !important;
+          }
+          .sales-mobile-metric span {
+            display: block !important;
+            margin-bottom: 4px !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.688rem !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+          }
+          .sales-mobile-metric strong {
+            display: block !important;
+            color: var(--neutral-900) !important;
+            font-size: 0.813rem !important;
+            font-weight: 800 !important;
+            line-height: 1.25 !important;
+            overflow-wrap: anywhere !important;
+          }
+          .sales-mobile-metric.is-primary strong {
+            color: var(--blue-600) !important;
+          }
+          .sales-mobile-metric strong.is-orange {
+            color: #ea580c !important;
+          }
+          .sales-mobile-metric strong.is-green {
+            color: var(--green-600) !important;
+          }
+          .sales-mobile-metric strong.is-red {
+            color: var(--red-600) !important;
+          }
+          .sales-mobile-toppings-block {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 7px !important;
+            min-width: 0 !important;
+          }
+          .sales-mobile-section-label {
+            color: var(--neutral-500) !important;
+            font-size: 0.719rem !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+          }
+          .sales-mobile-topping-pills {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+            min-width: 0 !important;
+          }
+          .sales-mobile-topping-pill,
+          .sales-mobile-more-pill {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding: 4px 7px !important;
+            border-radius: 7px !important;
+            border: 1px solid #fed7aa !important;
+            background-color: #fff7ed !important;
+            color: #9a3412 !important;
+            font-size: 0.719rem !important;
+            font-weight: 700 !important;
+          }
+          .sales-mobile-topping-pill span {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+          }
+          .sales-mobile-more-pill {
+            border-color: #dbeafe !important;
+            background-color: var(--blue-50) !important;
+            color: var(--blue-600) !important;
+          }
+          .sales-mobile-muted {
+            color: var(--neutral-400) !important;
+            font-size: 0.813rem !important;
+            font-style: italic !important;
+          }
+          .sales-mobile-detail-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            width: 100% !important;
+            min-height: 38px !important;
+            border: 1px solid #bfdbfe !important;
+            border-radius: 9px !important;
+            background-color: #eff6ff !important;
+            color: var(--blue-600) !important;
+            font-size: 0.813rem !important;
+            font-weight: 800 !important;
+            cursor: pointer !important;
+          }
 
           .trans-kpi-grid-4 {
             grid-template-columns: repeat(2, 1fr) !important;
@@ -1884,10 +2320,108 @@ export const SalesReportTab = () => {
             align-items: flex-start !important;
             gap: 6px !important;
           }
+          .top-selling-menu-summary-header {
+            align-items: flex-start !important;
+          }
+          .top-selling-menu-list {
+            grid-template-columns: 1fr !important;
+          }
+          .top-selling-menu-row {
+            min-width: 0 !important;
+          }
+          .top-selling-menu-name-row {
+            gap: 8px !important;
+          }
+          .top-selling-menu-name {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+          }
         }
 
         @media (max-width: 640px) {
+          .sales-summary-header-left {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+            min-width: 0 !important;
+          }
+          .sales-summary-icon-badge {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .sales-summary-title-row {
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+          .sales-summary-title-row h2 {
+            width: 100% !important;
+            line-height: 1.25 !important;
+          }
+          .sales-summary-title-block,
+          .transaction-summary-title-block,
+          .sales-summary-title-block p {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .transaction-summary-header-left {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+            min-width: 0 !important;
+          }
+          .transaction-summary-icon-badge {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          .transaction-summary-title-row {
+            align-items: flex-start !important;
+            gap: 6px !important;
+          }
+          .transaction-summary-title-row h2 {
+            width: 100% !important;
+            line-height: 1.25 !important;
+          }
+          .transaction-summary-title-block p {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .sales-data-table-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .sales-table-count-badge {
+            align-self: flex-start !important;
+            width: fit-content !important;
+            max-width: max-content !important;
+          }
+          .sales-data-table-title-row h3 {
+            overflow-wrap: anywhere !important;
+          }
+          .top-selling-menu-summary {
+            padding: 14px !important;
+          }
+          .top-selling-menu-summary-header {
+            flex-direction: column !important;
+            gap: 10px !important;
+          }
+          .top-selling-menu-title-wrap {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .top-selling-menu-name-row {
+            align-items: flex-start !important;
+          }
+          .top-selling-menu-qty {
+            flex: 0 0 auto !important;
+          }
           .trans-kpi-grid-4 {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 380px) {
+          .sales-mobile-metrics-grid {
             grid-template-columns: 1fr !important;
           }
         }
@@ -2027,6 +2561,122 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: '14px'
+  },
+  topSellingMenuSummary: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--border-color)',
+    borderRadius: '12px',
+    padding: '16px',
+    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.03)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px'
+  },
+  topSellingMenuSummaryHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px'
+  },
+  topSellingMenuTitleWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    minWidth: 0
+  },
+  topSellingMenuTitle: {
+    margin: 0,
+    fontSize: '14px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)',
+    lineHeight: 1.25
+  },
+  topSellingMenuSubtitle: {
+    margin: '3px 0 0 0',
+    fontSize: '12px',
+    color: 'var(--neutral-500)',
+    lineHeight: 1.35
+  },
+  topSellingMenuEmpty: {
+    padding: '12px',
+    borderRadius: '9px',
+    backgroundColor: '#f8fafc',
+    border: '1px dashed #cbd5e1',
+    color: 'var(--neutral-500)',
+    fontSize: '12px',
+    textAlign: 'center'
+  },
+  topSellingMenuList: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '10px'
+  },
+  topSellingMenuRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '10px',
+    padding: '11px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
+    backgroundColor: '#f8fafc',
+    minWidth: 0
+  },
+  topSellingMenuRank: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '999px',
+    backgroundColor: 'var(--blue-50)',
+    color: 'var(--blue-600)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 800,
+    flexShrink: 0
+  },
+  topSellingMenuMain: {
+    flex: 1,
+    minWidth: 0
+  },
+  topSellingMenuNameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    minWidth: 0
+  },
+  topSellingMenuName: {
+    fontSize: '13px',
+    fontWeight: 800,
+    color: 'var(--neutral-900)',
+    minWidth: 0
+  },
+  topSellingMenuQty: {
+    fontSize: '12px',
+    fontWeight: 800,
+    color: 'var(--blue-600)',
+    whiteSpace: 'nowrap'
+  },
+  topSellingMenuMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '4px 8px',
+    marginTop: '3px',
+    fontSize: '11px',
+    color: 'var(--neutral-500)'
+  },
+  topSellingMenuBar: {
+    height: '6px',
+    borderRadius: '999px',
+    backgroundColor: '#e2e8f0',
+    overflow: 'hidden',
+    marginTop: '9px'
+  },
+  topSellingMenuBarFill: {
+    height: '100%',
+    borderRadius: '999px',
+    backgroundColor: 'var(--blue-600)'
   },
   insightCard: {
     backgroundColor: '#f8fafc',

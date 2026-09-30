@@ -991,17 +991,20 @@ export const RawMaterialListView = () => {
           }
 
           .raw-material-toolbar-inner {
-            display: flex !important;
-            flex-direction: column !important;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
             align-items: stretch !important;
             gap: 10px !important;
             width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
           }
 
           .raw-material-search-wrapper {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
             flex: none !important;
+            grid-column: 1 / -1 !important;
           }
 
           .raw-material-search-wrapper input {
@@ -1018,7 +1021,8 @@ export const RawMaterialListView = () => {
 
           .raw-material-status-wrapper {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
+            grid-column: 1 / -1 !important;
           }
 
           .raw-material-status-wrapper select {
@@ -1036,7 +1040,8 @@ export const RawMaterialListView = () => {
 
           .raw-material-sort-wrapper {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
+            grid-column: 1 / -1 !important;
           }
 
           .raw-material-sort-wrapper select {

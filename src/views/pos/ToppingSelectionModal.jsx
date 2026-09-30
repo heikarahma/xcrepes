@@ -521,13 +521,13 @@ export const ToppingSelectionModal = () => {
         </div>
 
         {/* Quantity & Notes Controls */}
-        <div className="topping-qty-notes-row" style={{ display: 'grid', gridTemplateColumns: '125px 1fr', gap: '10px', alignItems: 'flex-start' }}>
+        <div className="topping-qty-notes-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(136px, 0.34fr) minmax(0, 1fr)', gap: '10px', alignItems: 'flex-start' }}>
           {/* Quantity Stepper */}
           <div style={styles.section}>
-            <label style={{ ...styles.sectionLabel, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '18px', margin: '0 0 6px 0', fontSize: '0.719rem' }}>
-              <span>JUMLAH PORSI</span>
+            <label className="topping-quantity-label" style={{ ...styles.sectionLabel, margin: '0 0 6px 0', fontSize: '0.719rem' }}>
+              <span className="topping-quantity-label-main">JUMLAH PORSI</span>
               {maxAllowedPortions < 999 && (
-                <span style={{ fontSize: '0.688rem', color: maxAllowedPortions <= 5 ? '#b91c1c' : 'var(--neutral-400)' }}>
+                <span className="topping-quantity-max" style={{ color: maxAllowedPortions <= 5 ? '#b91c1c' : 'var(--neutral-400)' }}>
                   (Maks: {maxAllowedPortions})
                 </span>
               )}
@@ -560,7 +560,7 @@ export const ToppingSelectionModal = () => {
 
           {/* Notes Input */}
           <div style={styles.section}>
-            <label style={{ ...styles.sectionLabel, display: 'flex', alignItems: 'center', gap: '4px', height: '18px', margin: '0 0 6px 0', fontSize: '0.719rem' }}>
+            <label className="topping-notes-label" style={{ ...styles.sectionLabel, display: 'flex', alignItems: 'center', gap: '4px', margin: '0 0 6px 0', fontSize: '0.719rem' }}>
               <MessageSquareQuote size={13} color="var(--neutral-400)" />
               <span>CATATAN (OPSIONAL)</span>
             </label>
@@ -768,21 +768,52 @@ export const ToppingSelectionModal = () => {
         </div>
 
         <style>{`
+          .topping-quantity-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2px 6px;
+            min-height: 18px;
+            line-height: 1.2;
+          }
+          .topping-quantity-label-main,
+          .topping-quantity-max {
+            white-space: nowrap;
+          }
+          .topping-quantity-max {
+            flex-shrink: 0;
+            font-size: 0.688rem;
+            font-weight: 700;
+          }
+          .topping-notes-label {
+            min-height: 18px;
+          }
           @media (max-width: 1024px) {
             .topping-qty-notes-row {
-              grid-template-columns: 120px 1fr !important;
+              grid-template-columns: minmax(132px, 0.34fr) minmax(0, 1fr) !important;
               gap: 8px !important;
+            }
+          }
+          @media (max-width: 640px) {
+            .topping-quantity-label {
+              align-items: flex-start;
+              flex-direction: column;
+              justify-content: flex-start;
+              min-height: 32px;
+            }
+            .topping-notes-label {
+              min-height: 32px;
             }
           }
           @media (max-width: 480px) {
             .topping-qty-notes-row {
-              grid-template-columns: 110px 1fr !important;
+              grid-template-columns: minmax(118px, 0.34fr) minmax(0, 1fr) !important;
               gap: 8px !important;
             }
           }
           @media (max-width: 360px) {
             .topping-qty-notes-row {
-              grid-template-columns: 100px 1fr !important;
+              grid-template-columns: 112px minmax(0, 1fr) !important;
               gap: 6px !important;
             }
           }

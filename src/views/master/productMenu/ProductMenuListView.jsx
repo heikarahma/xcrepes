@@ -630,18 +630,22 @@ export const ProductMenuListView = () => {
           }
 
           .product-menu-toolbar-inner {
-            display: flex !important;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 10px !important;
             width: 100% !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
           }
 
           /* Baris 1: Pencarian Penuh (Uniform 42px height) */
           .product-menu-search-wrapper {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
             flex: none !important;
+            grid-column: 1 / -1 !important;
           }
 
           .product-menu-search-wrapper input {
@@ -659,7 +663,8 @@ export const ProductMenuListView = () => {
           /* Baris 2: Dropdown Kategori Fill Content (Uniform 42px height) */
           .product-menu-category-wrapper {
             width: 100% !important;
-            min-width: 100% !important;
+            min-width: 0 !important;
+            grid-column: 1 / -1 !important;
           }
 
           .product-menu-category-wrapper select {
@@ -677,17 +682,19 @@ export const ProductMenuListView = () => {
 
           /* Baris 3: Satu Jajar Dropdown Urutkan & List/Grid (Sama-sama 42px height) */
           .product-menu-sort-and-view-row {
-            display: flex !important;
-            flex-direction: row !important;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
             width: 100% !important;
             gap: 10px !important;
             align-items: stretch !important;
+            min-width: 0 !important;
+            grid-column: 1 / -1 !important;
           }
 
           /* Dropdown Urutkan (42px height) */
           .product-menu-sort-wrapper {
             flex: 1 1 0 !important;
-            width: 50% !important;
+            width: 100% !important;
             min-width: 0 !important;
           }
 
@@ -708,7 +715,7 @@ export const ProductMenuListView = () => {
           /* List/Grid Switcher (42px height matching dropdown) */
           .product-menu-view-wrapper {
             flex: 1 1 0 !important;
-            width: 50% !important;
+            width: 100% !important;
             min-width: 0 !important;
             display: flex !important;
           }
@@ -725,6 +732,12 @@ export const ProductMenuListView = () => {
             background-color: var(--neutral-100) !important;
             border: 1px solid var(--border-color) !important;
             box-sizing: border-box !important;
+          }
+
+          @media (max-width: 480px) {
+            .product-menu-sort-and-view-row {
+              grid-template-columns: 1fr !important;
+            }
           }
 
           .product-menu-view-btn {
