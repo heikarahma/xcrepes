@@ -481,28 +481,42 @@ export const SettingsView = () => {
                 padding: 0 !important;
                 height: 0 !important;
               }
+              body > :not(.receipt-wrap) {
+                display: none !important;
+              }
               .receipt-wrap {
+                display: block !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
                 border: none !important;
                 padding: 1mm 2mm 2mm 2mm !important;
                 width: ${paperContentWidth} !important;
                 max-width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
                 margin: 0 auto !important;
+                overflow: visible !important;
                 page-break-before: avoid !important;
                 break-before: avoid !important;
                 page-break-after: avoid !important;
                 break-after: avoid !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
               }
               .receipt-wrap * {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+              }
+              .receipt-wrap > * {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
               }
               .receipt-wrap > *:last-child {
                 margin-bottom: 0 !important;
                 padding-bottom: 0 !important;
+              }
+              .receipt-wrap:empty {
+                display: none !important;
               }
             }
           </style>
@@ -516,8 +530,32 @@ export const SettingsView = () => {
             ${printContent.innerHTML}
           </div>
           <script>
+            function applyThermalPageSize() {
+              var receipt = document.querySelector('.receipt-wrap');
+              if (!receipt) return;
+
+              var pxToMm = 25.4 / 96;
+              var receiptHeight = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height);
+              var pageHeightMm = Math.max(40, Math.ceil(receiptHeight * pxToMm) + 3);
+              var style = document.getElementById('thermal-page-size');
+
+              if (!style) {
+                style = document.createElement('style');
+                style.id = 'thermal-page-size';
+                document.head.appendChild(style);
+              }
+
+              style.textContent = '@media print { @page { size: ${paperWidth} ' + pageHeightMm + 'mm; margin: 0mm; } }';
+            }
+
             window.addEventListener('load', function() {
-              setTimeout(function() { window.print(); }, 350);
+              requestAnimationFrame(function() {
+                applyThermalPageSize();
+                setTimeout(function() {
+                  applyThermalPageSize();
+                  window.print();
+                }, 350);
+              });
             });
           </script>
         </body>

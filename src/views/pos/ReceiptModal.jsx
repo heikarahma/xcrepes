@@ -176,28 +176,42 @@ export const ReceiptModal = () => {
                 padding: 0 !important;
                 height: 0 !important;
               }
+              body > :not(.receipt-paper) {
+                display: none !important;
+              }
               .receipt-paper {
+                display: block !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
                 border: none !important;
                 padding: 1mm 2mm 2mm 2mm !important;
                 width: ${paperContentWidth} !important;
                 max-width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
                 margin: 0 auto !important;
+                overflow: visible !important;
                 page-break-before: avoid !important;
                 break-before: avoid !important;
                 page-break-after: avoid !important;
                 break-after: avoid !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
               }
               .receipt-paper * {
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+              }
+              .receipt-paper > * {
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
               }
               .receipt-paper > *:last-child {
                 margin-bottom: 0 !important;
                 padding-bottom: 0 !important;
+              }
+              .receipt-paper:empty {
+                display: none !important;
               }
             }
           </style>
@@ -213,11 +227,33 @@ export const ReceiptModal = () => {
           </div>
 
           <script>
+            function applyThermalPageSize() {
+              var receipt = document.querySelector('.receipt-paper');
+              if (!receipt) return;
+
+              var pxToMm = 25.4 / 96;
+              var receiptHeight = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height);
+              var pageHeightMm = Math.max(40, Math.ceil(receiptHeight * pxToMm) + 3);
+              var style = document.getElementById('thermal-page-size');
+
+              if (!style) {
+                style = document.createElement('style');
+                style.id = 'thermal-page-size';
+                document.head.appendChild(style);
+              }
+
+              style.textContent = '@media print { @page { size: ${paperWidth} ' + pageHeightMm + 'mm; margin: 0mm; } }';
+            }
+
             // Buka dialog cetak browser / preview PDF otomatis setelah halaman terbuka
             window.addEventListener('load', function() {
-              setTimeout(function() {
-                window.print();
-              }, 350);
+              requestAnimationFrame(function() {
+                applyThermalPageSize();
+                setTimeout(function() {
+                  applyThermalPageSize();
+                  window.print();
+                }, 350);
+              });
             });
           </script>
         </body>
@@ -563,9 +599,12 @@ export const ReceiptModal = () => {
               position: absolute !important;
               left: 0 !important;
               top: 0 !important;
+              display: block !important;
               width: ${settings.paperSize === '80mm' ? '76mm' : '54mm'} !important;
               max-width: 100% !important;
               min-width: auto !important;
+              height: auto !important;
+              min-height: 0 !important;
               margin: 0 auto !important;
               padding: 1mm 2mm 2mm 2mm !important;
               border: none !important;
@@ -577,15 +616,20 @@ export const ReceiptModal = () => {
               font-size: 8.5pt !important;
               line-height: 1.25 !important;
               box-sizing: border-box !important;
+              overflow: visible !important;
               page-break-before: avoid !important;
               break-before: avoid !important;
               page-break-after: avoid !important;
               break-after: avoid !important;
-              page-break-inside: avoid !important;
-              break-inside: avoid !important;
             }
             #printable-receipt * {
               color: #000000 !important;
+              page-break-before: avoid !important;
+              break-before: avoid !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
+            }
+            #printable-receipt > * {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
             }
