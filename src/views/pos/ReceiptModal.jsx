@@ -32,6 +32,10 @@ export const ReceiptModal = () => {
     const printContent = document.getElementById('printable-receipt');
     if (!printContent) return;
 
+    const paperWidth = settings.paperSize === '80mm' ? '80mm' : '58mm';
+    const paperContentWidth = settings.paperSize === '80mm' ? '76mm' : '54mm';
+    const paperInitialHeight = settings.paperSize === '80mm' ? '120mm' : '160mm';
+
     // Buka jendela/tab baru khusus untuk pratinjau struk PDF
     const printWindow = window.open(
       '',
@@ -41,12 +45,21 @@ export const ReceiptModal = () => {
 
     if (!printWindow) {
       // Fallback jika popup diblokir browser
+      const pxToMm = 25.4 / 96;
+      const receiptHeight = Math.max(printContent.scrollHeight, printContent.getBoundingClientRect().height);
+      const pageHeightMm = Math.max(40, Math.ceil(receiptHeight * pxToMm) + 1);
+      let style = document.getElementById('thermal-page-size-fallback');
+
+      if (!style) {
+        style = document.createElement('style');
+        style.id = 'thermal-page-size-fallback';
+        document.head.appendChild(style);
+      }
+
+      style.textContent = `@media print { @page { size: ${paperWidth} ${pageHeightMm}mm; margin: 0mm; } }`;
       window.print();
       return;
     }
-
-    const paperWidth = settings.paperSize === '80mm' ? '80mm' : '58mm';
-    const paperContentWidth = settings.paperSize === '80mm' ? '76mm' : '54mm';
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -69,7 +82,7 @@ export const ReceiptModal = () => {
               --amber-700: #b45309;
             }
             @page {
-              size: ${paperWidth} auto;
+              size: ${paperWidth} ${paperInitialHeight};
               margin: 0mm;
             }
             * {
@@ -153,11 +166,11 @@ export const ReceiptModal = () => {
             }
             @media print {
               @page {
-                size: ${paperWidth} auto;
+                size: ${paperWidth} ${paperInitialHeight};
                 margin: 0mm;
               }
               html, body {
-                width: 100% !important;
+                width: ${paperWidth} !important;
                 height: auto !important;
                 min-height: 0 !important;
                 max-height: none !important;
@@ -186,10 +199,10 @@ export const ReceiptModal = () => {
                 border: none !important;
                 padding: 1mm 2mm 2mm 2mm !important;
                 width: ${paperContentWidth} !important;
-                max-width: 100% !important;
+                max-width: ${paperContentWidth} !important;
                 height: auto !important;
                 min-height: 0 !important;
-                margin: 0 auto !important;
+                margin: 0 !important;
                 overflow: visible !important;
                 page-break-before: avoid !important;
                 break-before: avoid !important;
@@ -233,7 +246,8 @@ export const ReceiptModal = () => {
 
               var pxToMm = 25.4 / 96;
               var receiptHeight = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height);
-              var pageHeightMm = Math.max(40, Math.ceil(receiptHeight * pxToMm) + 3);
+              var receiptTop = Math.max(0, receipt.getBoundingClientRect().top);
+              var pageHeightMm = Math.max(40, Math.ceil((receiptHeight + receiptTop) * pxToMm) + 1);
               var style = document.getElementById('thermal-page-size');
 
               if (!style) {
@@ -245,14 +259,29 @@ export const ReceiptModal = () => {
               style.textContent = '@media print { @page { size: ${paperWidth} ' + pageHeightMm + 'mm; margin: 0mm; } }';
             }
 
+            function waitForImages() {
+              var images = Array.prototype.slice.call(document.images || []);
+              return Promise.all(images.map(function(img) {
+                if (img.complete) return Promise.resolve();
+                return new Promise(function(resolve) {
+                  img.addEventListener('load', resolve, { once: true });
+                  img.addEventListener('error', resolve, { once: true });
+                });
+              }));
+            }
+
             // Buka dialog cetak browser / preview PDF otomatis setelah halaman terbuka
             window.addEventListener('load', function() {
-              requestAnimationFrame(function() {
-                applyThermalPageSize();
-                setTimeout(function() {
+              waitForImages().then(function() {
+                return document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+              }).then(function() {
+                requestAnimationFrame(function() {
                   applyThermalPageSize();
-                  window.print();
-                }, 350);
+                  setTimeout(function() {
+                    applyThermalPageSize();
+                    window.print();
+                  }, 350);
+                });
               });
             });
           </script>
@@ -547,11 +576,11 @@ export const ReceiptModal = () => {
           }
           @media print {
             @page {
-              size: ${settings.paperSize === '80mm' ? '80mm' : '58mm'} auto;
+              size: ${settings.paperSize === '80mm' ? '80mm 120mm' : '58mm 160mm'};
               margin: 0mm;
             }
             html, body {
-              width: 100% !important;
+              width: ${settings.paperSize === '80mm' ? '80mm' : '58mm'} !important;
               margin: 0 !important;
               padding: 0 !important;
               height: auto !important;
@@ -601,11 +630,11 @@ export const ReceiptModal = () => {
               top: 0 !important;
               display: block !important;
               width: ${settings.paperSize === '80mm' ? '76mm' : '54mm'} !important;
-              max-width: 100% !important;
+              max-width: ${settings.paperSize === '80mm' ? '76mm' : '54mm'} !important;
               min-width: auto !important;
               height: auto !important;
               min-height: 0 !important;
-              margin: 0 auto !important;
+              margin: 0 !important;
               padding: 1mm 2mm 2mm 2mm !important;
               border: none !important;
               border-radius: 0 !important;

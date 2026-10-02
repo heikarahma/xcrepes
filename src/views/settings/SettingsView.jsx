@@ -352,6 +352,7 @@ export const SettingsView = () => {
 
     const paperWidth = formData.paperSize === '80mm' ? '80mm' : '58mm';
     const paperContentWidth = formData.paperSize === '80mm' ? '76mm' : '54mm';
+    const paperInitialHeight = formData.paperSize === '80mm' ? '120mm' : '160mm';
 
     const html = `
       <!DOCTYPE html>
@@ -373,7 +374,7 @@ export const SettingsView = () => {
               --amber-700: #b45309;
             }
             @page {
-              size: ${paperWidth} auto;
+              size: ${paperWidth} ${paperInitialHeight};
               margin: 0mm;
             }
             * {
@@ -458,11 +459,11 @@ export const SettingsView = () => {
             }
             @media print {
               @page {
-                size: ${paperWidth} auto;
+                size: ${paperWidth} ${paperInitialHeight};
                 margin: 0mm;
               }
               html, body {
-                width: 100% !important;
+                width: ${paperWidth} !important;
                 height: auto !important;
                 min-height: 0 !important;
                 max-height: none !important;
@@ -491,10 +492,10 @@ export const SettingsView = () => {
                 border: none !important;
                 padding: 1mm 2mm 2mm 2mm !important;
                 width: ${paperContentWidth} !important;
-                max-width: 100% !important;
+                max-width: ${paperContentWidth} !important;
                 height: auto !important;
                 min-height: 0 !important;
-                margin: 0 auto !important;
+                margin: 0 !important;
                 overflow: visible !important;
                 page-break-before: avoid !important;
                 break-before: avoid !important;
@@ -536,7 +537,8 @@ export const SettingsView = () => {
 
               var pxToMm = 25.4 / 96;
               var receiptHeight = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height);
-              var pageHeightMm = Math.max(40, Math.ceil(receiptHeight * pxToMm) + 3);
+              var receiptTop = Math.max(0, receipt.getBoundingClientRect().top);
+              var pageHeightMm = Math.max(40, Math.ceil((receiptHeight + receiptTop) * pxToMm) + 1);
               var style = document.getElementById('thermal-page-size');
 
               if (!style) {
@@ -548,13 +550,28 @@ export const SettingsView = () => {
               style.textContent = '@media print { @page { size: ${paperWidth} ' + pageHeightMm + 'mm; margin: 0mm; } }';
             }
 
+            function waitForImages() {
+              var images = Array.prototype.slice.call(document.images || []);
+              return Promise.all(images.map(function(img) {
+                if (img.complete) return Promise.resolve();
+                return new Promise(function(resolve) {
+                  img.addEventListener('load', resolve, { once: true });
+                  img.addEventListener('error', resolve, { once: true });
+                });
+              }));
+            }
+
             window.addEventListener('load', function() {
-              requestAnimationFrame(function() {
-                applyThermalPageSize();
-                setTimeout(function() {
+              waitForImages().then(function() {
+                return document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+              }).then(function() {
+                requestAnimationFrame(function() {
                   applyThermalPageSize();
-                  window.print();
-                }, 350);
+                  setTimeout(function() {
+                    applyThermalPageSize();
+                    window.print();
+                  }, 350);
+                });
               });
             });
           </script>
