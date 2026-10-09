@@ -1,11 +1,33 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const TABLE = 'raw_materials';
+const STOCK_TABLE = 'store_branch_stocks';
+
+const DEFAULT_BRANCH_ID = 'BR-DEFAULT';
+
+const mapMaterialRow = (row, stockOverride = null) => {
+  const stockValue = stockOverride !== null && stockOverride !== undefined
+    ? Number(stockOverride)
+    : Number(row.stock);
+
+  return {
+    id: row.id,
+    name: row.name,
+    unitName: row.unit_name,
+    stock: stockValue || 0,
+    currentStock: stockValue || 0,
+    pricePerUnit: Number(row.price_per_unit) || 0,
+    minStock: Number(row.min_stock) || 10,
+    note: row.note || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+};
 
 export const rawMaterialsService = {
-  async getRawMaterials() {
+  async getRawMaterials(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    const { data, error } = await supabase
+    const { data: materials, error } = await supabase
       .from(TABLE)
       .select('*')
       .order('created_at', { ascending: false });
@@ -15,24 +37,27 @@ export const rawMaterialsService = {
       return { data: [], error };
     }
 
+    let stockMap = new Map();
+    if (branchId) {
+      const { data: stockRows, error: stockErr } = await supabase
+        .from(STOCK_TABLE)
+        .select('raw_material_id, stock')
+        .eq('branch_id', branchId);
+
+      if (!stockErr) {
+        stockMap = new Map((stockRows || []).map(row => [row.raw_material_id, Number(row.stock) || 0]));
+      } else if (stockErr.code !== 'PGRST204' && !String(stockErr.message || '').includes('store_branch_stocks')) {
+        console.warn('rawMaterialsService.getRawMaterials branch stock error:', stockErr);
+      }
+    }
+
     return {
-      data: (data || []).map(row => ({
-        id: row.id,
-        name: row.name,
-        unitName: row.unit_name,
-        stock: Number(row.stock) || 0,
-        currentStock: Number(row.stock) || 0,
-        pricePerUnit: Number(row.price_per_unit) || 0,
-        minStock: Number(row.min_stock) || 10,
-        note: row.note || '',
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      })),
+      data: (materials || []).map(row => mapMaterialRow(row, stockMap.has(row.id) ? stockMap.get(row.id) : (branchId === DEFAULT_BRANCH_ID ? row.stock : 0))),
       error: null
     };
   },
 
-  async createRawMaterial({ id, name, unitName, stock = 0, pricePerUnit = 0, minStock = 10, note = '' }) {
+  async createRawMaterial({ id, name, unitName, stock = 0, pricePerUnit = 0, minStock = 10, note = '', branchId = DEFAULT_BRANCH_ID }) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     const payload = {
       id,
@@ -57,24 +82,17 @@ export const rawMaterialsService = {
       return { data: null, error };
     }
 
+    if (branchId) {
+      await this.updateStock(id, Number(stock) || 0, branchId);
+    }
+
     return {
-      data: {
-        id: data.id,
-        name: data.name,
-        unitName: data.unit_name,
-        stock: Number(data.stock) || 0,
-        currentStock: Number(data.stock) || 0,
-        pricePerUnit: Number(data.price_per_unit) || 0,
-        minStock: Number(data.min_stock) || 10,
-        note: data.note || '',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      },
+      data: mapMaterialRow(data, stock),
       error: null
     };
   },
 
-  async updateRawMaterial(id, { name, unitName, stock, pricePerUnit, minStock, note }) {
+  async updateRawMaterial(id, { name, unitName, stock, pricePerUnit, minStock, note, branchId = DEFAULT_BRANCH_ID }) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     const updatePayload = {
       updated_at: new Date().toISOString()
@@ -98,25 +116,41 @@ export const rawMaterialsService = {
       return { data: null, error };
     }
 
+    if (stock !== undefined && branchId) {
+      await this.updateStock(id, stock, branchId);
+    }
+
     return {
-      data: {
-        id: data.id,
-        name: data.name,
-        unitName: data.unit_name,
-        stock: Number(data.stock) || 0,
-        currentStock: Number(data.stock) || 0,
-        pricePerUnit: Number(data.price_per_unit) || 0,
-        minStock: Number(data.min_stock) || 10,
-        note: data.note || '',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      },
+      data: mapMaterialRow(data, stock !== undefined ? stock : data.stock),
       error: null
     };
   },
 
-  async updateStock(id, newStock) {
+  async updateStock(id, newStock, branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
+
+    if (branchId) {
+      const stockPayload = {
+        branch_id: branchId,
+        raw_material_id: id,
+        stock: Number(newStock) || 0,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: stockErr } = await supabase
+        .from(STOCK_TABLE)
+        .upsert(stockPayload, { onConflict: 'branch_id,raw_material_id' });
+
+      if (!stockErr) {
+        return { data: { id, stock: Number(newStock) || 0, currentStock: Number(newStock) || 0 }, error: null };
+      }
+
+      if (stockErr.code !== 'PGRST204' && !String(stockErr.message || '').includes('store_branch_stocks')) {
+        console.error('rawMaterialsService.updateBranchStock error:', stockErr);
+        return { data: null, error: stockErr };
+      }
+    }
+
     const { data, error } = await supabase
       .from(TABLE)
       .update({
@@ -133,23 +167,31 @@ export const rawMaterialsService = {
     }
 
     return {
-      data: {
-        id: data.id,
-        name: data.name,
-        unitName: data.unit_name,
-        stock: Number(data.stock) || 0,
-        currentStock: Number(data.stock) || 0,
-        pricePerUnit: Number(data.price_per_unit) || 0,
-        minStock: Number(data.min_stock) || 10,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      },
+      data: mapMaterialRow(data),
       error: null
     };
   },
 
-  async updateStocksBatch(updates) {
+  async updateStocksBatch(updates, branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
+    if (branchId) {
+      const payloads = updates.map(u => ({
+        branch_id: branchId,
+        raw_material_id: u.id,
+        stock: Number(u.stock) || 0,
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from(STOCK_TABLE)
+        .upsert(payloads, { onConflict: 'branch_id,raw_material_id' });
+
+      if (!error) return { error: null };
+      if (error.code !== 'PGRST204' && !String(error.message || '').includes('store_branch_stocks')) {
+        return { error };
+      }
+    }
+
     const promises = updates.map(u => 
       supabase
         .from(TABLE)

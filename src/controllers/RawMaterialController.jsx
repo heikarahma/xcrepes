@@ -23,6 +23,14 @@ export const RawMaterialProvider = ({ children }) => {
   const { showToast, units } = useUnit();
   const { currentUser } = useAuth();
   const isCashier = currentUser?.role === 'kasir';
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
+  const withActiveBranch = useCallback((payload) => ({
+    ...payload,
+    branchId: payload?.branchId || activeBranchId
+  }), [activeBranchId]);
+  const withActiveBranchBatch = useCallback((items) => (
+    (items || []).map(item => withActiveBranch(item))
+  ), [withActiveBranch]);
 
   // 1. Cloud Database State via Supabase
   const [rawMaterials, setRawMaterials] = useState([]);
@@ -49,6 +57,9 @@ export const RawMaterialProvider = ({ children }) => {
   // 6. Search, Filter & Pagination for Stock History Logs
   const [logSearchTerm, setLogSearchTermState] = useState('');
   const [logTypeFilter, setLogTypeFilterState] = useState('ALL'); // 'ALL' | 'IN' | 'OUT' | 'ADJUST' | 'WASTE'
+  const [logMaterialFilter, setLogMaterialFilterState] = useState('ALL');
+  const [logDateFrom, setLogDateFromState] = useState('');
+  const [logDateTo, setLogDateToState] = useState('');
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [logItemsPerPage, setLogItemsPerPage] = useState(8);
 
@@ -59,6 +70,21 @@ export const RawMaterialProvider = ({ children }) => {
 
   const setLogSearchTerm = (term) => {
     setLogSearchTermState(term);
+    setLogCurrentPage(1);
+  };
+
+  const setLogMaterialFilter = (material) => {
+    setLogMaterialFilterState(material || 'ALL');
+    setLogCurrentPage(1);
+  };
+
+  const setLogDateFrom = (date) => {
+    setLogDateFromState(date);
+    setLogCurrentPage(1);
+  };
+
+  const setLogDateTo = (date) => {
+    setLogDateToState(date);
     setLogCurrentPage(1);
   };
 
@@ -94,8 +120,8 @@ export const RawMaterialProvider = ({ children }) => {
   });
 
   // 8. Stock Opname State & Persisted Draft & Reports
-  const OPNAME_STORAGE_KEY = 'xcrepes_stock_opname_draft';
-  const DAILY_REPORTS_STORAGE_KEY = 'xcrepes_daily_opname_reports';
+  const OPNAME_STORAGE_KEY = `xcrepes_stock_opname_draft_${activeBranchId}`;
+  const DAILY_REPORTS_STORAGE_KEY = `xcrepes_daily_opname_reports_${activeBranchId}`;
 
   const [opnameItems, setOpnameItems] = useState(() => {
     try {
@@ -116,6 +142,22 @@ export const RawMaterialProvider = ({ children }) => {
     }
     return [];
   });
+
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(OPNAME_STORAGE_KEY);
+      setOpnameItems(savedDraft ? JSON.parse(savedDraft) : {});
+    } catch {
+      setOpnameItems({});
+    }
+
+    try {
+      const savedReports = localStorage.getItem(DAILY_REPORTS_STORAGE_KEY);
+      setDailyOpnameReports(savedReports ? JSON.parse(savedReports) : []);
+    } catch {
+      setDailyOpnameReports([]);
+    }
+  }, [OPNAME_STORAGE_KEY, DAILY_REPORTS_STORAGE_KEY]);
 
   const [opnameFilter, setOpnameFilter] = useState('ALL'); // 'ALL' | 'DIFFERENCE' | 'MATCH' | 'UNCOUNTED'
   const [opnameSearchTerm, setOpnameSearchTerm] = useState('');
@@ -151,9 +193,9 @@ export const RawMaterialProvider = ({ children }) => {
     setError(null);
     try {
       const [matRes, logsRes, opnameRes] = await Promise.all([
-        rawMaterialsService.getRawMaterials(),
-        stockLogsService.getStockLogs(),
-        opnameReportsService.getOpnameReports()
+        rawMaterialsService.getRawMaterials(activeBranchId),
+        stockLogsService.getStockLogs(activeBranchId),
+        opnameReportsService.getOpnameReports(activeBranchId)
       ]);
 
       if (matRes.error) {
@@ -186,7 +228,7 @@ export const RawMaterialProvider = ({ children }) => {
             const key = localR.id || `date-${localR.date}`;
             if (!mergedMap.has(key)) {
               mergedMap.set(key, localR);
-              opnameReportsService.saveOpnameReport(localR).catch(e => {
+              opnameReportsService.saveOpnameReport({ ...localR, branchId: activeBranchId }).catch(e => {
                 console.warn('Background sync of local opname report to Supabase:', e);
               });
             }
@@ -211,7 +253,7 @@ export const RawMaterialProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   // Initial fetch and Realtime sync
   useEffect(() => {
@@ -280,7 +322,8 @@ export const RawMaterialProvider = ({ children }) => {
         stock: parsedStock,
         pricePerUnit: parsedPrice,
         minStock: Number(minStock) || 10,
-        note
+        note,
+        branchId: activeBranchId
       });
 
       if (err) {
@@ -305,7 +348,7 @@ export const RawMaterialProvider = ({ children }) => {
           user: 'Admin',
           createdAt: new Date().toISOString()
         };
-        await stockLogsService.createStockLog(initialLog);
+        await stockLogsService.createStockLog(withActiveBranch(initialLog));
         setStockLogs(prev => [initialLog, ...prev]);
       }
 
@@ -352,7 +395,8 @@ export const RawMaterialProvider = ({ children }) => {
         stock: parsedStock,
         pricePerUnit: parsedPrice,
         minStock,
-        note
+        note,
+        branchId: activeBranchId
       });
 
       if (err) {
@@ -378,7 +422,7 @@ export const RawMaterialProvider = ({ children }) => {
           user: actor,
           createdAt: new Date().toISOString()
         };
-        await stockLogsService.createStockLog(newLog);
+        await stockLogsService.createStockLog(withActiveBranch(newLog));
         setStockLogs(prev => [newLog, ...prev]);
       }
 
@@ -437,7 +481,7 @@ export const RawMaterialProvider = ({ children }) => {
 
     setIsSubmitting(true);
     try {
-      const { error: stockErr } = await rawMaterialsService.updateStock(id, newStock);
+      const { error: stockErr } = await rawMaterialsService.updateStock(id, newStock, activeBranchId);
       if (stockErr) {
         showToast(`Gagal update stok: ${stockErr.message}`, 'error', 'Error Database');
         return { success: false, error: stockErr.message };
@@ -460,7 +504,7 @@ export const RawMaterialProvider = ({ children }) => {
         createdAt: new Date().toISOString()
       };
 
-      await stockLogsService.createStockLog(newLog);
+      await stockLogsService.createStockLog(withActiveBranch(newLog));
       setStockLogs(prev => [newLog, ...prev]);
 
       showToast(`Stok "${target.name}" berhasil disesuaikan (${prevStock} -> ${newStock} ${target.unitName}).`, 'success', 'Stok Diperbarui');
@@ -488,7 +532,7 @@ export const RawMaterialProvider = ({ children }) => {
 
     setIsSubmitting(true);
     try {
-      const { error: stockErr } = await rawMaterialsService.updateStock(rawMaterialId, newStock);
+      const { error: stockErr } = await rawMaterialsService.updateStock(rawMaterialId, newStock, activeBranchId);
       if (stockErr) {
         showToast(`Gagal mencatat bahan rusak: ${stockErr.message}`, 'error', 'Error Database');
         return { success: false, error: stockErr.message };
@@ -512,7 +556,7 @@ export const RawMaterialProvider = ({ children }) => {
         createdAt: new Date().toISOString()
       };
 
-      await stockLogsService.createStockLog(newLog);
+      await stockLogsService.createStockLog(withActiveBranch(newLog));
       setStockLogs(prev => [newLog, ...prev]);
 
       showToast(`Pencatatan bahan rusak "${target.name}" (${parsedAmount} ${target.unitName}) berhasil disimpan ke cloud.`, 'success', 'Bahan Rusak Dicatat');
@@ -624,8 +668,8 @@ export const RawMaterialProvider = ({ children }) => {
 
     try {
       await Promise.all([
-        rawMaterialsService.updateStocksBatch(stockUpdates),
-        stockLogsService.createStockLogsBatch(newLogs)
+        rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId),
+        stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs))
       ]);
 
       setRawMaterials(updatedMaterials);
@@ -793,11 +837,11 @@ export const RawMaterialProvider = ({ children }) => {
 
     try {
       if (stockUpdates.length > 0) {
-        await rawMaterialsService.updateStocksBatch(stockUpdates);
+        await rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId);
         setRawMaterials(updatedMaterials);
       }
       if (newLogs.length > 0) {
-        await stockLogsService.createStockLogsBatch(newLogs);
+        await stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs));
         setStockLogs(prev => [...newLogs, ...prev]);
       }
 
@@ -867,7 +911,7 @@ export const RawMaterialProvider = ({ children }) => {
     });
 
     try {
-      await stockLogsService.createStockLogsBatch(returnLogs);
+      await stockLogsService.createStockLogsBatch(withActiveBranchBatch(returnLogs));
       setStockLogs(prev => [...returnLogs, ...prev]);
       return { success: true };
     } catch (err) {
@@ -906,7 +950,7 @@ export const RawMaterialProvider = ({ children }) => {
     });
 
     try {
-      await stockLogsService.createStockLogsBatch(returnLogs);
+      await stockLogsService.createStockLogsBatch(withActiveBranchBatch(returnLogs));
       setStockLogs(prev => [...returnLogs, ...prev]);
       return { success: true };
     } catch (err) {
@@ -1020,8 +1064,8 @@ export const RawMaterialProvider = ({ children }) => {
 
     try {
       await Promise.all([
-        rawMaterialsService.updateStocksBatch(stockUpdates),
-        stockLogsService.createStockLogsBatch(newLogs)
+        rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId),
+        stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs))
       ]);
 
       setRawMaterials(updatedMaterials);
@@ -1195,7 +1239,8 @@ export const RawMaterialProvider = ({ children }) => {
     }, 0);
 
     const newReport = {
-      id: `OPNAME-${todayStr}-${Date.now().toString().slice(-4)}`,
+      id: `OPNAME-${activeBranchId}-${todayStr}-${Date.now().toString().slice(-4)}`,
+      branchId: activeBranchId,
       date: todayStr,
       displayDate,
       outlet,
@@ -1327,7 +1372,7 @@ export const RawMaterialProvider = ({ children }) => {
       if (updated) {
         const targetReport = updated.find(r => r.id === reportId || (!reportId && r.date === todayStr));
         if (targetReport) {
-          opnameReportsService.saveOpnameReport(targetReport).catch(err => {
+          opnameReportsService.saveOpnameReport({ ...targetReport, branchId: targetReport.branchId || activeBranchId }).catch(err => {
             console.error('Failed updating opname report in Supabase:', err);
           });
         }
@@ -1430,8 +1475,8 @@ export const RawMaterialProvider = ({ children }) => {
       });
 
       await Promise.all([
-        rawMaterialsService.updateStocksBatch(stockUpdates),
-        stockLogsService.createStockLogsBatch(newLogs)
+        rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId),
+        stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs))
       ]);
 
       setRawMaterials(updatedMaterials);
@@ -1447,7 +1492,7 @@ export const RawMaterialProvider = ({ children }) => {
       });
 
       // Update applied status in Supabase cloud
-      opnameReportsService.saveOpnameReport(appliedReport).catch(err => {
+      opnameReportsService.saveOpnameReport({ ...appliedReport, branchId: appliedReport.branchId || activeBranchId }).catch(err => {
         console.error('Failed updating appliedToInventory in Supabase:', err);
       });
 
@@ -1523,10 +1568,10 @@ export const RawMaterialProvider = ({ children }) => {
 
       // Update Supabase in batch if configured
       if (stockUpdates.length > 0) {
-        await rawMaterialsService.updateStocksBatch(stockUpdates).catch(e => console.warn('Supabase stock update error:', e));
+        await rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId).catch(e => console.warn('Supabase stock update error:', e));
       }
       if (newLogs.length > 0) {
-        await stockLogsService.createStockLogsBatch(newLogs).catch(e => console.warn('Supabase stock logs error:', e));
+        await stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs)).catch(e => console.warn('Supabase stock logs error:', e));
       }
 
       setRawMaterials(updatedMaterials);
@@ -1619,8 +1664,8 @@ export const RawMaterialProvider = ({ children }) => {
       });
 
       await Promise.all([
-        rawMaterialsService.updateStocksBatch(stockUpdates),
-        stockLogsService.createStockLogsBatch(newLogs)
+        rawMaterialsService.updateStocksBatch(stockUpdates, activeBranchId),
+        stockLogsService.createStockLogsBatch(withActiveBranchBatch(newLogs))
       ]);
 
       setRawMaterials(updatedMaterials);
@@ -1843,8 +1888,21 @@ export const RawMaterialProvider = ({ children }) => {
       }
     }
 
+    if (logMaterialFilter !== 'ALL') {
+      result = result.filter(log => log.rawMaterialName === logMaterialFilter);
+    }
+
+    if (logDateFrom || logDateTo) {
+      result = result.filter(log => {
+        const date = new Date(log.createdAt);
+        if (Number.isNaN(date.getTime())) return false;
+        const localDate = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+        return (!logDateFrom || localDate >= logDateFrom) && (!logDateTo || localDate <= logDateTo);
+      });
+    }
+
     return result;
-  }, [stockLogs, logSearchTerm, logTypeFilter]);
+  }, [stockLogs, logSearchTerm, logTypeFilter, logMaterialFilter, logDateFrom, logDateTo]);
 
   const paginatedStockLogs = useMemo(() => {
     const startIndex = (logCurrentPage - 1) * logItemsPerPage;
@@ -1984,6 +2042,12 @@ export const RawMaterialProvider = ({ children }) => {
         setLogSearchTerm,
         logTypeFilter,
         setLogTypeFilter,
+        logMaterialFilter,
+        setLogMaterialFilter,
+        logDateFrom,
+        setLogDateFrom,
+        logDateTo,
+        setLogDateTo,
         logCurrentPage,
         setLogCurrentPage,
         logItemsPerPage,

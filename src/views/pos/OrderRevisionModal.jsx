@@ -275,6 +275,8 @@ export const OrderRevisionModal = () => {
 
   // Filtered menus for "+ Tambah Menu Lain"
   const filteredAvailableMenus = productMenus.filter(m => {
+    if (m.isActive === false) return false;
+
     const matchesSearch = !menuSearchTerm || 
       m.name.toLowerCase().includes(menuSearchTerm.toLowerCase()) ||
       (m.categoryName && m.categoryName.toLowerCase().includes(menuSearchTerm.toLowerCase()));

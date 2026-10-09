@@ -124,7 +124,7 @@ const drawPDFHeader = (doc, title, subtitle, metaItems = [], storeName = 'XCrepe
   doc.text(`Waktu Cetak: ${printTime}`, pageWidth - 36, rightY, { align: 'right' });
   rightY += 12;
 
-  metaItems.forEach(item => {
+  [{ label: 'Nama Outlet', value: storeName }, ...metaItems].forEach(item => {
     doc.text(`${item.label}: ${item.value}`, pageWidth - 36, rightY, { align: 'right' });
     rightY += 12;
   });
@@ -240,6 +240,7 @@ export const buildProductPerformanceWorksheet = ({
 
   const rows = [
     [headerTitle],
+    [`Nama Outlet   : ${storeName}`],
     [`Periode Waktu : ${periodLabel}`],
     [`Filter Kategori: ${activeFilter}${searchTerm ? ` | Pencarian: "${searchTerm}"` : ''}`],
     [`Waktu Unduh   : ${printDate}`],
@@ -374,6 +375,8 @@ export const exportProductPerformanceToExcel = (params) => {
 
 export const exportProductPerformanceToPDF = ({
   items = [],
+  salesSummary = null,
+  menuToppingSummary = null,
   periodLabel = 'Semua Waktu',
   activeFilter = 'Semua',
   searchTerm = '',
@@ -450,6 +453,146 @@ export const exportProductPerformanceToPDF = ({
 
   const overallMargin = totalOmset > 0 ? ((totalProfit / totalOmset) * 100).toFixed(1) : 0;
 
+  const kpiSource = salesSummary || {};
+  const menuToppingSource = menuToppingSummary || {};
+  const kpiRows = showProfitMetrics ? [
+    ['Total Transaksi', formatNumber(kpiSource.totalTransactions ?? 0), 'Total Omset', formatIDR(kpiSource.totalGrossRevenue ?? totalOmset)],
+    ['Menu Terjual', `${formatNumber(kpiSource.totalMenuQtySold ?? 0)} porsi`, 'Extra Topping Terjual', `${formatNumber(kpiSource.totalToppingQtySold ?? 0)} item`],
+    ['Estimasi HPP', formatIDR(kpiSource.totalEstimatedHPP ?? totalHPP), 'Estimasi Laba Bersih', formatIDR(kpiSource.totalNetProfit ?? totalProfit)],
+    ['Margin Laba', `${formatNumber(kpiSource.grossProfitMargin ?? overallMargin)}%`, 'Attach Rate Topping', `${formatNumber(menuToppingSource.toppingAttachRate ?? 0)}%`],
+    ['Omset Menu Dasar', formatIDR(menuToppingSource.totalMenuBaseRevenue ?? 0), 'Omset Extra Topping', formatIDR(menuToppingSource.totalToppingRevenue ?? 0)]
+  ] : [
+    ['Total Transaksi', formatNumber(kpiSource.totalTransactions ?? 0), 'Total Omset', formatIDR(kpiSource.totalGrossRevenue ?? totalOmset)],
+    ['Menu Terjual', `${formatNumber(kpiSource.totalMenuQtySold ?? 0)} porsi`, 'Extra Topping Terjual', `${formatNumber(kpiSource.totalToppingQtySold ?? 0)} item`],
+    ['Total Item Terjual', formatNumber(kpiSource.totalAllItemsSold ?? totalQty), 'Attach Rate Topping', `${formatNumber(menuToppingSource.toppingAttachRate ?? 0)}%`],
+    ['Omset Menu Dasar', formatIDR(menuToppingSource.totalMenuBaseRevenue ?? 0), 'Omset Extra Topping', formatIDR(menuToppingSource.totalToppingRevenue ?? 0)]
+  ];
+
+  autoTable(doc, {
+    startY: 78,
+    head: [['Ringkasan Penjualan', 'Nilai', 'Ringkasan Topping', 'Nilai']],
+    body: kpiRows,
+    theme: 'grid',
+    styles: {
+      fontSize: 8.2,
+      cellPadding: 5,
+      textColor: [30, 41, 59],
+      valign: 'middle'
+    },
+    headStyles: {
+      fillColor: [15, 118, 210],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold'
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 120 },
+      1: { halign: 'right', cellWidth: 100 },
+      2: { fontStyle: 'bold', cellWidth: 130 },
+      3: { halign: 'right', cellWidth: 110 }
+    },
+    margin: { left: 36, right: 36 }
+  });
+
+  let nextStartY = (doc.lastAutoTable?.finalY || 78) + 14;
+
+  const topMenuRows = (menuToppingSource.list || []).slice(0, 8).map((item, idx) => {
+    const toppingsText = Array.isArray(item.toppingsList) && item.toppingsList.length > 0
+      ? item.toppingsList.slice(0, 4).map(t => `${t.name} (${formatNumber(t.qtySold)}x)`).join(', ')
+      : '-';
+    return [
+      idx + 1,
+      item.name || '-',
+      `${formatNumber(item.qtySold)} porsi`,
+      `${formatNumber(item.totalToppingQty || 0)} topping`,
+      formatIDR(item.totalCombinedRevenue || 0),
+      toppingsText
+    ];
+  });
+
+  if (topMenuRows.length > 0) {
+    autoTable(doc, {
+      startY: nextStartY,
+      head: [['#', 'Top Menu', 'Qty Menu', 'Qty Topping', 'Omset Gabungan', 'Topping Terpasang Teratas']],
+      body: topMenuRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 7.6,
+        cellPadding: 4,
+        textColor: [30, 41, 59],
+        valign: 'middle'
+      },
+      headStyles: {
+        fillColor: [2, 132, 199],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 24 },
+        1: { fontStyle: 'bold', cellWidth: 150 },
+        2: { halign: 'right', cellWidth: 64 },
+        3: { halign: 'right', cellWidth: 72 },
+        4: { halign: 'right', cellWidth: 92 },
+        5: { cellWidth: 250 }
+      },
+      margin: { left: 36, right: 36 }
+    });
+
+    nextStartY = (doc.lastAutoTable?.finalY || nextStartY) + 14;
+  }
+
+  const topToppingRows = (menuToppingSource.globalToppingList || []).slice(0, 8).map((item, idx) => {
+    const rev = Number(item.grossRevenue || 0);
+    const hpp = Number(item.totalHpp || 0);
+    const profit = Number(item.netProfit ?? (rev - hpp));
+    return showProfitMetrics
+      ? [idx + 1, item.name || '-', formatNumber(item.qtySold || 0), formatIDR(rev), formatIDR(hpp), formatIDR(profit)]
+      : [idx + 1, item.name || '-', formatNumber(item.qtySold || 0), formatIDR(rev)];
+  });
+
+  if (topToppingRows.length > 0) {
+    autoTable(doc, {
+      startY: nextStartY,
+      head: showProfitMetrics
+        ? [['#', 'Top Extra Topping', 'Qty Terjual', 'Omset', 'Estimasi HPP', 'Laba']]
+        : [['#', 'Top Extra Topping', 'Qty Terjual', 'Omset']],
+      body: topToppingRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 7.8,
+        cellPadding: 4,
+        textColor: [30, 41, 59],
+        valign: 'middle'
+      },
+      headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: showProfitMetrics ? {
+        0: { halign: 'center', cellWidth: 24 },
+        1: { fontStyle: 'bold' },
+        2: { halign: 'right', cellWidth: 74 },
+        3: { halign: 'right', cellWidth: 92 },
+        4: { halign: 'right', cellWidth: 92 },
+        5: { halign: 'right', cellWidth: 92 }
+      } : {
+        0: { halign: 'center', cellWidth: 24 },
+        1: { fontStyle: 'bold' },
+        2: { halign: 'right', cellWidth: 80 },
+        3: { halign: 'right', cellWidth: 100 }
+      },
+      margin: { left: 36, right: 36 }
+    });
+
+    nextStartY = (doc.lastAutoTable?.finalY || nextStartY) + 16;
+  }
+
   const tableFoot = showProfitMetrics ? [
     [
       'TOTAL',
@@ -521,10 +664,11 @@ export const exportProductPerformanceToPDF = ({
   };
 
   autoTable(doc, {
-    startY: 78,
+    startY: nextStartY,
     head: headCols,
     body: tableBody,
     foot: tableFoot,
+    showFoot: 'lastPage',
     theme: 'grid',
     styles: {
       fontSize: 8,
@@ -635,6 +779,7 @@ export const buildTransactionHistoryWorksheet = ({
 
   const rows = [
     [`LAPORAN RIWAYAT TRANSAKSI PENJUALAN - ${storeName.toUpperCase()}`],
+    [`Nama Outlet   : ${storeName}`],
     [`Periode Waktu  : ${periodLabel}`],
     [`Filter Metode  : ${activePaymentFilter}${searchTerm ? ` | Pencarian: "${searchTerm}"` : ''}`],
     [`Waktu Unduh    : ${printDate}`],
@@ -973,6 +1118,7 @@ export const exportTransactionHistoryToPDF = ({
     head: headCols,
     body: tableBody,
     foot: tableFoot,
+    showFoot: 'lastPage',
     theme: 'grid',
     styles: {
       fontSize: 8,
@@ -1031,6 +1177,7 @@ export const exportMaterialUsageToExcel = ({
 
   const rows = [
     [`LAPORAN AUDIT PENGURANGAN BAHAN BAKU - ${storeName.toUpperCase()}`],
+    [`Nama Outlet   : ${storeName}`],
     [`Periode Waktu  : ${periodLabel}`],
     [`Filter Bahan   : ${activeMaterial}`],
     [`Filter Penyebab: ${activeEventType}${searchTerm ? ` | Pencarian: "${searchTerm}"` : ''}`],
@@ -1226,7 +1373,7 @@ export const exportMaterialUsageToPDF = ({
   ];
 
   autoTable(doc, {
-    startY: 78,
+    startY: 90,
     head: [[
       'No',
       'Waktu & Tanggal',
@@ -1240,6 +1387,7 @@ export const exportMaterialUsageToPDF = ({
     ]],
     body: tableBody,
     foot: tableFoot,
+    showFoot: 'lastPage',
     theme: 'grid',
     styles: {
       fontSize: 8,
@@ -1280,6 +1428,72 @@ export const exportMaterialUsageToPDF = ({
 
   const filename = `Laporan_Pengurangan_Bahan_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
+};
+
+export const exportStockHistoryToPDF = ({ logs = [], storeName = 'XCrepes POS', filters = null }) => {
+  const doc = new jsPDF('landscape', 'pt', 'a4');
+  const typeLabels = {
+    IN: 'Stok Masuk',
+    OUT: 'Stok Keluar',
+    WASTE: 'Bahan Rusak / Waste',
+    RETURN_ORDER: 'Retur Pesanan Gagal',
+    ADJUST: 'Penyesuaian'
+  };
+  const periodLabel = filters?.date || 'Semua tanggal';
+  const filterSummary = filters
+    ? `${filters.type === 'ALL' ? 'Semua jenis' : typeLabels[filters.type] || filters.type} | ${filters.material === 'ALL' ? 'Semua bahan' : filters.material}`
+    : 'Seluruh riwayat';
+
+  drawPDFHeader(doc, 'Riwayat Perubahan Stok', 'Laporan mutasi stok bahan baku', [
+    { label: 'Periode', value: periodLabel },
+    { label: 'Filter', value: filterSummary },
+    { label: 'Jumlah data', value: formatNumber(logs.length) }
+  ], storeName);
+
+  const body = logs.map((log, index) => {
+    const previous = Number(log.previousStock ?? 0);
+    const current = Number(log.currentStock ?? 0);
+    const amount = Math.abs(Number(log.amount ?? current - previous));
+    const sign = log.type === 'IN' || (log.type === 'ADJUST' && current >= previous) ? '+' : '-';
+    const unit = log.unitName ? ` ${log.unitName}` : '';
+    return [
+      String(index + 1),
+      formatDateTime(log.createdAt),
+      log.rawMaterialName || '-',
+      typeLabels[log.type] || log.type || '-',
+      `${sign}${formatNumber(amount)}${unit}`,
+      `${formatNumber(previous)}${unit} -> ${formatNumber(current)}${unit}`,
+      log.reason || log.note || '-',
+      log.user || '-'
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 82,
+    head: [['No', 'Waktu & Tanggal', 'Nama Bahan Baku', 'Jenis Perubahan', 'Perubahan', 'Alur Stok', 'Alasan & Catatan', 'Oleh']],
+    body,
+    foot: [[{ content: 'TOTAL', styles: { halign: 'center' } }, { content: `${formatNumber(logs.length)} aktivitas`, colSpan: 7 }]],
+    showFoot: 'lastPage',
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 5, textColor: [30, 41, 59], valign: 'middle', overflow: 'linebreak' },
+    headStyles: { fillColor: [0, 96, 174], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 28 },
+      1: { cellWidth: 82 },
+      2: { fontStyle: 'bold', cellWidth: 100 },
+      3: { cellWidth: 92 },
+      4: { halign: 'right', cellWidth: 72 },
+      5: { cellWidth: 110 },
+      6: { cellWidth: 190 },
+      7: { cellWidth: 70 }
+    },
+    margin: { left: 30, right: 30 }
+  });
+
+  setupPDFFooter(doc, storeName);
+  doc.save(`Riwayat_Perubahan_Stok_${new Date().toISOString().slice(0, 10)}.pdf`);
 };
 
 /**
@@ -1380,6 +1594,7 @@ export const exportStockOpnameToExcel = ({
 
   const rows = [
     [storeName.toUpperCase()],
+    [`Nama Outlet          : ${storeName}`],
     ['LAPORAN STOCK OPNAME FISIK BAHAN BAKU'],
     [`Tanggal Opname       : ${displayDateStr || currentDateStr}`],
     [`No. Laporan          : ${reportId}`],
@@ -1614,6 +1829,7 @@ export const exportStockOpnameToPDF = ({
     head: [headRow],
     body: tableBody,
     foot: [footRow],
+    showFoot: 'lastPage',
     theme: 'grid',
     styles: {
       fontSize: 8,
@@ -1715,6 +1931,7 @@ export const exportOpnameSummaryReportToExcel = ({
 
   const rows = [
     [storeName.toUpperCase()],
+    [`Nama Outlet           : ${storeName}`],
     ['REKAPITULASI SUMMARY STOCK OPNAME BAHAN BAKU'],
     [`Periode Laporan       : ${periodLabel}`],
     [`Waktu Unduh           : ${currentDateStr} WIB`],

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSettings } from '../../controllers/SettingsController';
 import { useUnit } from '../../controllers/UnitController';
-import { useAuth } from '../../controllers/AuthController';
 import { Button } from '../components/Button';
 import { 
   Store, 
@@ -15,9 +14,7 @@ import {
   MapPin, 
   Mail, 
   Eye,
-  ShieldCheck,
   Sparkles,
-  Check,
   Percent,
   Info
 } from 'lucide-react';
@@ -243,8 +240,6 @@ const TaxConfigSection = ({ formData, handleChange, styles, context = 'store' })
 export const SettingsView = () => {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { showToast } = useUnit();
-  const { currentUser, openProfileModal } = useAuth();
-
   // Active Tab: 'store' | 'receipt'
   const [activeTab, setActiveTab] = useState('store');
 
@@ -275,7 +270,7 @@ export const SettingsView = () => {
 
   // Sync form state when global settings change
   useEffect(() => {
-    setFormData({ ...settings });
+    setFormData({ ...settings, paperSize: '58mm' });
   }, [settings]);
 
   useEffect(() => {
@@ -320,7 +315,7 @@ export const SettingsView = () => {
 
   const handleSave = (e) => {
     if (e) e.preventDefault();
-    updateSettings(formData);
+    updateSettings({ ...formData, paperSize: '58mm' });
     setIsSaved(true);
     showToast('Konfigurasi aplikasi dan struk berhasil disimpan!', 'success', 'Berhasil Disimpan');
     setTimeout(() => setIsSaved(false), 3000);
@@ -350,9 +345,9 @@ export const SettingsView = () => {
       return;
     }
 
-    const paperWidth = formData.paperSize === '80mm' ? '80mm' : '58mm';
-    const paperContentWidth = formData.paperSize === '80mm' ? '76mm' : '54mm';
-    const paperInitialHeight = formData.paperSize === '80mm' ? '120mm' : '160mm';
+    const paperWidth = '58mm';
+    const paperContentWidth = '54mm';
+    const paperInitialHeight = '160mm';
 
     const html = `
       <!DOCTYPE html>
@@ -598,18 +593,6 @@ export const SettingsView = () => {
           </p>
         </div>
 
-        {currentUser?.role === 'superadmin' && (
-          <button
-            type="button"
-            className="btn btn-secondary settings-superadmin-btn"
-            onClick={openProfileModal}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '42px', fontWeight: 600 }}
-            title="Kelola nama, username, dan kata sandi Super Admin"
-          >
-            <ShieldCheck size={16} color="var(--blue-600)" />
-            <span>Profil & Kredensial Super Admin</span>
-          </button>
-        )}
       </div>
 
       {/* Main Grid: Settings Tabs & Live Preview */}
@@ -826,13 +809,6 @@ export const SettingsView = () => {
                   </div>
                 </div>
 
-                {/* Tax Configuration Section */}
-                <TaxConfigSection 
-                  formData={formData} 
-                  handleChange={handleChange} 
-                  styles={styles} 
-                  context="store"
-                />
               </div>
             </div>
           )}
@@ -852,65 +828,6 @@ export const SettingsView = () => {
 
               <div style={styles.formBody}>
                 {/* Ukuran Kertas Thermal */}
-                <div style={styles.formGroup}>
-                  <label style={styles.fieldLabel}>UKURAN LEBAR KERTAS PRINTER THERMAL</label>
-                  <div className="settings-radio-grid" style={styles.radioGrid}>
-                    <label
-                      style={{
-                        ...styles.radioCard,
-                        ...(formData.paperSize === '58mm' ? styles.radioCardActive : {})
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="paperSize"
-                        value="58mm"
-                        checked={formData.paperSize === '58mm'}
-                        onChange={() => handleChange('paperSize', '58mm')}
-                        style={{ display: 'none' }}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-900)' }}>
-                            58 mm (Standar POS)
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
-                            Umum untuk printer Bluetooth portable & kasir kasir mini.
-                          </div>
-                        </div>
-                        {formData.paperSize === '58mm' && <Check size={18} color="var(--blue-600)" />}
-                      </div>
-                    </label>
-
-                    <label
-                      style={{
-                        ...styles.radioCard,
-                        ...(formData.paperSize === '80mm' ? styles.radioCardActive : {})
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="paperSize"
-                        value="80mm"
-                        checked={formData.paperSize === '80mm'}
-                        onChange={() => handleChange('paperSize', '80mm')}
-                        style={{ display: 'none' }}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-900)' }}>
-                            80 mm (Thermal Lebar)
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', marginTop: '2px' }}>
-                            Untuk printer kasir desktop Epson, Star, Sunmi, dll.
-                          </div>
-                        </div>
-                        {formData.paperSize === '80mm' && <Check size={18} color="var(--blue-600)" />}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
                 {/* Header Struk */}
                 <div className="settings-form-row2" style={styles.formRow2}>
                   <div style={styles.formGroup}>
@@ -1070,11 +987,11 @@ export const SettingsView = () => {
                 size="md"
                 className="settings-save-btn"
               >
-                {isSaved ? 'Perubahan Tersimpan' : 'Simpan Semua Konfigurasi'}
+                {isSaved ? 'Pengaturan Tersimpan' : 'Simpan Pengaturan Toko'}
               </Button>
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
-              Perubahan langsung diterapkan ke menu kasir dan struk cetak.
+              Menyimpan profil toko, struk kasir, dan tampilan aplikasi.
             </span>
           </div>
         </div>
@@ -1089,7 +1006,7 @@ export const SettingsView = () => {
               </span>
             </div>
             <span style={styles.paperBadge}>
-              {formData.paperSize} Thermal
+              58mm Thermal
             </span>
           </div>
 
@@ -1103,7 +1020,7 @@ export const SettingsView = () => {
             className="settings-thermal-paper"
             style={{
               ...styles.thermalPaper,
-              width: formData.paperSize === '80mm' ? '100%' : 'min(280px, 100%)'
+              width: 'min(280px, 100%)'
             }}
           >
             {/* Header / Logo */}
@@ -1575,25 +1492,6 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: '4px'
-  },
-  radioGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px'
-  },
-  radioCard: {
-    padding: '12px 14px',
-    border: '1px solid var(--border-color)',
-    borderRadius: '10px',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'all 0.15s ease'
-  },
-  radioCardActive: {
-    borderColor: 'var(--blue-500)',
-    backgroundColor: 'var(--blue-50)'
   },
   toggleGrid: {
     display: 'flex',

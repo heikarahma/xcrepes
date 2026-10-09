@@ -40,6 +40,7 @@ export const OrderProvider = ({ children }) => {
   const { showToast } = useUnit();
   const { currentUser } = useAuth();
   const { settings } = useSettings();
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
 
   // 1. Cloud Database State via Supabase (Historical Completed Orders)
   const [orders, setOrders] = useState([]);
@@ -50,7 +51,7 @@ export const OrderProvider = ({ children }) => {
   // 2. Active Register Local Cart Items State (Maintained on active cashier device)
   const [cart, setCart] = useState(() => {
     try {
-      const saved = localStorage.getItem('pos_cart');
+      const saved = localStorage.getItem(`pos_cart_${activeBranchId}`);
       if (!saved) return [];
       const parsed = JSON.parse(saved);
       if (!Array.isArray(parsed)) return [];
@@ -115,18 +116,32 @@ export const OrderProvider = ({ children }) => {
   // Sync active cart with local device storage
   useEffect(() => {
     try {
-      localStorage.setItem('pos_cart', JSON.stringify(cart));
+      localStorage.setItem(`pos_cart_${activeBranchId}`, JSON.stringify(cart));
     } catch (e) {
       console.error('Failed to save pos_cart to localStorage', e);
     }
-  }, [cart]);
+  }, [cart, activeBranchId]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`pos_cart_${activeBranchId}`);
+      if (!saved) {
+        setCart([]);
+        return;
+      }
+      const parsed = JSON.parse(saved);
+      setCart(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setCart([]);
+    }
+  }, [activeBranchId]);
 
   // Fetch Orders from Supabase
   const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await ordersService.getOrders();
+      const { data, error: fetchErr } = await ordersService.getOrders(activeBranchId);
       if (fetchErr) {
         setError(fetchErr.message || 'Gagal memuat transaksi pesanan dari cloud.');
       } else {
@@ -138,7 +153,7 @@ export const OrderProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   // Initial fetch and Realtime sync
   useEffect(() => {
@@ -511,6 +526,7 @@ export const OrderProvider = ({ children }) => {
     const orderData = {
       id: `ORD-${Date.now()}`,
       invoiceNumber,
+      branchId: activeBranchId,
       date: new Date().toISOString(),
       status: 'completed',
       cashierName: cashierDisplayName,

@@ -2,6 +2,22 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const TABLE = 'product_menus';
 
+const mapRow = (row) => ({
+  id: row.id,
+  name: row.name,
+  categoryId: row.category_id,
+  categoryName: row.category_name,
+  image: row.image || '',
+  price: Number(row.price) || 0,
+  promoType: row.promo_type || null,
+  promoAmount: Number(row.promo_amount) || 0,
+  ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
+  toppings: Array.isArray(row.toppings) ? row.toppings : [],
+  isActive: row.is_active !== false,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
 export const productMenusService = {
   async getProductMenus() {
     if (!isSupabaseConfigured()) return { data: [], error: null };
@@ -16,20 +32,7 @@ export const productMenusService = {
     }
 
     return {
-      data: (data || []).map(row => ({
-        id: row.id,
-        name: row.name,
-        categoryId: row.category_id,
-        categoryName: row.category_name,
-        image: row.image || '',
-        price: Number(row.price) || 0,
-        promoType: row.promo_type || null,
-        promoAmount: Number(row.promo_amount) || 0,
-        ingredients: Array.isArray(row.ingredients) ? row.ingredients : [],
-        toppings: Array.isArray(row.toppings) ? row.toppings : [],
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      })),
+      data: (data || []).map(mapRow),
       error: null
     };
   },
@@ -47,6 +50,7 @@ export const productMenusService = {
       promo_amount: Number(menu.promoAmount) || 0,
       ingredients: Array.isArray(menu.ingredients) ? menu.ingredients : [],
       toppings: Array.isArray(menu.toppings) ? menu.toppings : [],
+      is_active: menu.isActive !== false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -63,20 +67,7 @@ export const productMenusService = {
     }
 
     return {
-      data: {
-        id: data.id,
-        name: data.name,
-        categoryId: data.category_id,
-        categoryName: data.category_name,
-        image: data.image,
-        price: Number(data.price) || 0,
-        promoType: data.promo_type,
-        promoAmount: Number(data.promo_amount) || 0,
-        ingredients: data.ingredients || [],
-        toppings: data.toppings || [],
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      },
+      data: mapRow(data),
       error: null
     };
   },
@@ -95,6 +86,7 @@ export const productMenusService = {
     if (menu.promoAmount !== undefined) payload.promo_amount = Number(menu.promoAmount) || 0;
     if (menu.ingredients !== undefined) payload.ingredients = menu.ingredients;
     if (menu.toppings !== undefined) payload.toppings = menu.toppings;
+    if (menu.isActive !== undefined) payload.is_active = menu.isActive !== false;
 
     const { data, error } = await supabase
       .from(TABLE)
@@ -109,42 +101,38 @@ export const productMenusService = {
     }
 
     return {
-      data: {
-        id: data.id,
-        name: data.name,
-        categoryId: data.category_id,
-        categoryName: data.category_name,
-        image: data.image,
-        price: Number(data.price) || 0,
-        promoType: data.promo_type,
-        promoAmount: Number(data.promo_amount) || 0,
-        ingredients: data.ingredients || [],
-        toppings: data.toppings || [],
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      },
+      data: mapRow(data),
       error: null
     };
   },
 
   async deleteProductMenu(id) {
     if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(TABLE)
-      .delete()
-      .eq('id', id);
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) {
       console.error('productMenusService.deleteProductMenu error:', error);
+      return { data: null, error };
     }
-    return { error };
+    return { data: mapRow(data), error: null };
   },
 
   async deleteProductMenusBatch(ids) {
     if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
     const { error } = await supabase
       .from(TABLE)
-      .delete()
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
       .in('id', ids);
 
     if (error) {

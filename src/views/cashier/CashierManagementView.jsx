@@ -33,6 +33,7 @@ export const CashierManagementView = () => {
     openDeleteCashierModal,
     toggleCashierStatus,
     navFeatures,
+    branches,
     superAdminProfile
   } = useAuth();
   const { showToast } = useUnit();
@@ -56,6 +57,15 @@ export const CashierManagementView = () => {
   const totalAdminStore = cashiers.filter(c => hasAdminPrivileges(c.role)).length;
   const totalKasir = cashiers.filter(c => !hasAdminPrivileges(c.role)).length;
   const totalActive = cashiers.filter(c => c.isActive !== false).length;
+  const getBranchSummary = (branchIds = [], isAdmin = false) => {
+    if (isAdmin || branchIds.length === 0) return 'Semua cabang';
+    const names = branchIds
+      .map(id => branches.find(branch => branch.id === id)?.name)
+      .filter(Boolean);
+    if (names.length === 0) return 'Belum ada cabang';
+    if (names.length <= 2) return names.join(', ');
+    return `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+  };
 
   return (
     <div className="cashier-view-container">
@@ -187,6 +197,7 @@ export const CashierManagementView = () => {
                 <th style={{ width: '100px' }}>ID AKUN</th>
                 <th>PENGGUNA</th>
                 <th style={{ width: '170px' }}>PERAN / JABATAN</th>
+                <th style={{ width: '180px' }}>CABANG</th>
                 <th style={{ textAlign: 'center', width: '120px' }}>STATUS</th>
                 <th style={{ width: '160px' }}>TANGGAL DIBUAT</th>
                 <th style={{ textAlign: 'center', width: '100px' }}>AKSI</th>
@@ -195,7 +206,7 @@ export const CashierManagementView = () => {
             <tbody>
               {filteredCashiers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-table-cell">
+                  <td colSpan="7" className="empty-table-cell">
                     <div className="empty-state-box">
                       <Users size={38} color="var(--neutral-300)" />
                       <p className="empty-text">
@@ -289,6 +300,12 @@ export const CashierManagementView = () => {
                             <span>Kasir POS</span>
                           </span>
                         )}
+                      </td>
+
+                      <td>
+                        <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)', fontWeight: 600 }}>
+                          {getBranchSummary(c.branchIds || [], isAdmin)}
+                        </span>
                       </td>
 
                       {/* Status Toggle */}

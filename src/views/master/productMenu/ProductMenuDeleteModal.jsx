@@ -2,7 +2,7 @@ import React from 'react';
 import { useProductMenu } from '../../../controllers/ProductMenuController';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
-import { AlertTriangle } from 'lucide-react';
+import { EyeOff } from 'lucide-react';
 
 export const ProductMenuDeleteModal = () => {
   const { deleteModalState, closeDeleteModal, deleteMenu } = useProductMenu();
@@ -21,19 +21,19 @@ export const ProductMenuDeleteModal = () => {
     <Modal
       isOpen={isOpen}
       onClose={closeDeleteModal}
-      title="Hapus Menu Produk"
+      title="Nonaktifkan Menu Produk"
       size="sm"
     >
       <div style={styles.content}>
         <div style={styles.iconWrapper}>
-          <AlertTriangle size={32} color="var(--red-600)" />
+          <EyeOff size={32} color="var(--amber-600)" />
         </div>
         
         <div style={styles.textContainer}>
-          <h4 style={styles.warningTitle}>Anda yakin ingin menghapus data ini?</h4>
+          <h4 style={styles.warningTitle}>Nonaktifkan menu ini?</h4>
           <p style={styles.warningText}>
-            Menu <strong>{item?.name}</strong> akan dihapus permanen dari sistem. 
-            Tindakan ini tidak dapat dibatalkan.
+            Menu <strong>{item?.name}</strong> tidak akan tampil di kasir, tetapi data menu dan laporan lama tetap aman.
+            Menu bisa diaktifkan kembali dari form Edit.
           </p>
         </div>
       </div>
@@ -51,7 +51,7 @@ export const ProductMenuDeleteModal = () => {
           onClick={handleDelete}
           style={{ flex: 1 }}
         >
-          Ya, Hapus
+          Ya, Nonaktifkan
         </Button>
       </div>
     </Modal>
@@ -71,11 +71,11 @@ const styles = {
     width: '64px',
     height: '64px',
     borderRadius: '50%',
-    backgroundColor: 'var(--red-50)',
+    backgroundColor: 'var(--amber-50)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    border: '4px solid var(--red-100)'
+    border: '4px solid var(--amber-100)'
   },
   textContainer: {
     display: 'flex',

@@ -26,7 +26,8 @@ import {
   CheckCheck,
   XCircle,
   RotateCcw,
-  ClipboardCheck
+  ClipboardCheck,
+  Store
 } from 'lucide-react';
 import { ROLES, hasAdminPrivileges } from '../../models/UserModel';
 
@@ -37,7 +38,8 @@ export const CashierFormModal = () => {
     closeFormCashierModal, 
     addCashier, 
     updateCashier, 
-    navFeatures 
+    navFeatures,
+    activeBranches
   } = useAuth();
   const { showToast } = useUnit();
 
@@ -50,6 +52,7 @@ export const CashierFormModal = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [permissions, setPermissions] = useState(['kasir', 'raw-material', 'stock-opname', 'returns']);
+  const [branchIds, setBranchIds] = useState([]);
   const [isActive, setIsActive] = useState(true);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,12 +72,14 @@ export const CashierFormModal = () => {
         setUsername(cashier.username || '');
         setPassword(cashier.password || '');
         setPermissions(Array.isArray(cashier.permissions) ? cashier.permissions : ['kasir', 'raw-material', 'stock-opname', 'returns']);
+        setBranchIds(Array.isArray(cashier.branchIds) ? cashier.branchIds : []);
         setIsActive(cashier.isActive !== false);
       } else {
         setNama('');
         setUsername('');
         setPassword('');
         setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
+        setBranchIds([]);
         setIsActive(true);
       }
       setShowPassword(false);
@@ -118,6 +123,9 @@ export const CashierFormModal = () => {
     if (role === 'kasir' && permissions.length === 0) {
       err.permissions = 'Pilih minimal 1 fitur yang dapat diakses oleh kasir!';
     }
+    if (role === 'kasir' && branchIds.length === 0) {
+      err.branchIds = 'Pilih minimal 1 cabang yang bisa diakses akun ini!';
+    }
     setErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -138,6 +146,7 @@ export const CashierFormModal = () => {
           password: password.trim(),
           role,
           permissions: effectivePermissions,
+          branchIds,
           isActive
         });
       } else {
@@ -147,6 +156,7 @@ export const CashierFormModal = () => {
           password: password.trim(),
           role,
           permissions: effectivePermissions,
+          branchIds,
           isActive
         });
       }
@@ -168,6 +178,7 @@ export const CashierFormModal = () => {
       setPassword('');
       setRole('kasir');
       setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
+      setBranchIds([]);
       setIsActive(true);
       setShowPassword(false);
       setErrors({});
@@ -184,6 +195,17 @@ export const CashierFormModal = () => {
 
   const handleDeselectAll = () => {
     setPermissions([]);
+  };
+
+  const handleToggleBranch = (branchId) => {
+    setBranchIds(prev => (
+      prev.includes(branchId)
+        ? prev.filter(id => id !== branchId)
+        : [...prev, branchId]
+    ));
+    if (errors.branchIds) {
+      setErrors(prev => ({ ...prev, branchIds: '' }));
+    }
   };
 
   // Helper get feature icon
@@ -209,6 +231,7 @@ export const CashierFormModal = () => {
     setUsername('');
     setPassword('');
     setPermissions(['kasir', 'raw-material', 'stock-opname', 'returns']);
+    setBranchIds([]);
     setIsActive(true);
     setShowPassword(false);
     setErrors({});
@@ -437,6 +460,65 @@ export const CashierFormModal = () => {
             </span>
           </button>
         </div>
+
+        {/* 4. Section: Akses Cabang */}
+        {role === 'kasir' && (
+          <div style={styles.permissionSection}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <span style={styles.sectionLabel}>Akses Cabang Toko</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', margin: '2px 0 0 0' }}>
+                  Pilih cabang yang bisa dipilih akun ini saat login ({branchIds.length} cabang aktif)
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setBranchIds((activeBranches || []).map(branch => branch.id))}
+                style={styles.bulkBtn}
+              >
+                <CheckCheck size={13} />
+                <span>Pilih Semua</span>
+              </button>
+            </div>
+
+            {errors.branchIds && (
+              <span className="text-xs text-danger font-medium" style={{ display: 'block', marginBottom: '8px' }}>
+                {errors.branchIds}
+              </span>
+            )}
+
+            <div style={styles.branchGrid}>
+              {(activeBranches || []).map((branch) => {
+                const isEnabled = branchIds.includes(branch.id);
+                return (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => handleToggleBranch(branch.id)}
+                    style={{
+                      ...styles.branchCard,
+                      borderColor: isEnabled ? 'var(--blue-400)' : 'var(--border-color)',
+                      backgroundColor: isEnabled ? 'var(--blue-50)' : '#ffffff'
+                    }}
+                  >
+                    <Store size={17} color={isEnabled ? 'var(--blue-600)' : 'var(--neutral-500)'} />
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={styles.branchName}>{branch.name}</span>
+                      <span style={styles.branchCode}>{branch.code || branch.id}</span>
+                    </span>
+                    <span style={{
+                      ...styles.branchCheck,
+                      backgroundColor: isEnabled ? 'var(--blue-600)' : 'var(--neutral-200)'
+                    }}>
+                      {isEnabled && <Check size={12} color="#ffffff" />}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 4. Section: Hak Akses Fitur Menu (Khusus Kasir) */}
         {role === 'kasir' && (
@@ -722,6 +804,46 @@ const styles = {
     justifyContent: 'center',
     flexShrink: 0,
     boxShadow: 'var(--shadow-xs)'
+  },
+  branchGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '8px'
+  },
+  branchCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '9px',
+    padding: '10px 12px',
+    borderRadius: 'var(--radius-md)',
+    border: '1.5px solid',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'all var(--transition-fast)'
+  },
+  branchName: {
+    display: 'block',
+    fontSize: '0.813rem',
+    fontWeight: 800,
+    color: 'var(--neutral-900)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  },
+  branchCode: {
+    display: 'block',
+    fontSize: '0.688rem',
+    fontWeight: 700,
+    color: 'var(--neutral-500)'
+  },
+  branchCheck: {
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
   },
   bulkBtn: {
     display: 'inline-flex',

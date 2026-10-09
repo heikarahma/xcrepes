@@ -41,6 +41,7 @@ export const canKasirEditReport = (opnameDateOrReport, optionalReport) => {
 export const StockOpnameProvider = ({ children }) => {
   const { rawMaterials = [], applyOpnameReportToStock, refetch: refetchRawMaterials } = useRawMaterial();
   const { currentUser, storeName = 'XCrepes POS' } = useAuth();
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
   const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
 
   // 1. All Opname Reports from Cloud / DB
@@ -73,7 +74,7 @@ export const StockOpnameProvider = ({ children }) => {
   // Fetch reports from cloud
   const fetchReports = useCallback(async () => {
     try {
-      const { data, error } = await opnameReportsService.getOpnameReports();
+      const { data, error } = await opnameReportsService.getOpnameReports(activeBranchId);
       if (error) {
         console.error('Error fetching opname reports:', error);
       } else {
@@ -84,7 +85,7 @@ export const StockOpnameProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   useEffect(() => {
     fetchReports();
@@ -104,7 +105,7 @@ export const StockOpnameProvider = ({ children }) => {
   // Today's active report if already submitted
   const todayReport = useMemo(() => {
     return reports.find(
-      r => (r.opnameDate === todayStr || r.date === todayStr || r.id === `OPNAME-${todayStr}`) && r.status !== 'VOID'
+      r => (r.branchId || activeBranchId) === activeBranchId && (r.opnameDate === todayStr || r.date === todayStr || r.id === `OPNAME-${activeBranchId}-${todayStr}`) && r.status !== 'VOID'
     ) || null;
   }, [reports, todayStr]);
 
@@ -117,7 +118,7 @@ export const StockOpnameProvider = ({ children }) => {
   useEffect(() => {
     if (editingReportId) return; // In edit mode of existing report, handled separately
     try {
-      const draftKey = `pos_opname_draft_${activeDate}`;
+      const draftKey = `pos_opname_draft_${activeBranchId}_${activeDate}`;
       const saved = localStorage.getItem(draftKey);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -130,12 +131,12 @@ export const StockOpnameProvider = ({ children }) => {
     } catch (e) {
       console.warn('Error reading opname draft from localStorage:', e);
     }
-  }, [activeDate, editingReportId]);
+  }, [activeDate, editingReportId, activeBranchId]);
 
   // Save draft to localStorage whenever stocks change
   const saveDraftLocally = useCallback((newStocks, newNotes) => {
     try {
-      const draftKey = `pos_opname_draft_${activeDate}`;
+      const draftKey = `pos_opname_draft_${activeBranchId}_${activeDate}`;
       localStorage.setItem(draftKey, JSON.stringify({
         stocks: newStocks,
         notes: newNotes,
@@ -144,7 +145,7 @@ export const StockOpnameProvider = ({ children }) => {
     } catch (e) {
       console.warn('Error writing opname draft to localStorage:', e);
     }
-  }, [activeDate]);
+  }, [activeDate, activeBranchId]);
 
   // Update actual stock for a specific material in draft
   const updateDraftStock = useCallback((rawMaterialId, value) => {
@@ -272,7 +273,7 @@ export const StockOpnameProvider = ({ children }) => {
     setEditingReportId(null);
     setActiveDate(todayStr);
     try {
-      const draftKey = `pos_opname_draft_${todayStr}`;
+      const draftKey = `pos_opname_draft_${activeBranchId}_${todayStr}`;
       const saved = localStorage.getItem(draftKey);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -287,7 +288,7 @@ export const StockOpnameProvider = ({ children }) => {
       setDraftNotes({});
     }
     setKasirStep('INPUT');
-  }, [todayStr]);
+  }, [todayStr, activeBranchId]);
 
   // Submit Opname Report (Kasir & Super Admin)
   const submitOpnameReport = useCallback(async () => {
@@ -300,13 +301,13 @@ export const StockOpnameProvider = ({ children }) => {
     setIsSubmitting(true);
     try {
       const targetDate = activeDate || todayStr;
-      const reportId = editingReportId || `OPNAME-${targetDate}`;
-      const existing = reports.find(r => r.id === reportId || r.opnameDate === targetDate);
+      const reportId = editingReportId || `OPNAME-${activeBranchId}-${targetDate}`;
+      const existing = reports.find(r => (r.branchId || activeBranchId) === activeBranchId && (r.id === reportId || r.opnameDate === targetDate));
       const isNew = !existing && !editingReportId;
 
       // Check conflict if creating new report
       if (isNew) {
-        const conflict = reports.find(r => (r.opnameDate === targetDate || r.date === targetDate) && r.status !== 'VOID');
+        const conflict = reports.find(r => (r.branchId || activeBranchId) === activeBranchId && (r.opnameDate === targetDate || r.date === targetDate) && r.status !== 'VOID');
         if (conflict) {
           if (conflict.isApplied || conflict.status === 'APPLIED') {
             toast.error(`Laporan Stock Opname untuk tanggal ${targetDate} sudah diterapkan oleh Admin dan tidak dapat diubah.`);
@@ -368,6 +369,7 @@ export const StockOpnameProvider = ({ children }) => {
 
       const finalReport = {
         id: reportId,
+        branchId: activeBranchId,
         opnameDate: targetDate,
         date: targetDate,
         displayDate: formatDateIndonesian(targetDate),
@@ -405,7 +407,7 @@ export const StockOpnameProvider = ({ children }) => {
 
       // Clear local draft for this date
       try {
-        localStorage.removeItem(`pos_opname_draft_${targetDate}`);
+        localStorage.removeItem(`pos_opname_draft_${activeBranchId}_${targetDate}`);
       } catch (e) {
         console.warn('Failed clearing local draft:', e);
       }
@@ -423,7 +425,7 @@ export const StockOpnameProvider = ({ children }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [draftSummary, activeDate, todayStr, editingReportId, reports, currentUser, fetchReports]);
+  }, [draftSummary, activeDate, todayStr, editingReportId, reports, currentUser, fetchReports, activeBranchId]);
 
   // Admin Stock Correction with Mandatory Reason
   const submitAdminCorrection = useCallback(async (reportId, updatedItemsMap, mandatoryReason) => {
@@ -550,6 +552,7 @@ export const StockOpnameProvider = ({ children }) => {
 
       const correctedReport = {
         ...report,
+        branchId: report.branchId || activeBranchId,
         version: nextVersion,
         isApplied: false,
         needsReapply: wasApplied,
@@ -593,7 +596,7 @@ export const StockOpnameProvider = ({ children }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [reports, currentUser, fetchReports]);
+  }, [reports, currentUser, fetchReports, activeBranchId]);
 
   // Helper for Kasir permission check
   const canKasirEdit = useCallback((opnameDateOrReport, optionalReport) => {
@@ -658,6 +661,7 @@ export const StockOpnameProvider = ({ children }) => {
       // 3. Mark report as APPLIED and permanently locked
       const appliedReport = {
         ...report,
+        branchId: report.branchId || activeBranchId,
         status: 'APPLIED',
         isApplied: true,
         needsReapply: false,
@@ -684,8 +688,8 @@ export const StockOpnameProvider = ({ children }) => {
       // 5. Clear draft for that date so kasir cannot edit
       const reportDate = report.opnameDate || report.date;
       try {
-        localStorage.removeItem(`pos_opname_draft_${reportDate}`);
-        localStorage.removeItem('xcrepes_stock_opname_draft');
+        localStorage.removeItem(`pos_opname_draft_${activeBranchId}_${reportDate}`);
+        localStorage.removeItem(`xcrepes_stock_opname_draft_${activeBranchId}`);
       } catch (e) {}
 
       // 6. Refresh reports and detail view if open
@@ -709,7 +713,7 @@ export const StockOpnameProvider = ({ children }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSuperAdmin, reports, currentUser, applyOpnameReportToStock, opnameReportsService, fetchReports, selectedReportForDetail, refetchRawMaterials]);
+  }, [isSuperAdmin, reports, currentUser, applyOpnameReportToStock, fetchReports, selectedReportForDetail, refetchRawMaterials, activeBranchId]);
 
   // Admin Cancel Revision (Revert to previous applied or draft snapshot)
   const cancelAdminCorrection = useCallback(async (reportId) => {
@@ -788,6 +792,7 @@ export const StockOpnameProvider = ({ children }) => {
 
       const revertedReport = {
         ...report,
+        branchId: report.branchId || activeBranchId,
         items: revertedItems,
         summary: revertedSummary || report.summary,
         isApplied: revertedIsApplied,
@@ -814,7 +819,7 @@ export const StockOpnameProvider = ({ children }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSuperAdmin, reports, currentUser, fetchReports, selectedReportForDetail]);
+  }, [isSuperAdmin, reports, currentUser, fetchReports, selectedReportForDetail, activeBranchId]);
 
   // Admin Void Report
   const voidReport = useCallback(async (reportId, reason) => {

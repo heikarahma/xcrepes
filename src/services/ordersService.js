@@ -1,14 +1,135 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const TABLE = 'orders';
+const DEFAULT_BRANCH_ID = 'BR-DEFAULT';
+const PAGE_SIZE = 1000;
+const ORDER_COLUMNS = [
+  'id',
+  'invoice_number',
+  'branch_id',
+  'date',
+  'status',
+  'cashier_name',
+  'customer_name',
+  'table_number',
+  'items',
+  'subtotal',
+  'items_discount_total',
+  'order_discount_type',
+  'order_discount_value',
+  'order_discount_amount',
+  'discount',
+  'enable_tax',
+  'tax_rate',
+  'tax_amount',
+  'tax_name',
+  'total_amount',
+  'total_items_count',
+  'payment_method',
+  'cash_received',
+  'change_amount',
+  'return_reason',
+  'return_note',
+  'return_photo',
+  'return_by',
+  'returned_at',
+  'created_at'
+].join(',');
+
+const mapOrderRow = (row) => {
+  const subtotal = Number(row.subtotal) || 0;
+  const discount = Number(row.discount) || 0;
+  const totalAmount = Number(row.total_amount) || 0;
+  const baseAfterDisc = Math.max(0, subtotal - discount);
+
+  let taxAmount = Number(row.tax_amount) || 0;
+  let taxRate = Number(row.tax_rate) || 0;
+  let taxName = row.tax_name || 'Pajak';
+  let enableTax = row.enable_tax !== undefined ? Boolean(row.enable_tax) : false;
+
+  if (taxAmount === 0 && totalAmount > baseAfterDisc) {
+    taxAmount = Math.max(0, totalAmount - baseAfterDisc);
+    if (baseAfterDisc > 0) {
+      taxRate = Math.round((taxAmount / baseAfterDisc) * 100);
+    }
+    enableTax = true;
+  }
+
+  return {
+    id: row.id,
+    invoiceNumber: row.invoice_number,
+    branchId: row.branch_id || DEFAULT_BRANCH_ID,
+    date: row.date,
+    status: row.status || 'completed',
+    cashierName: row.cashier_name || 'Kasir',
+    customerName: row.customer_name || 'Pelanggan Umum',
+    tableNumber: row.table_number || '',
+    items: Array.isArray(row.items) ? row.items : [],
+    subtotal,
+    itemsDiscountTotal: Number(row.items_discount_total) || 0,
+    orderDiscountType: row.order_discount_type || 'none',
+    orderDiscountValue: Number(row.order_discount_value) || 0,
+    orderDiscountAmount: Number(row.order_discount_amount) || 0,
+    discount,
+    enableTax,
+    taxRate,
+    taxAmount,
+    taxName,
+    totalAmount,
+    totalItemsCount: Number(row.total_items_count) || 0,
+    paymentMethod: row.payment_method || 'cash',
+    cashReceived: Number(row.cash_received) || 0,
+    changeAmount: Number(row.change_amount) || 0,
+    returnReason: row.return_reason || null,
+    returnNote: row.return_note || null,
+    returnPhoto: row.return_photo || null,
+    returnBy: row.return_by || null,
+    returnedAt: row.returned_at || null,
+    cancelReason: row.status === 'cancelled' ? (row.return_reason?.startsWith('[BATAL] ') ? row.return_reason.replace('[BATAL] ', '') : (row.return_reason || 'Dibatalkan oleh Admin')) : null,
+    cancelNote: row.status === 'cancelled' ? (row.return_note || '') : null,
+    cancelBy: row.status === 'cancelled' ? (row.return_by || 'Admin') : null,
+    cancelledAt: row.status === 'cancelled' ? row.returned_at : null,
+    createdAt: row.created_at
+  };
+};
+
+const fetchOrdersPaged = async (branchId, includeBranchFilter = true) => {
+  const rows = [];
+  let from = 0;
+
+  while (true) {
+    let query = supabase
+      .from(TABLE)
+      .select(ORDER_COLUMNS)
+      .order('date', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (includeBranchFilter && branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
+    if (error) return { data: rows, error };
+
+    const page = data || [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return { data: rows, error: null };
+};
 
 export const ordersService = {
-  async getOrders() {
+  async getOrders(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('*')
-      .order('date', { ascending: false });
+    let { data, error } = await fetchOrdersPaged(branchId, true);
+
+    if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
+      const retry = await fetchOrdersPaged(branchId, false);
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('ordersService.getOrders error:', error);
@@ -16,62 +137,7 @@ export const ordersService = {
     }
 
     return {
-      data: (data || []).map(row => {
-        const subtotal = Number(row.subtotal) || 0;
-        const discount = Number(row.discount) || 0;
-        const totalAmount = Number(row.total_amount) || 0;
-        const baseAfterDisc = Math.max(0, subtotal - discount);
-
-        let taxAmount = Number(row.tax_amount) || 0;
-        let taxRate = Number(row.tax_rate) || 0;
-        let taxName = row.tax_name || 'Pajak';
-        let enableTax = row.enable_tax !== undefined ? Boolean(row.enable_tax) : false;
-
-        // If not stored in explicit database columns, deduce from difference between total_amount and net base
-        if (taxAmount === 0 && totalAmount > baseAfterDisc) {
-          taxAmount = Math.max(0, totalAmount - baseAfterDisc);
-          if (baseAfterDisc > 0) {
-            taxRate = Math.round((taxAmount / baseAfterDisc) * 100);
-          }
-          enableTax = true;
-        }
-
-        return {
-          id: row.id,
-          invoiceNumber: row.invoice_number,
-          date: row.date,
-          status: row.status || 'completed',
-          cashierName: row.cashier_name || 'Kasir',
-          customerName: row.customer_name || 'Pelanggan Umum',
-          tableNumber: row.table_number || '',
-          items: Array.isArray(row.items) ? row.items : [],
-          subtotal,
-          itemsDiscountTotal: Number(row.items_discount_total) || 0,
-          orderDiscountType: row.order_discount_type || 'none',
-          orderDiscountValue: Number(row.order_discount_value) || 0,
-          orderDiscountAmount: Number(row.order_discount_amount) || 0,
-          discount,
-          enableTax,
-          taxRate,
-          taxAmount,
-          taxName,
-          totalAmount,
-          totalItemsCount: Number(row.total_items_count) || 0,
-          paymentMethod: row.payment_method || 'cash',
-          cashReceived: Number(row.cash_received) || 0,
-          changeAmount: Number(row.change_amount) || 0,
-          returnReason: row.return_reason || null,
-          returnNote: row.return_note || null,
-          returnPhoto: row.return_photo || null,
-          returnBy: row.return_by || null,
-          returnedAt: row.returned_at || null,
-          cancelReason: row.status === 'cancelled' ? (row.return_reason?.startsWith('[BATAL] ') ? row.return_reason.replace('[BATAL] ', '') : (row.return_reason || 'Dibatalkan oleh Admin')) : null,
-          cancelNote: row.status === 'cancelled' ? (row.return_note || '') : null,
-          cancelBy: row.status === 'cancelled' ? (row.return_by || 'Admin') : null,
-          cancelledAt: row.status === 'cancelled' ? row.returned_at : null,
-          createdAt: row.created_at
-        };
-      }),
+      data: (data || []).map(mapOrderRow),
       error: null
     };
   },
@@ -83,6 +149,7 @@ export const ordersService = {
       invoice_number: order.invoiceNumber,
       date: order.date || new Date().toISOString(),
       status: order.status || 'completed',
+      branch_id: order.branchId || DEFAULT_BRANCH_ID,
       cashier_name: order.cashierName || 'Kasir',
       customer_name: order.customerName || 'Pelanggan Umum',
       table_number: order.tableNumber || '',
@@ -120,11 +187,12 @@ export const ordersService = {
       .select()
       .single();
 
-    // Fallback if tax columns don't exist in remote orders table
+    // Fallback if newer columns don't exist in remote orders table
     if (error && (error.code === 'PGRST204' || String(error.message).includes('column'))) {
+      const { branch_id, ...fallbackBasePayload } = basePayload;
       const retry = await supabase
         .from(TABLE)
-        .insert([basePayload])
+        .insert([fallbackBasePayload])
         .select()
         .single();
       data = retry.data;
@@ -140,6 +208,7 @@ export const ordersService = {
       data: {
         id: data.id,
         invoiceNumber: data.invoice_number,
+        branchId: data.branch_id || order.branchId || DEFAULT_BRANCH_ID,
         date: data.date,
         status: data.status,
         cashierName: data.cashier_name,

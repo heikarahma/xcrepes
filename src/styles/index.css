@@ -228,7 +228,7 @@ a:hover {
 
   /* Daftar Menu Product: blue-card margin & main-card padding reset */
   .product-menu-list-page .blue-card {
-    margin: 16px 0 !important;
+    margin: 0 !important;
   }
   .product-menu-list-page .product-menu-main-card {
     padding: 0 !important;

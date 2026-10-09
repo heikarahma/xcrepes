@@ -37,7 +37,7 @@ export const ReportProvider = ({ children }) => {
   const { productMenus = [] } = useProductMenu();
   const { toppings = [] } = useTopping();
   const { settings = {} } = useSettings();
-  const storeName = settings.appName || settings.storeName || 'XCrepes POS';
+  const storeName = currentUser?.activeBranchName || settings.storeName || settings.appName || 'XCrepes POS';
 
   // Active Submenu Tab: 'sales' | 'materials'
   const [activeReportTab, setActiveReportTab] = useState('sales');
@@ -663,6 +663,8 @@ export const ReportProvider = ({ children }) => {
         const activeFilterLabel = isCombined ? 'Ringkasan Menu & Topping' : salesItemTypeFilter === 'MENU' ? 'Menu Utama' : salesItemTypeFilter === 'TOPPING' ? 'Extra Topping' : 'Semua Item';
         exportProductPerformanceToPDF({
           items: itemsToExport,
+          salesSummary,
+          menuToppingSummary: menuSalesWithToppings,
           periodLabel,
           activeFilter: activeFilterLabel,
           searchTerm: salesSearchTerm,

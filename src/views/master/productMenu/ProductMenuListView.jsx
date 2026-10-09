@@ -11,7 +11,7 @@ import {
   Plus, 
   Search, 
   Edit3, 
-  Trash2, 
+  EyeOff, 
   Sparkles, 
   X, 
   ArrowUpDown, 
@@ -83,6 +83,15 @@ export const ProductMenuListView = () => {
     }
     return null;
   };
+
+  const renderStatusBadge = (item) => (
+    <span style={{
+      ...styles.statusBadge,
+      ...(item.isActive === false ? styles.statusBadgeInactive : styles.statusBadgeActive)
+    }}>
+      {item.isActive === false ? 'Nonaktif' : 'Aktif'}
+    </span>
+  );
 
   return (
     <div className="product-menu-list-page animate-fade-in" style={styles.container}>
@@ -257,7 +266,10 @@ export const ProductMenuListView = () => {
               </div>
             ) : (
               paginatedMenus.map((item) => (
-                <div key={item.id} className="product-menu-list-card" style={styles.listCard}>
+                <div key={item.id} className="product-menu-list-card" style={{
+                  ...styles.listCard,
+                  ...(item.isActive === false ? styles.inactiveCard : {})
+                }}>
                   {/* Left Column: Image (clean, no badge overlay) */}
                   <div style={styles.listCardLeft}>
                     <div style={styles.listImageWrapper}>
@@ -276,6 +288,7 @@ export const ProductMenuListView = () => {
                         <h3 className="product-menu-list-title" style={styles.listMenuName} title={item.name}>
                           {item.name}
                         </h3>
+                        {renderStatusBadge(item)}
                         {renderPromoBadge(item.promoType, item.promoAmount)}
                       </div>
 
@@ -310,9 +323,10 @@ export const ProductMenuListView = () => {
                       className="product-menu-action-btn"
                       style={{ ...styles.listBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', borderColor: 'var(--red-100)' }}
                       onClick={() => openDeleteModal(item)}
-                      title="Hapus Menu"
+                      title="Nonaktifkan Menu"
+                      disabled={item.isActive === false}
                     >
-                      <Trash2 size={15} /> <span>Hapus</span>
+                      <EyeOff size={15} /> <span>{item.isActive === false ? 'Nonaktif' : 'Nonaktifkan'}</span>
                     </button>
                   </div>
                 </div>
@@ -338,7 +352,10 @@ export const ProductMenuListView = () => {
               </div>
             ) : (
               paginatedMenus.map((item) => (
-                <div key={item.id} className="product-menu-card" style={styles.card}>
+                <div key={item.id} className="product-menu-card" style={{
+                  ...styles.card,
+                  ...(item.isActive === false ? styles.inactiveCard : {})
+                }}>
                   {/* Card Image Wrapper */}
                   <div style={styles.cardImageWrapper}>
                     {item.image ? (
@@ -366,6 +383,9 @@ export const ProductMenuListView = () => {
                     {/* Promo Badge Positioned Over Image */}
                     <div style={styles.promoBadgeContainer}>
                       {renderPromoBadge(item.promoType, item.promoAmount)}
+                    </div>
+                    <div style={styles.statusBadgeContainer}>
+                      {renderStatusBadge(item)}
                     </div>
                   </div>
 
@@ -403,8 +423,9 @@ export const ProductMenuListView = () => {
                     <button 
                       style={{ ...styles.actionBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', border: '1px solid var(--red-100)' }}
                       onClick={() => openDeleteModal(item)}
+                      disabled={item.isActive === false}
                     >
-                      <Trash2 size={15} /> Hapus
+                      <EyeOff size={15} /> {item.isActive === false ? 'Nonaktif' : 'Nonaktifkan'}
                     </button>
                   </div>
                 </div>
@@ -424,16 +445,17 @@ export const ProductMenuListView = () => {
           @media (max-width: 1024px) {
             .product-menu-list-page .blue-card,
             .product-menu-main-card {
-              margin: 16px 0 !important;
-              padding: 16px !important;
+              margin: 0 !important;
+              padding: 0 !important;
               border-radius: 12px !important;
               box-sizing: border-box !important;
             }
             .product-menu-toolbar {
-              padding: 0 0 14px 0 !important;
+              padding: 12px 14px !important;
+              margin: 0 !important;
             }
             .product-menu-list-container {
-              padding: 14px 0 0 0 !important;
+              padding: 14px 16px 0 16px !important;
               gap: 10px !important;
             }
             .product-menu-list-card {
@@ -443,7 +465,7 @@ export const ProductMenuListView = () => {
             .product-menu-grid {
               grid-template-columns: repeat(2, 1fr) !important;
               gap: 12px !important;
-              padding: 14px 0 0 0 !important;
+              padding: 14px 16px 0 16px !important;
             }
             .product-menu-card {
               border-radius: 10px !important;
@@ -621,12 +643,13 @@ export const ProductMenuListView = () => {
           .product-menu-main-card {
             border-radius: 14px !important;
             overflow: hidden !important;
-            margin: 12px 0 24px 0 !important;
+            margin: 0 !important;
             box-shadow: var(--shadow-sm) !important;
           }
 
           .product-menu-toolbar {
             padding: 12px 14px !important;
+            margin: 0 !important;
           }
 
           .product-menu-toolbar-inner {
@@ -920,6 +943,36 @@ const styles = {
     top: '10px',
     left: '10px',
     zIndex: 1
+  },
+  statusBadgeContainer: {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
+    zIndex: 1
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '3px 8px',
+    borderRadius: '999px',
+    border: '1px solid',
+    fontSize: '0.688rem',
+    fontWeight: 800,
+    whiteSpace: 'nowrap'
+  },
+  statusBadgeActive: {
+    backgroundColor: 'var(--green-50)',
+    color: 'var(--green-700)',
+    borderColor: 'var(--green-200)'
+  },
+  statusBadgeInactive: {
+    backgroundColor: 'var(--neutral-100)',
+    color: 'var(--neutral-500)',
+    borderColor: 'var(--border-color)'
+  },
+  inactiveCard: {
+    opacity: 0.72,
+    backgroundColor: 'var(--neutral-50)'
   },
   categoryBadgeContainer: {
     position: 'absolute',

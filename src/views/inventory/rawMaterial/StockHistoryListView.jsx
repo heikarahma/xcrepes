@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRawMaterial } from '../../../controllers/RawMaterialController';
 import { useAuth } from '../../../controllers/AuthController';
 import { Button } from '../../components/Button';
+import { Modal } from '../../components/Modal';
 import { Pagination } from '../../components/Pagination';
 import { EmptyState } from '../../components/EmptyState';
 import { TableSkeleton } from '../../components/LoadingSkeleton';
 import { ErrorAlert } from '../../components/ErrorAlert';
+import { SearchSelect } from '../../components/SearchSelect';
 import { 
   History, 
   Search, 
@@ -22,9 +24,12 @@ import {
   Camera,
   ZoomIn,
   Layers,
-  Calendar,
+  Filter,
+  CalendarDays,
+  Download,
   FileText
 } from 'lucide-react';
+import { exportStockHistoryToPDF } from '../../../utils/reportExportUtils';
 
 export const StockHistoryListView = ({ mobileActionButtons }) => {
   const { currentUser } = useAuth();
@@ -40,6 +45,12 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
     setLogSearchTerm,
     logTypeFilter,
     setLogTypeFilter,
+    logMaterialFilter,
+    setLogMaterialFilter,
+    logDateFrom,
+    setLogDateFrom,
+    logDateTo,
+    setLogDateTo,
     logCurrentPage,
     setLogCurrentPage,
     logItemsPerPage,
@@ -53,6 +64,58 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
     error,
     refetch
   } = useRawMaterial();
+
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportMode, setExportMode] = useState('all');
+  const [exportType, setExportType] = useState(logTypeFilter);
+  const [exportMaterial, setExportMaterial] = useState(logMaterialFilter);
+  const [exportDate, setExportDate] = useState(logDateFrom || logDateTo);
+  const materialFilterOptions = [
+    { value: 'ALL', label: 'Semua Bahan' },
+    ...Array.from(new Set(stockLogs.map(log => log.rawMaterialName).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b, 'id'))
+      .map(name => ({ value: name, label: name }))
+  ];
+  const hasLogFilters = Boolean(logSearchTerm || logTypeFilter !== 'ALL' || logMaterialFilter !== 'ALL' || logDateFrom || logDateTo);
+  const resetLogFilters = () => {
+    setLogSearchTerm('');
+    setLogTypeFilter('ALL');
+    setLogMaterialFilter('ALL');
+    setLogDateFrom('');
+    setLogDateTo('');
+  };
+  const openExportModal = () => {
+    setExportMode('all');
+    setExportType(logTypeFilter);
+    setExportMaterial(logMaterialFilter);
+    setExportDate(logDateFrom || logDateTo);
+    setIsExportModalOpen(true);
+  };
+  const exportCustomLogs = stockLogs.filter(log => {
+        const matchesType = exportType === 'ALL' || (exportType === 'WASTE'
+          ? log.type === 'WASTE' || log.type === 'RETURN_ORDER'
+          : log.type === exportType);
+        const matchesMaterial = exportMaterial === 'ALL' || log.rawMaterialName === exportMaterial;
+        const date = new Date(log.createdAt);
+        const localDate = Number.isNaN(date.getTime()) ? '' : [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+        return matchesType && matchesMaterial && (!exportDate || localDate === exportDate);
+      });
+  const exportPreviewCount = exportMode === 'all' ? stockLogs.length : exportCustomLogs.length;
+  const downloadStockHistoryPDF = () => {
+    const exportLogs = exportMode === 'all' ? stockLogs : exportCustomLogs;
+
+    if (!exportLogs.length) return;
+    exportStockHistoryToPDF({
+      logs: exportLogs,
+      storeName: currentUser?.activeBranchName || currentUser?.branchName || 'XCrepes POS',
+      filters: exportMode === 'all' ? null : {
+        type: exportType,
+        material: exportMaterial,
+        date: exportDate
+      }
+    });
+    setIsExportModalOpen(false);
+  };
 
   // Helper format datetime
   const formatDateTime = (isoString) => {
@@ -191,68 +254,58 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
       <div className="blue-card stock-history-main-card" style={{ padding: 0 }}>
         {/* Toolbar */}
         <div className="stock-history-toolbar" style={styles.toolbar}>
-          {/* Left: Filter Buttons (Hanya untuk Admin/Owner) */}
-          {!isCashier && (
-            <div className="stock-history-filter-tabs" style={styles.typeFilterTabs}>
-              <button
-                className={`type-tab-btn ${logTypeFilter === 'ALL' ? 'active' : ''}`}
-                onClick={() => setLogTypeFilter('ALL')}
-                style={{
-                  ...styles.typeTabBtn,
-                  ...(logTypeFilter === 'ALL' ? styles.typeTabBtnActive : {})
-                }}
-              >
-                Semua ({stockLogs.length})
-              </button>
-              <button
-                className={`type-tab-btn ${logTypeFilter === 'IN' ? 'active' : ''}`}
-                onClick={() => setLogTypeFilter('IN')}
-                style={{
-                  ...styles.typeTabBtn,
-                  ...(logTypeFilter === 'IN' ? styles.typeTabBtnActiveIn : {})
-                }}
-              >
-                <ArrowDownLeft size={13} style={{ marginRight: '4px' }} />
-                Masuk ({stockLogStats.totalIn})
-              </button>
-              <button
-                className={`type-tab-btn ${logTypeFilter === 'OUT' ? 'active' : ''}`}
-                onClick={() => setLogTypeFilter('OUT')}
-                style={{
-                  ...styles.typeTabBtn,
-                  ...(logTypeFilter === 'OUT' ? styles.typeTabBtnActiveOut : {})
-                }}
-              >
-                <ArrowUpRight size={13} style={{ marginRight: '4px' }} />
-                Keluar ({stockLogStats.totalOut})
-              </button>
-              <button
-                className={`type-tab-btn ${logTypeFilter === 'WASTE' ? 'active' : ''}`}
-                onClick={() => setLogTypeFilter('WASTE')}
-                style={{
-                  ...styles.typeTabBtn,
-                  ...(logTypeFilter === 'WASTE' ? styles.typeTabBtnActiveWaste : {})
-                }}
-              >
-                <AlertTriangle size={13} style={{ marginRight: '4px' }} />
-                Bahan Rusak / Waste ({stockLogStats.wasteCount || 0})
-              </button>
-              <button
-                className={`type-tab-btn ${logTypeFilter === 'ADJUST' ? 'active' : ''}`}
-                onClick={() => setLogTypeFilter('ADJUST')}
-                style={{
-                  ...styles.typeTabBtn,
-                  ...(logTypeFilter === 'ADJUST' ? styles.typeTabBtnActiveAdjust : {})
-                }}
-              >
-                <RefreshCw size={12} style={{ marginRight: '4px' }} />
-                Penyesuaian ({stockLogStats.totalAdjust})
-              </button>
-            </div>
-          )}
+          <div className="stock-history-filter-controls">
+            {!isCashier && (
+              <div className="stock-history-type-select">
+                <SearchSelect
+                  options={[
+                    { value: 'ALL', label: 'Semua Jenis', badge: stockLogs.length },
+                    { value: 'IN', label: 'Stok Masuk', badge: stockLogStats.totalIn },
+                    { value: 'OUT', label: 'Stok Keluar', badge: stockLogStats.totalOut },
+                    { value: 'WASTE', label: 'Bahan Rusak / Waste', badge: stockLogStats.wasteCount || 0 },
+                    { value: 'ADJUST', label: 'Penyesuaian', badge: stockLogStats.totalAdjust }
+                  ]}
+                  value={logTypeFilter}
+                  onChange={setLogTypeFilter}
+                  placeholder="Semua Jenis"
+                  searchPlaceholder="Cari jenis perubahan..."
+                  icon={Filter}
+                  clearable={false}
+                  size="sm"
+                />
+              </div>
+            )}
 
-          {/* Right: Search Input */}
-          <div style={{ ...styles.rightToolbar, justifyContent: isCashier ? 'flex-start' : 'flex-end', minWidth: isCashier ? 'auto' : '240px' }}>
+            <div className="stock-history-material-select">
+              <SearchSelect
+                options={materialFilterOptions}
+                value={logMaterialFilter}
+                onChange={setLogMaterialFilter}
+                placeholder="Semua Bahan"
+                searchPlaceholder="Cari nama bahan baku..."
+                icon={Layers}
+                clearable={false}
+                size="sm"
+              />
+            </div>
+
+            <div className="stock-history-date-filter">
+              <CalendarDays size={16} aria-hidden="true" />
+              <input
+                type="date"
+                className="blue-input"
+                aria-label="Filter tanggal"
+                title="Pilih tanggal"
+                value={logDateFrom || logDateTo}
+                onChange={(e) => { setLogDateFrom(e.target.value); setLogDateTo(e.target.value); }}
+              />
+              {(logDateFrom || logDateTo) && (
+                <button type="button" className="stock-history-date-clear" aria-label="Hapus filter tanggal" title="Hapus tanggal" onClick={() => { setLogDateFrom(''); setLogDateTo(''); }}>
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
             <div className="stock-history-search-wrap" style={{ ...styles.searchWrapper, maxWidth: isCashier ? '380px' : '320px' }}>
               <Search size={16} color="var(--neutral-400)" style={styles.filterIcon} />
               <input
@@ -273,6 +326,10 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
                 </button>
               )}
             </div>
+            <button type="button" className="stock-history-export-button" onClick={openExportModal} title="Unduh riwayat stok dalam format PDF">
+              <Download size={16} />
+              <span>Unduh PDF</span>
+            </button>
           </div>
         </div>
 
@@ -314,18 +371,18 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
                   <td colSpan={isCashier ? 6 : 9} style={{ padding: 0 }}>
                     <EmptyState
                       icon={History}
-                      title={logSearchTerm || logTypeFilter !== 'ALL' ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
+                      title={hasLogFilters ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
                       description={
                         logSearchTerm
                           ? `Tidak ada catatan riwayat dengan kata kunci "${logSearchTerm}".`
-                          : logTypeFilter !== 'ALL'
-                          ? 'Tidak ada catatan riwayat untuk filter kategori yang dipilih.'
+                          : hasLogFilters
+                          ? 'Coba ubah jenis perubahan atau rentang tanggal yang dipilih.'
                           : 'Setiap penambahan, pengurangan, atau bahan rusak akan otomatis tercatat di sini.'
                       }
-                      actionLabel={logSearchTerm || logTypeFilter !== 'ALL' ? 'Reset Filter' : 'Catat Bahan Rusak'}
+                      actionLabel={hasLogFilters ? 'Reset Filter' : 'Catat Bahan Rusak'}
                       onAction={
-                        (logSearchTerm || logTypeFilter !== 'ALL')
-                          ? () => { setLogSearchTerm(''); setLogTypeFilter('ALL'); } 
+                        hasLogFilters
+                          ? resetLogFilters
                           : () => openWasteModal(rawMaterials[0] || null)
                       }
                     />
@@ -468,18 +525,18 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
           {paginatedStockLogs.length === 0 ? (
             <EmptyState
               icon={History}
-              title={logSearchTerm || logTypeFilter !== 'ALL' ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat'}
+              title={hasLogFilters ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat'}
               description={
                 logSearchTerm
                   ? `Tidak ada riwayat untuk "${logSearchTerm}".`
-                  : logTypeFilter !== 'ALL'
-                  ? 'Tidak ada catatan riwayat untuk filter ini.'
+                  : hasLogFilters
+                  ? 'Coba ubah jenis perubahan atau rentang tanggal yang dipilih.'
                   : 'Catat perubahan stok bahan untuk melihat log.'
               }
-              actionLabel={logSearchTerm || logTypeFilter !== 'ALL' ? 'Reset Filter' : 'Catat Stok'}
+              actionLabel={hasLogFilters ? 'Reset Filter' : 'Catat Stok'}
               onAction={
-                (logSearchTerm || logTypeFilter !== 'ALL')
-                  ? () => { setLogSearchTerm(''); setLogTypeFilter('ALL'); } 
+                hasLogFilters
+                  ? resetLogFilters
                   : () => openWasteModal(rawMaterials[0] || null)
               }
             />
@@ -601,6 +658,97 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
         )}
       </div>
 
+      <Modal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        title="Unduh riwayat stok"
+        subtitle="Pilih data yang akan dimasukkan ke laporan PDF."
+        size="md"
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setIsExportModalOpen(false)}>Batal</Button>
+            <Button variant="primary" icon={FileText} onClick={downloadStockHistoryPDF} disabled={exportPreviewCount === 0}>
+              Unduh {exportPreviewCount} data
+            </Button>
+          </>
+        )}
+      >
+        <div className="stock-history-export-options">
+          <label className={`stock-history-export-option ${exportMode === 'all' ? 'selected' : ''}`}>
+            <input type="radio" name="stock-history-export-mode" checked={exportMode === 'all'} onChange={() => setExportMode('all')} />
+            <span><strong>Semua data</strong><small>Seluruh riwayat stok, tidak mengikuti filter layar ({stockLogs.length} data).</small></span>
+          </label>
+          <label className={`stock-history-export-option ${exportMode === 'custom' ? 'selected' : ''}`}>
+            <input type="radio" name="stock-history-export-mode" checked={exportMode === 'custom'} onChange={() => setExportMode('custom')} />
+            <span><strong>Pilih data tertentu</strong><small>Kriteria mengikuti filter yang sedang aktif dan bisa diubah.</small></span>
+          </label>
+        </div>
+
+        {exportMode === 'custom' && (
+          <div className="stock-history-export-filters">
+            {!isCashier && (
+              <label className="stock-history-export-field">
+                <span>Jenis perubahan</span>
+                <SearchSelect
+                  options={[
+                    { value: 'ALL', label: 'Semua Jenis' },
+                    { value: 'IN', label: 'Stok Masuk' },
+                    { value: 'OUT', label: 'Stok Keluar' },
+                    { value: 'WASTE', label: 'Bahan Rusak / Waste' },
+                    { value: 'ADJUST', label: 'Penyesuaian' }
+                  ]}
+                  value={exportType}
+                  onChange={setExportType}
+                  placeholder="Semua Jenis"
+                  searchPlaceholder="Cari jenis perubahan..."
+                  clearable={false}
+                  size="sm"
+                />
+              </label>
+            )}
+            <label className="stock-history-export-field">
+              <span>Nama bahan baku</span>
+              <SearchSelect
+                options={materialFilterOptions}
+                value={exportMaterial}
+                onChange={setExportMaterial}
+                placeholder="Semua Bahan"
+                searchPlaceholder="Cari nama bahan baku..."
+                icon={Layers}
+                clearable={false}
+                size="sm"
+              />
+            </label>
+            <label className="stock-history-export-field">
+              <span>Tanggal (opsional)</span>
+              <input type="date" className="blue-input" aria-label="Tanggal ekspor PDF" value={exportDate} onChange={(e) => setExportDate(e.target.value)} />
+            </label>
+            <p className="stock-history-export-count">{exportPreviewCount} data akan dimasukkan ke PDF.</p>
+          </div>
+        )}
+        <style>{`
+          .stock-history-export-options { display: grid; gap: 10px; }
+          .stock-history-export-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+          }
+          .stock-history-export-option.selected { border-color: var(--blue-500); background: var(--blue-50); }
+          .stock-history-export-option input { margin: 3px 0 0; accent-color: var(--blue-600); }
+          .stock-history-export-option span { display: grid; gap: 3px; }
+          .stock-history-export-option strong { color: var(--neutral-900); font-size: 0.875rem; }
+          .stock-history-export-option small { color: var(--neutral-500); font-size: 0.75rem; line-height: 1.4; }
+          .stock-history-export-filters { display: grid; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+          .stock-history-export-field { display: grid; gap: 6px; color: var(--neutral-700); font-size: 0.75rem; font-weight: 600; }
+          .stock-history-export-field > input { height: 40px; padding: 0 10px; }
+          .stock-history-export-count { margin: 0; color: var(--blue-700); font-size: 0.8rem; font-weight: 600; }
+        `}</style>
+      </Modal>
+
       <style>{`
         .desktop-history-table-wrapper {
           display: block;
@@ -619,12 +767,73 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
           grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
           gap: 12px;
         }
-        .stock-history-filter-tabs {
+        .stock-history-filter-controls {
+          display: grid;
+          grid-template-columns: minmax(145px, 0.9fr) minmax(165px, 1fr) minmax(170px, 0.9fr) minmax(190px, 1.2fr) auto;
+          align-items: end;
+          gap: 12px;
+          width: 100%;
+          min-width: 0;
+        }
+        .stock-history-type-select,
+        .stock-history-material-select { min-width: 0; }
+        .stock-history-date-filter {
           display: flex;
           align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
+          position: relative;
+          width: 100%;
+          min-width: 0;
+          color: var(--blue-600);
         }
+        .stock-history-date-filter > svg {
+          position: absolute;
+          left: 11px;
+          z-index: 1;
+          pointer-events: none;
+        }
+        .stock-history-date-filter input {
+          width: 100%;
+          min-width: 0;
+          height: 42px;
+          padding: 0 36px;
+          box-sizing: border-box;
+          font-size: 0.8rem;
+        }
+        .stock-history-date-clear {
+          position: absolute;
+          right: 32px;
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          border: 0;
+          border-radius: 4px;
+          color: var(--neutral-500);
+          background: transparent;
+          cursor: pointer;
+        }
+        .stock-history-date-clear:hover { color: var(--red-600); background: var(--red-50); }
+        .stock-history-export-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          height: 42px;
+          padding: 0 16px;
+          border: 1px solid #FECACA;
+          border-radius: 8px;
+          color: #B91C1C;
+          background: #FEF2F2;
+          font: inherit;
+          font-size: 0.813rem;
+          font-weight: 600;
+          white-space: nowrap;
+          cursor: pointer;
+          box-sizing: border-box;
+          transition: var(--transition-fast);
+        }
+        .stock-history-export-button:hover { background: #FEE2E2; border-color: #FCA5A5; transform: translateY(-1px); }
+        .stock-history-export-button:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }
 
         @media (max-width: 1024px) {
           .stock-history-mobile-actions {
@@ -647,27 +856,21 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px !important;
           }
-          .stock-history-filter-tabs {
-            display: flex !important;
-            width: 100% !important;
-            overflow-x: auto !important;
-            flex-wrap: nowrap !important;
-            padding-bottom: 6px !important;
-            -webkit-overflow-scrolling: touch;
-            gap: 6px !important;
-          }
-          .type-tab-btn {
-            white-space: nowrap !important;
-            padding: 6px 11px !important;
-            font-size: 0.75rem !important;
-            flex-shrink: 0 !important;
-          }
           .stock-history-toolbar {
             padding: 12px 14px !important;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 10px !important;
           }
+          .stock-history-filter-controls {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+          }
+          .stock-history-type-select,
+          .stock-history-material-select,
+          .stock-history-date-filter,
+          .stock-history-search-wrap,
+          .stock-history-export-button { grid-column: 1 / -1; }
           .stock-history-search-wrap {
             width: 100% !important;
             max-width: 100% !important;
@@ -680,6 +883,11 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 6px !important;
           }
+          .stock-history-filter-controls .search-select-container > [role="button"] {
+            height: 44px !important;
+          }
+          .stock-history-date-filter input { height: 44px; }
+          .stock-history-export-button { width: 100%; }
         }
       `}</style>
     </div>
@@ -733,58 +941,6 @@ const styles = {
     justifyContent: 'space-between',
     flexWrap: 'wrap',
     gap: '12px'
-  },
-  typeFilterTabs: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    flexWrap: 'wrap'
-  },
-  typeTabBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '7px 12px',
-    borderRadius: 'var(--radius-full)',
-    fontSize: '0.813rem',
-    fontWeight: 600,
-    border: '1px solid var(--border-color)',
-    backgroundColor: 'var(--neutral-50)',
-    color: 'var(--neutral-600)',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease'
-  },
-  typeTabBtnActive: {
-    backgroundColor: 'var(--blue-500)',
-    borderColor: 'var(--blue-500)',
-    color: '#FFFFFF'
-  },
-  typeTabBtnActiveIn: {
-    backgroundColor: 'var(--green-600)',
-    borderColor: 'var(--green-600)',
-    color: '#FFFFFF'
-  },
-  typeTabBtnActiveOut: {
-    backgroundColor: 'var(--red-500)',
-    borderColor: 'var(--red-500)',
-    color: '#FFFFFF'
-  },
-  typeTabBtnActiveWaste: {
-    backgroundColor: '#dc2626',
-    borderColor: '#dc2626',
-    color: '#FFFFFF'
-  },
-  typeTabBtnActiveAdjust: {
-    backgroundColor: 'var(--neutral-800)',
-    borderColor: 'var(--neutral-800)',
-    color: '#FFFFFF'
-  },
-  rightToolbar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    flex: 1,
-    justifyContent: 'flex-end',
-    minWidth: '240px'
   },
   searchWrapper: {
     position: 'relative',

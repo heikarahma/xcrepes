@@ -2,13 +2,14 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const TABLE = 'inventory_stock_logs';
 const OPNAME_TYPE = 'OPNAME_REPORT';
+const DEFAULT_BRANCH_ID = 'BR-DEFAULT';
 
 export const opnameReportsService = {
   /**
    * Fetch all daily stock opname reports from Supabase.
    * Reports are stored with type 'OPNAME_REPORT' and their complete data in 'note' (JSON).
    */
-  async getOpnameReports() {
+  async getOpnameReports(branchId = DEFAULT_BRANCH_ID) {
     let localReports = [];
     try {
       const saved = localStorage.getItem('xcrepes_daily_opname_reports');
@@ -18,11 +19,24 @@ export const opnameReportsService = {
     if (!isSupabaseConfigured()) return { data: localReports, error: null };
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from(TABLE)
         .select('*')
-        .eq('type', OPNAME_TYPE)
-        .order('created_at', { ascending: false });
+        .eq('type', OPNAME_TYPE);
+
+      if (branchId) query = query.eq('branch_id', branchId);
+
+      let { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
+        const retry = await supabase
+          .from(TABLE)
+          .select('*')
+          .eq('type', OPNAME_TYPE)
+          .order('created_at', { ascending: false });
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error('opnameReportsService.getOpnameReports error:', error);
@@ -37,6 +51,7 @@ export const opnameReportsService = {
             return {
               ...parsed,
               id: parsed.id || row.id,
+              branchId: parsed.branchId || row.branch_id || DEFAULT_BRANCH_ID,
               opnameDate,
               date: opnameDate,
               displayDate: parsed.displayDate || opnameDate,
@@ -61,6 +76,7 @@ export const opnameReportsService = {
         const dateStr = row.reference_invoice || (row.created_at ? row.created_at.slice(0, 10) : '');
         return {
           id: row.id,
+          branchId: row.branch_id || DEFAULT_BRANCH_ID,
           opnameDate: dateStr,
           date: dateStr,
           displayDate: dateStr,
@@ -89,11 +105,11 @@ export const opnameReportsService = {
   /**
    * Fetch a single opname report by its exact date string (YYYY-MM-DD).
    */
-  async getOpnameReportByDate(dateStr) {
+  async getOpnameReportByDate(dateStr, branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured() || !dateStr) return { data: null, error: null };
 
     try {
-      const { data: allReports, error } = await this.getOpnameReports();
+      const { data: allReports, error } = await this.getOpnameReports(branchId);
       if (error) return { data: null, error };
 
       const found = allReports.find(r => r.opnameDate === dateStr || r.date === dateStr || r.id === `OPNAME-${dateStr}`);
@@ -116,13 +132,14 @@ export const opnameReportsService = {
 
     try {
       const dateStr = report.opnameDate || report.date || new Date().toISOString().slice(0, 10);
-      const reportId = report.id || `OPNAME-${dateStr}`;
+      const branchId = report.branchId || DEFAULT_BRANCH_ID;
+      const reportId = report.id || `OPNAME-${branchId}-${dateStr}`;
 
       // Check unique date constraint if creating a new report
       if (isNew) {
-        const { data: existingList } = await this.getOpnameReports();
+        const { data: existingList } = await this.getOpnameReports(branchId);
         const conflict = existingList?.find(
-          r => (r.opnameDate === dateStr || r.date === dateStr || r.id === reportId) && r.status !== 'VOID'
+          r => (r.branchId || DEFAULT_BRANCH_ID) === branchId && (r.opnameDate === dateStr || r.date === dateStr || r.id === reportId) && r.status !== 'VOID'
         );
         if (conflict) {
           const err = new Error(`Laporan Stock Opname untuk tanggal ${dateStr} sudah ada.`);
@@ -135,6 +152,7 @@ export const opnameReportsService = {
       const fullReport = {
         ...report,
         id: reportId,
+        branchId,
         opnameDate: dateStr,
         date: dateStr,
         lastModifiedAt: new Date().toISOString()
@@ -168,14 +186,26 @@ export const opnameReportsService = {
         reference_invoice: dateStr,
         note: JSON.stringify(fullReport),
         user_name: fullReport.lastModifiedBy?.name || fullReport.submittedBy?.name || fullReport.createdBy?.name || 'Kasir',
+        branch_id: branchId,
         created_at: fullReport.createdAt || new Date().toISOString()
       };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from(TABLE)
         .upsert([payload])
         .select()
         .single();
+
+      if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
+        const { branch_id, ...fallbackPayload } = payload;
+        const retry = await supabase
+          .from(TABLE)
+          .upsert([fallbackPayload])
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         console.error('opnameReportsService.saveOpnameReport error:', error);

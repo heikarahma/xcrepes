@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStockOpname } from '../../../controllers/StockOpnameController';
+import { useAuth } from '../../../controllers/AuthController';
 import { Button } from '../../components/Button';
 import { Badge } from '../../components/Badge';
 import { EmptyState } from '../../components/EmptyState';
@@ -25,6 +26,7 @@ import { exportSingleOpnameReportToPDF } from '../../../utils/reportExportUtils'
 
 export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport }) => {
   const { reports, canKasirEdit } = useStockOpname();
+  const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDetailReport, setSelectedDetailReport] = useState(null);
 
@@ -482,7 +484,7 @@ export const KasirOpnameHistory = ({ onBackToForm, onViewDetail, onEditReport })
                 onClick={() => {
                   exportSingleOpnameReportToPDF({
                     report: selectedDetailReport,
-                    storeName: 'XCrepes',
+                    storeName: currentUser?.activeBranchName || selectedDetailReport?.branchName || 'XCrepes POS',
                     isCashier: true
                   });
                 }}

@@ -49,7 +49,8 @@ export const KasirOrderView = () => {
     error: menusError, 
     refetch: refetchMenus 
   } = useProductMenu();
-  const menus = Array.isArray(productMenus) ? productMenus : (Array.isArray(contextMenus) ? contextMenus : []);
+  const allMenus = Array.isArray(productMenus) ? productMenus : (Array.isArray(contextMenus) ? contextMenus : []);
+  const menus = allMenus.filter(menu => menu.isActive !== false);
   const { categories: contextCategories = [], openReorderModal } = useCategory();
   const categories = Array.isArray(contextCategories) ? contextCategories : [];
   const { currentUser } = useAuth();
@@ -125,8 +126,14 @@ export const KasirOrderView = () => {
     const checkCartInView = () => {
       if (!cartSectionRef.current) return;
       const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      // Jika kasir berada di bagian paling atas (katalog menu), floating cart selalu tampil
-      if (scrollY < 60) {
+      const isMobileLayout = window.innerWidth <= 1024;
+      // Di mobile section pesanan berada paling atas, jadi floating cart baru perlu tampil setelah user turun ke katalog.
+      if (isMobileLayout && scrollY < 260) {
+        setIsCartInView(true);
+        return;
+      }
+      // Di desktop/tablet lama, saat kasir berada di bagian paling atas (katalog menu), floating cart tampil.
+      if (!isMobileLayout && scrollY < 60) {
         setIsCartInView(false);
         return;
       }
@@ -468,7 +475,7 @@ export const KasirOrderView = () => {
           {/* Customer & Order Type (Dine In / Takeaway) Form */}
           <div className="kasir-customer-inputs" style={styles.customerInputRow}>
             {/* Input Nama Pembeli */}
-            <div style={{ flex: 1.1, position: 'relative' }}>
+            <div className="kasir-customer-name-field" style={{ flex: 1.1, position: 'relative' }}>
               <input
                 type="text"
                 className="blue-input"
@@ -480,7 +487,7 @@ export const KasirOrderView = () => {
             </div>
 
             {/* Toggle Tipe Pesanan: Dine In vs Takeaway */}
-            <div style={styles.orderTypeToggleContainer}>
+            <div className="kasir-order-type-toggle" style={styles.orderTypeToggleContainer}>
               <button
                 type="button"
                 onClick={() => setTableNumber('Dine In')}
@@ -1155,7 +1162,7 @@ export const KasirOrderView = () => {
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 14px !important;
+            gap: 32px !important;
           }
           .kasir-order-page > div,
           .kasir-catalog-section,
@@ -1165,6 +1172,12 @@ export const KasirOrderView = () => {
             min-width: 0 !important;
             flex: 1 1 100% !important;
             position: static !important;
+          }
+          .kasir-cart-section {
+            order: 1 !important;
+          }
+          .kasir-catalog-section {
+            order: 2 !important;
           }
           .kasir-catalog-header {
             flex-direction: column !important;
@@ -1189,6 +1202,32 @@ export const KasirOrderView = () => {
             padding: 14px 16px !important;
             max-height: none !important;
           }
+          .kasir-customer-inputs {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .kasir-customer-name-field {
+            width: 100% !important;
+            flex: none !important;
+          }
+          .kasir-order-type-toggle {
+            width: 100% !important;
+            height: auto !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+            padding: 4px !important;
+            border-radius: 10px !important;
+          }
+          .kasir-order-type-toggle .order-type-btn {
+            width: 100% !important;
+            min-height: 40px !important;
+            height: 40px !important;
+            padding: 0 10px !important;
+            border-radius: 8px !important;
+            font-size: 0.75rem !important;
+          }
           .kasir-cart-items-scroll {
             max-height: none !important;
             min-height: 0 !important;
@@ -1210,7 +1249,7 @@ export const KasirOrderView = () => {
             margin: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 12px !important;
+            gap: 32px !important;
           }
           .kasir-section-title {
             font-size: 1.25rem !important;
@@ -1235,17 +1274,19 @@ export const KasirOrderView = () => {
             border-radius: 10px !important;
           }
           .kasir-customer-inputs {
-            gap: 6px !important;
+            gap: 10px !important;
           }
           .kasir-customer-inputs input {
-            height: 34px !important;
-            font-size: 0.75rem !important;
-            padding: 0 8px !important;
+            height: 42px !important;
+            font-size: 0.813rem !important;
+            padding: 0 10px !important;
           }
           .kasir-customer-inputs .order-type-btn {
-            padding: 0 7px !important;
-            font-size: 0.688rem !important;
-            gap: 3px !important;
+            height: 40px !important;
+            min-height: 40px !important;
+            padding: 0 8px !important;
+            font-size: 0.75rem !important;
+            gap: 5px !important;
           }
           .kasir-cart-items-scroll {
             max-height: none !important;

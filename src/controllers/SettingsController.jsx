@@ -52,7 +52,7 @@ export const SettingsProvider = ({ children }) => {
     try {
       const { data, error } = await settingsService.getSettings();
       if (!error && data) {
-        setSettings(data);
+        setSettings({ ...data, paperSize: '58mm' });
       }
     } catch (e) {
       console.error('Failed to fetch settings from Supabase:', e);
@@ -75,7 +75,7 @@ export const SettingsProvider = ({ children }) => {
 
   // Update Settings in Supabase
   const updateSettings = async (newValues) => {
-    const updated = { ...settings, ...newValues };
+    const updated = { ...settings, ...newValues, paperSize: '58mm' };
     setSettings(updated);
     setIsSaving(true);
     try {

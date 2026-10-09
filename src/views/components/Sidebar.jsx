@@ -27,7 +27,8 @@ import {
   User,
   KeyRound,
   RotateCcw,
-  ClipboardCheck
+  ClipboardCheck,
+  Building2
 } from 'lucide-react';
 
 export const Sidebar = () => {
@@ -461,6 +462,25 @@ export const Sidebar = () => {
                   </button>
                 )}
 
+                {hasFullAccess && (
+                  <button
+                    className={`sidebar-nav-btn ${activeMenu === 'branch-management' ? 'is-active' : ''}`}
+                    style={{
+                      ...styles.navButton,
+                      ...(activeMenu === 'branch-management' ? styles.navButtonActive : {})
+                    }}
+                    onClick={() => handleSelectMenu('branch-management')}
+                    title="Kelola Cabang Toko"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, overflow: 'hidden' }}>
+                      <Building2 size={18} color={activeMenu === 'branch-management' ? 'var(--blue-500)' : 'var(--neutral-500)'} style={{ flexShrink: 0 }} />
+                      <span style={{ fontWeight: activeMenu === 'branch-management' ? 700 : 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                        Kelola Cabang
+                      </span>
+                    </div>
+                  </button>
+                )}
+
                 {/* Menu Kelola Akun & Hak Akses (Super Admin & Kepala Toko) */}
                 {hasFullAccess && (
                   <button
@@ -623,8 +643,10 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '20px 20px 16px',
-    borderBottom: '1px solid var(--border-subtle)'
+    height: 'var(--header-height)',
+    padding: '0 16px',
+    borderBottom: '1px solid var(--border-color)',
+    boxSizing: 'border-box'
   },
   logoBadge: {
     width: '38px',
@@ -642,14 +664,21 @@ const styles = {
     fontWeight: 800,
     color: 'var(--neutral-900)',
     letterSpacing: '-0.02em',
-    lineHeight: 1.2
+    lineHeight: 1.2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   brandSubtitle: {
     fontSize: '0.688rem',
     color: 'var(--neutral-500)',
     fontWeight: 600,
     textTransform: 'uppercase',
-    letterSpacing: '0.04em'
+    letterSpacing: '0.04em',
+    lineHeight: 1.2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   closeBtn: {
     width: '36px',

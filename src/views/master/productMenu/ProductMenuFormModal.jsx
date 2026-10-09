@@ -32,6 +32,7 @@ export const ProductMenuFormModal = () => {
   const [price, setPrice] = useState('');
   const [promoType, setPromoType] = useState('none');
   const [promoAmount, setPromoAmount] = useState('');
+  const [isActive, setIsActive] = useState(true);
   
   // Draft states for new additions
   const [draftIngredientId, setDraftIngredientId] = useState('');
@@ -52,6 +53,7 @@ export const ProductMenuFormModal = () => {
         setPrice(item.price || '');
         setPromoType(item.promoType || 'none');
         setPromoAmount(item.promoAmount || '');
+        setIsActive(item.isActive !== false);
         setIngredients(item.ingredients && item.ingredients.length > 0 ? item.ingredients.map(ing => ({ ...ing })) : []);
         setToppings(item.toppings && item.toppings.length > 0 ? item.toppings.map(t => {
           const master = availableToppings.find(mt => mt.id === (t.toppingId || t.id));
@@ -71,6 +73,7 @@ export const ProductMenuFormModal = () => {
         setPrice('');
         setPromoType('none');
         setPromoAmount('');
+        setIsActive(true);
         setIngredients([]);
         setToppings([]);
       }
@@ -253,7 +256,8 @@ export const ProductMenuFormModal = () => {
       toppings,
       price: Number(price),
       promoType,
-      promoAmount: Number(promoAmount) || 0
+      promoAmount: Number(promoAmount) || 0,
+      isActive
     };
 
     let result;
@@ -276,6 +280,7 @@ export const ProductMenuFormModal = () => {
       setPrice('');
       setPromoType('none');
       setPromoAmount('');
+      setIsActive(true);
       setIngredients([]);
       setToppings([]);
       setDraftIngredientId('');
@@ -296,6 +301,7 @@ export const ProductMenuFormModal = () => {
     setPrice('');
     setPromoType('none');
     setPromoAmount('');
+    setIsActive(true);
     setIngredients([]);
     setToppings([]);
     setDraftIngredientId('');
@@ -362,6 +368,32 @@ export const ProductMenuFormModal = () => {
           />
           {errors.categoryId && <span style={styles.errorText}>{errors.categoryId}</span>}
         </div>
+
+        {isEdit && (
+          <label style={styles.statusToggle}>
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(event) => setIsActive(event.target.checked)}
+              style={styles.statusInput}
+            />
+            <span style={{
+              ...styles.statusSwitch,
+              backgroundColor: isActive ? 'var(--blue-600)' : 'var(--neutral-300)'
+            }}>
+              <span style={{
+                ...styles.statusSwitchKnob,
+                transform: isActive ? 'translateX(20px)' : 'translateX(0)'
+              }} />
+            </span>
+            <span style={styles.statusCopy}>
+              <strong>{isActive ? 'Aktif di Kasir' : 'Nonaktif'}</strong>
+              <span style={styles.statusHelp}>
+                {isActive ? 'Menu tampil dan bisa dipilih saat transaksi.' : 'Menu disembunyikan dari kasir, tapi data tetap aman untuk laporan.'}
+              </span>
+            </span>
+          </label>
+        )}
 
         {/* FOTO MENU */}
         <div style={{ ...styles.section, position: 'relative', zIndex: 35 }}>
@@ -768,6 +800,12 @@ const styles = {
   errorText: { fontSize: '0.75rem', color: 'var(--red-500)', marginTop: '4px' },
   errorAlert: { padding: '10px 14px', backgroundColor: 'var(--red-50)', color: 'var(--red-600)', borderRadius: '6px', fontSize: '0.813rem', fontWeight: 500 },
   inlineError: { padding: '8px 12px', backgroundColor: 'var(--red-50)', color: 'var(--red-600)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', margin: '0 16px 16px 16px', borderRadius: '4px' },
+  statusToggle: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--neutral-50)', fontSize: '0.813rem', color: 'var(--neutral-700)', cursor: 'pointer' },
+  statusInput: { position: 'absolute', opacity: 0, pointerEvents: 'none' },
+  statusSwitch: { width: '46px', height: '26px', borderRadius: '999px', padding: '2px', boxSizing: 'border-box', transition: 'background-color 0.18s ease', flexShrink: 0 },
+  statusSwitchKnob: { display: 'block', width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(15, 23, 42, 0.25)', transition: 'transform 0.18s ease' },
+  statusCopy: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+  statusHelp: { color: 'var(--neutral-500)', fontWeight: 500 },
   
   // Category Pills
   categoryPills: { display: 'flex', gap: '10px', flexWrap: 'wrap' },

@@ -140,7 +140,7 @@ export const AdminOpnameDetailView = ({ report, onBack }) => {
     try {
       exportSingleOpnameReportToPDF({
         report: activeReport,
-        storeName: 'XCrepes',
+        storeName: currentUser?.activeBranchName || activeReport?.branchName || 'XCrepes POS',
         isCashier: false
       });
       toast.success('Laporan Stock Opname berhasil diunduh (PDF)!');

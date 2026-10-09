@@ -165,7 +165,8 @@ export const ProductMenuProvider = ({ children }) => {
         promoType: data.promoType || null,
         promoAmount: Number(data.promoAmount) || 0,
         ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-        toppings: Array.isArray(data.toppings) ? data.toppings : []
+        toppings: Array.isArray(data.toppings) ? data.toppings : [],
+        isActive: data.isActive !== false
       });
 
       if (err) {
@@ -209,7 +210,8 @@ export const ProductMenuProvider = ({ children }) => {
         promoType: data.promoType || null,
         promoAmount: Number(data.promoAmount) || 0,
         ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-        toppings: Array.isArray(data.toppings) ? data.toppings : []
+        toppings: Array.isArray(data.toppings) ? data.toppings : [],
+        isActive: data.isActive !== false
       });
 
       if (err) {
@@ -228,18 +230,18 @@ export const ProductMenuProvider = ({ children }) => {
     }
   };
 
-  // C. Delete Menu
+  // C. Nonaktifkan Menu (soft delete)
   const deleteProductMenu = async (id) => {
     const target = productMenus.find(m => m.id === id);
     setIsSubmitting(true);
     try {
-      const { error: err } = await productMenusService.deleteProductMenu(id);
+      const { data: updatedMenu, error: err } = await productMenusService.deleteProductMenu(id);
       if (err) {
-        showToast(`Gagal menghapus menu: ${err.message}`, 'error', 'Error Database');
+        showToast(`Gagal menonaktifkan menu: ${err.message}`, 'error', 'Error Database');
         return { success: false, error: err.message };
       }
-      setProductMenus(prev => prev.filter(m => m.id !== id));
-      showToast(`Menu "${target ? target.name : id}" telah dihapus dari cloud.`, 'info', 'Data Dihapus');
+      setProductMenus(prev => prev.map(m => m.id === id ? updatedMenu : m));
+      showToast(`Menu "${target ? target.name : id}" dinonaktifkan dan tidak tampil di kasir.`, 'info', 'Menu Dinonaktifkan');
       return { success: true };
     } catch (err) {
       showToast(err.message, 'error', 'Error');
@@ -300,6 +302,7 @@ export const ProductMenuProvider = ({ children }) => {
         updateProductMenu,
         updateMenu: updateProductMenu,
         deleteProductMenu,
+        deleteMenu: deleteProductMenu,
         formModalState,
         openAddModal,
         openEditModal,

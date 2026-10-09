@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS raw_materials (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS store_branch_stocks (
+    branch_id TEXT NOT NULL,
+    raw_material_id TEXT NOT NULL,
+    stock NUMERIC NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (branch_id, raw_material_id)
+);
+
 -- 5. MASTER TOPPING (toppings)
 CREATE TABLE IF NOT EXISTS toppings (
     id TEXT PRIMARY KEY,
@@ -60,6 +68,7 @@ CREATE TABLE IF NOT EXISTS product_menus (
     promo_amount NUMERIC DEFAULT 0,
     ingredients JSONB DEFAULT '[]'::JSONB,
     toppings JSONB DEFAULT '[]'::JSONB,
+    is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -67,6 +76,7 @@ CREATE TABLE IF NOT EXISTS product_menus (
 -- 7. AUDIT LOG MUTASI STOK INVENTORI (inventory_stock_logs)
 CREATE TABLE IF NOT EXISTS inventory_stock_logs (
     id TEXT PRIMARY KEY,
+    branch_id TEXT NOT NULL DEFAULT 'BR-DEFAULT',
     raw_material_id TEXT,
     raw_material_name TEXT,
     unit_name TEXT,
@@ -91,6 +101,7 @@ CREATE TABLE IF NOT EXISTS inventory_stock_logs (
 CREATE TABLE IF NOT EXISTS orders (
     id TEXT PRIMARY KEY,
     invoice_number TEXT NOT NULL,
+    branch_id TEXT NOT NULL DEFAULT 'BR-DEFAULT',
     date TIMESTAMPTZ DEFAULT NOW(),
     status TEXT NOT NULL DEFAULT 'completed', -- 'completed' | 'returned'
     cashier_name TEXT,
@@ -149,6 +160,17 @@ CREATE TABLE IF NOT EXISTS store_settings (
 );
 
 -- 10. AKUN KASIR (cashier_accounts)
+CREATE TABLE IF NOT EXISTS store_branches (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT,
+    address TEXT,
+    phone TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS cashier_accounts (
     id TEXT PRIMARY KEY,
     nama TEXT NOT NULL,
@@ -156,6 +178,7 @@ CREATE TABLE IF NOT EXISTS cashier_accounts (
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'kasir',
     permissions JSONB NOT NULL DEFAULT '[]'::JSONB,
+    branch_ids JSONB NOT NULL DEFAULT '[]'::JSONB,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -178,8 +201,13 @@ CREATE INDEX IF NOT EXISTS idx_raw_materials_name ON raw_materials(name);
 CREATE INDEX IF NOT EXISTS idx_product_menus_name ON product_menus(name);
 CREATE INDEX IF NOT EXISTS idx_product_menus_cat ON product_menus(category_id);
 CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(date DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_branch_date ON orders(branch_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_branch_status_date ON orders(branch_id, status, date DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_branch_payment_date ON orders(branch_id, payment_method, date DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_invoice ON orders(invoice_number);
 CREATE INDEX IF NOT EXISTS idx_stock_logs_date ON inventory_stock_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stock_logs_branch_date ON inventory_stock_logs(branch_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stock_logs_branch_type_date ON inventory_stock_logs(branch_id, type, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_stock_logs_mat ON inventory_stock_logs(raw_material_id);
 
 -- ==============================================================================
@@ -189,11 +217,13 @@ CREATE INDEX IF NOT EXISTS idx_stock_logs_mat ON inventory_stock_logs(raw_materi
 ALTER TABLE units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE raw_materials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_branch_stocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE toppings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_menus ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_stock_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE store_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE store_branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cashier_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE superadmin_profile ENABLE ROW LEVEL SECURITY;
 
@@ -206,6 +236,9 @@ CREATE POLICY "Enable all access for categories" ON categories FOR ALL USING (tr
 
 DROP POLICY IF EXISTS "Enable all access for raw_materials" ON raw_materials;
 CREATE POLICY "Enable all access for raw_materials" ON raw_materials FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all access for store_branch_stocks" ON store_branch_stocks;
+CREATE POLICY "Enable all access for store_branch_stocks" ON store_branch_stocks FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Enable all access for toppings" ON toppings;
 CREATE POLICY "Enable all access for toppings" ON toppings FOR ALL USING (true) WITH CHECK (true);
@@ -221,6 +254,9 @@ CREATE POLICY "Enable all access for orders" ON orders FOR ALL USING (true) WITH
 
 DROP POLICY IF EXISTS "Enable all access for store_settings" ON store_settings;
 CREATE POLICY "Enable all access for store_settings" ON store_settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable all access for store_branches" ON store_branches;
+CREATE POLICY "Enable all access for store_branches" ON store_branches FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Enable all access for cashier_accounts" ON cashier_accounts;
 CREATE POLICY "Enable all access for cashier_accounts" ON cashier_accounts FOR ALL USING (true) WITH CHECK (true);
@@ -240,11 +276,13 @@ BEGIN
         units, 
         categories, 
         raw_materials, 
+        store_branch_stocks,
         toppings, 
         product_menus, 
         inventory_stock_logs, 
         orders, 
         store_settings, 
+        store_branches,
         cashier_accounts, 
         superadmin_profile;
     EXCEPTION WHEN duplicate_object THEN
@@ -273,6 +311,15 @@ INSERT INTO store_settings (
 )
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO store_branches (id, name, code, address, phone, is_active, created_at, updated_at)
+VALUES ('BR-DEFAULT', 'XCrepes Pusat', 'PUSAT', '', '', true, NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO store_branch_stocks (branch_id, raw_material_id, stock, updated_at)
+SELECT 'BR-DEFAULT', id, stock, NOW()
+FROM raw_materials
+ON CONFLICT (branch_id, raw_material_id) DO NOTHING;
+
 -- ==============================================================================
 -- MIGRATION SCRIPT UNTUK DATABASE SUPABASE YANG SUDAH BERJALAN
 -- ==============================================================================
@@ -282,6 +329,13 @@ ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS show_toppings BOOLEAN DEFAUL
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS enable_tax BOOLEAN DEFAULT false;
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 10;
 ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tax_name TEXT DEFAULT 'Pajak';
+ALTER TABLE product_menus ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE cashier_accounts ADD COLUMN IF NOT EXISTS branch_ids JSONB NOT NULL DEFAULT '[]'::JSONB;
+ALTER TABLE inventory_stock_logs ADD COLUMN IF NOT EXISTS branch_id TEXT NOT NULL DEFAULT 'BR-DEFAULT';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS branch_id TEXT NOT NULL DEFAULT 'BR-DEFAULT';
+
+UPDATE inventory_stock_logs SET branch_id = 'BR-DEFAULT' WHERE branch_id IS NULL;
+UPDATE orders SET branch_id = 'BR-DEFAULT' WHERE branch_id IS NULL;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS enable_tax BOOLEAN DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_rate NUMERIC DEFAULT 0;

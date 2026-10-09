@@ -5,14 +5,17 @@ import {
   Sparkles, 
   Lock, 
   User, 
+  Store,
+  MapPin,
   Eye, 
   EyeOff, 
   ArrowRight, 
+  ArrowLeft,
   AlertCircle 
 } from 'lucide-react';
 
 export const LoginView = () => {
-  const { login } = useAuth();
+  const { login, pendingLoginUser, pendingAccessibleBranches, selectBranchForPendingLogin, cancelBranchSelection } = useAuth();
   const { settings } = useSettings();
 
   const [username, setUsername] = useState('');
@@ -35,8 +38,10 @@ export const LoginView = () => {
         setErrorMessage(result.error || 'Login gagal. Periksa username dan kata sandi.');
         setIsLoading(false);
       } else {
-        setUsername('');
-        setPassword('');
+        if (!result.requiresBranchSelection) {
+          setUsername('');
+          setPassword('');
+        }
         setIsLoading(false);
       }
     }, 350); // micro-delay for smooth transition
@@ -72,11 +77,70 @@ export const LoginView = () => {
             </div>
           )}
 
-          {/* Login Form */}
+          {pendingLoginUser ? (
+            <div className="branch-select-panel">
+              <div className="branch-select-heading">
+                <span className="branch-select-eyebrow">Pilih Cabang</span>
+                <p className="branch-select-copy">
+                  Masuk sebagai <strong>{pendingLoginUser.nama}</strong>. Pilih cabang operasional untuk sesi kerja ini.
+                </p>
+              </div>
+
+              <div className="branch-list">
+                {(pendingAccessibleBranches || []).map((branch) => (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    className="branch-card-btn"
+                    onClick={() => {
+                      const result = selectBranchForPendingLogin(branch.id);
+                      if (!result.success) {
+                        setErrorMessage(result.error || 'Cabang tidak dapat dipilih.');
+                      } else {
+                        setUsername('');
+                        setPassword('');
+                      }
+                    }}
+                  >
+                    <span className="branch-card-icon">
+                      <Store size={18} />
+                    </span>
+                    <span className="branch-card-body">
+                      <span className="branch-card-name">{branch.name}</span>
+                      <span className="branch-card-meta">
+                        {branch.code || branch.id}
+                        {branch.address ? (
+                          <>
+                            <span className="branch-dot">•</span>
+                            <MapPin size={12} />
+                            {branch.address}
+                          </>
+                        ) : null}
+                      </span>
+                    </span>
+                    <ArrowRight size={17} />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="branch-back-btn"
+                onClick={() => {
+                  cancelBranchSelection();
+                  setErrorMessage('');
+                  setPassword('');
+                }}
+              >
+                <ArrowLeft size={15} />
+                <span>Ganti akun login</span>
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="login-form">
             {/* Input Username */}
             <div className="login-field-group">
-              <label className="login-label">Username Pengguna</label>
+              <label className="login-label">Username</label>
               <div className="login-input-wrapper">
                 <span className="login-input-icon">
                   <User size={18} color="var(--neutral-400)" />
@@ -144,6 +208,7 @@ export const LoginView = () => {
               )}
             </button>
           </form>
+          )}
         </div>
 
         {/* Footer info */}
@@ -281,6 +346,122 @@ export const LoginView = () => {
           display: flex;
           flex-direction: column;
           gap: 18px;
+        }
+
+        .branch-select-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .branch-select-heading {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .branch-select-eyebrow {
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: var(--blue-600);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .branch-select-copy {
+          margin: 0;
+          font-size: 0.813rem;
+          color: var(--neutral-600);
+          line-height: 1.45;
+        }
+
+        .branch-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 280px;
+          overflow: auto;
+        }
+
+        .branch-card-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--border-color);
+          background: #ffffff;
+          color: var(--neutral-800);
+          cursor: pointer;
+          text-align: left;
+          transition: all var(--transition-fast);
+        }
+
+        .branch-card-btn:hover {
+          border-color: var(--blue-400);
+          background: var(--blue-50);
+          transform: translateY(-1px);
+        }
+
+        .branch-card-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
+          background: var(--blue-100);
+          color: var(--blue-600);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .branch-card-body {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .branch-card-name {
+          font-size: 0.875rem;
+          font-weight: 800;
+          color: var(--neutral-900);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .branch-card-meta {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+          font-size: 0.719rem;
+          color: var(--neutral-500);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .branch-dot {
+          color: var(--neutral-300);
+        }
+
+        .branch-back-btn {
+          height: 38px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border: 1px solid var(--border-color);
+          background: var(--neutral-50);
+          color: var(--neutral-700);
+          border-radius: var(--radius-md);
+          font-size: 0.813rem;
+          font-weight: 700;
+          cursor: pointer;
         }
 
         .login-field-group {

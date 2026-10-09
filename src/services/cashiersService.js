@@ -23,6 +23,7 @@ export const cashiersService = {
         password: row.password,
         role: row.role || 'kasir',
         permissions: Array.isArray(row.permissions) ? row.permissions : [],
+        branchIds: Array.isArray(row.branch_ids) ? row.branch_ids : [],
         isActive: row.is_active !== false,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -40,6 +41,7 @@ export const cashiersService = {
       password: cashier.password,
       role: cashier.role || 'kasir',
       permissions: Array.isArray(cashier.permissions) ? cashier.permissions : [],
+      branch_ids: Array.isArray(cashier.branchIds) ? cashier.branchIds : [],
       is_active: cashier.isActive !== false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -64,6 +66,7 @@ export const cashiersService = {
         password: data.password,
         role: data.role,
         permissions: data.permissions || [],
+        branchIds: data.branch_ids || [],
         isActive: data.is_active,
         createdAt: data.created_at,
         updatedAt: data.updated_at
@@ -82,6 +85,7 @@ export const cashiersService = {
     if (cashier.password !== undefined) payload.password = cashier.password;
     if (cashier.role !== undefined) payload.role = cashier.role;
     if (cashier.permissions !== undefined) payload.permissions = cashier.permissions;
+    if (cashier.branchIds !== undefined) payload.branch_ids = cashier.branchIds;
     if (cashier.isActive !== undefined) payload.is_active = cashier.isActive;
 
     const { data, error } = await supabase
@@ -104,6 +108,7 @@ export const cashiersService = {
         password: data.password,
         role: data.role,
         permissions: data.permissions || [],
+        branchIds: data.branch_ids || [],
         isActive: data.is_active,
         createdAt: data.created_at,
         updatedAt: data.updated_at

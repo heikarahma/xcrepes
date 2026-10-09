@@ -66,6 +66,7 @@ import { useRawMaterial } from './controllers/RawMaterialController';
 
 // Views [V] - Konfigurasi & Pengaturan
 import { SettingsView } from './views/settings/SettingsView';
+import { BranchManagementSection } from './views/settings/BranchManagementSection';
 
 // Views [V] - Laporan & Analitik
 import { ReportsView } from './views/reports/ReportsView';
@@ -125,6 +126,8 @@ function MainLayout() {
         return <ReturnsManagementView />;
       case 'settings':
         return <SettingsView />;
+      case 'branch-management':
+        return (currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko') ? <BranchManagementSection /> : <KasirOrderView />;
       case 'reports':
       case 'reports-sales':
       case 'reports-sales-summary':

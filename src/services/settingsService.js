@@ -117,7 +117,7 @@ export const settingsService = {
         receiptPhone: data.receipt_phone || '',
         receiptFooter1: data.receipt_footer1 || DEFAULT_SETTINGS.receiptFooter1,
         receiptFooter2: data.receipt_footer2 || '',
-        paperSize: data.paper_size || '58mm',
+        paperSize: '58mm',
         showLogoOnReceipt: Boolean(data.show_logo_on_receipt),
         showCashierName: data.show_cashier_name !== false,
         showCustomerName: data.show_customer_name !== false,
@@ -158,7 +158,7 @@ export const settingsService = {
       receipt_phone: settings.receiptPhone || '',
       receipt_footer1: settings.receiptFooter1 || '',
       receipt_footer2: settings.receiptFooter2 || '',
-      paper_size: settings.paperSize || '58mm',
+      paper_size: '58mm',
       show_logo_on_receipt: Boolean(settings.showLogoOnReceipt),
       show_cashier_name: settings.showCashierName !== false,
       show_customer_name: settings.showCustomerName !== false,
@@ -202,7 +202,8 @@ export const settingsService = {
     return { 
       data: {
         ...settings,
-        ...data
+        ...data,
+        paperSize: '58mm'
       }, 
       error: null 
     };

@@ -45,7 +45,8 @@ export const AdminOpnameDetail = ({ report, onBack, isCashierView = false }) => 
     isSubmitting 
   } = useStockOpname();
 
-  const { currentUser, storeName = 'XCrepes POS' } = useAuth();
+  const { currentUser } = useAuth();
+  const storeName = currentUser?.activeBranchName || report?.branchName || 'XCrepes POS';
   const isSuperAdmin = (currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko') && !isCashierView;
 
   // Active Tab: 'TABLE' | 'AUDIT_TRAIL' | 'VERSIONS'

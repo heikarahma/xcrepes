@@ -24,7 +24,8 @@ import {
   KeyRound,
   LogOut,
   RotateCcw,
-  ClipboardCheck
+  ClipboardCheck,
+  Building2
 } from 'lucide-react';
 
 export const Navbar = () => {
@@ -90,6 +91,8 @@ export const Navbar = () => {
         return { group: 'Laporan & Analitik', title: 'Laporan Pengurangan Bahan Baku', icon: Package };
       case 'settings':
         return { group: 'Pengaturan & Sistem', title: 'Konfigurasi Toko & Struk', icon: Sliders };
+      case 'branch-management':
+        return { group: 'Pengaturan & Sistem', title: 'Kelola Cabang Toko', icon: Building2 };
       case 'cashier-management':
         return { group: 'Pengaturan & Sistem', title: 'Kelola Akun Kasir & Hak Akses', icon: Users };
       case 'unit':
@@ -239,6 +242,9 @@ export const Navbar = () => {
                     <div style={{ fontSize: '11px', color: 'var(--neutral-500)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                       @{currentUser?.username || 'user'}
                     </div>
+                    <div style={{ fontSize: '11px', color: 'var(--neutral-500)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', marginTop: '2px' }}>
+                      Cabang: {currentUser?.activeBranchName || 'Belum dipilih'}
+                    </div>
                   </div>
                 </div>
 
@@ -302,6 +308,11 @@ export const Navbar = () => {
         .navbar-user-chip-clickable.role-cashier:hover {
           background-color: #dcfce7 !important;
           border-color: var(--green-300) !important;
+        }
+
+        .navbar-user-chip-clickable.role-storeadmin:hover {
+          background-color: #f5f3ff !important;
+          border-color: #c4b5fd !important;
         }
 
         .navbar-dropdown-item {
