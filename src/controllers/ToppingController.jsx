@@ -3,6 +3,8 @@ import { toppingsService } from '../services/toppingsService';
 import { subscribeToTable } from '../lib/supabase';
 import { useUnit } from './UnitController';
 import { useRawMaterial } from './RawMaterialController';
+import { useAuth } from './AuthController';
+import { stripBranchFromId } from '../models/BranchModel';
 
 const ToppingContext = createContext();
 
@@ -19,6 +21,8 @@ export const useToppingController = useTopping;
 export const ToppingProvider = ({ children }) => {
   const { showToast } = useUnit();
   const { rawMaterials } = useRawMaterial();
+  const { currentUser } = useAuth();
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
 
   // 1. Cloud Database State via Supabase
   const [toppings, setToppings] = useState([]);
@@ -55,7 +59,7 @@ export const ToppingProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await toppingsService.getToppings();
+      const { data, error: fetchErr } = await toppingsService.getToppings(activeBranchId);
       if (fetchErr) {
         setError(fetchErr.message || 'Gagal memuat topping dari server.');
       } else {
@@ -67,7 +71,7 @@ export const ToppingProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   // Initial fetch and Realtime sync
   useEffect(() => {
@@ -151,7 +155,7 @@ export const ToppingProvider = ({ children }) => {
     }
 
     const nextNumber = toppings.length > 0
-      ? Math.max(...toppings.map(t => parseInt(t.id.replace('TOP-', '')) || 0)) + 1
+      ? Math.max(...toppings.map(t => parseInt(stripBranchFromId(t.id).replace('TOP-', '')) || 0)) + 1
       : 1;
     const formattedId = `TOP-${String(nextNumber).padStart(3, '0')}`;
 
@@ -163,7 +167,8 @@ export const ToppingProvider = ({ children }) => {
         price: Math.max(0, Number(data.price) || 0),
         description: data.description || '',
         ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-        showOnReceipt: data.showOnReceipt !== false
+        showOnReceipt: data.showOnReceipt !== false,
+        branchId: activeBranchId
       });
 
       if (err) {
@@ -306,14 +311,35 @@ export const ToppingProvider = ({ children }) => {
     setDeleteModalState({ isOpen: false, item: null, isBatch: false });
   };
 
+  const copyToppingsFromBranch = async (sourceBranchId = 'BR-DEFAULT') => {
+    setIsSubmitting(true);
+    try {
+      const { count, error: err } = await toppingsService.copyFromBranch(sourceBranchId, activeBranchId);
+      if (err) {
+        showToast(err.message || 'Gagal menyalin topping', 'error');
+        return { success: false, error: err.message };
+      }
+      showToast(`Berhasil menyalin ${count} topping ke cabang ini!`, 'success');
+      await fetchToppings();
+      return { success: true, count };
+    } catch (err) {
+      showToast(err.message, 'error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <ToppingContext.Provider
       value={{
         toppings,
+        activeBranchId,
         isLoading,
         error,
         isSubmitting,
         refetch: fetchToppings,
+        copyToppingsFromBranch,
         searchTerm,
         setSearchTerm,
         sortBy,

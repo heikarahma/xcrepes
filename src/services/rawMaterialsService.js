@@ -1,17 +1,19 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { DEFAULT_BRANCH_ID, isRowForBranch, formatBranchRowId, stripBranchFromId } from '../models/BranchModel';
 
 const TABLE = 'raw_materials';
 const STOCK_TABLE = 'store_branch_stocks';
 
-const DEFAULT_BRANCH_ID = 'BR-DEFAULT';
-
-const mapMaterialRow = (row, stockOverride = null) => {
+const mapMaterialRow = (row, stockOverride = null, branchId = DEFAULT_BRANCH_ID) => {
   const stockValue = stockOverride !== null && stockOverride !== undefined
     ? Number(stockOverride)
     : Number(row.stock);
 
   return {
     id: row.id,
+    rawId: row.id,
+    displayId: stripBranchFromId(row.id),
+    branchId: branchId,
     name: row.name,
     unitName: row.unit_name,
     stock: stockValue || 0,
@@ -37,6 +39,8 @@ export const rawMaterialsService = {
       return { data: [], error };
     }
 
+    const filteredMaterials = (materials || []).filter(row => isRowForBranch(row.id, branchId));
+
     let stockMap = new Map();
     if (branchId) {
       const { data: stockRows, error: stockErr } = await supabase
@@ -52,15 +56,22 @@ export const rawMaterialsService = {
     }
 
     return {
-      data: (materials || []).map(row => mapMaterialRow(row, stockMap.has(row.id) ? stockMap.get(row.id) : (branchId === DEFAULT_BRANCH_ID ? row.stock : 0))),
+      data: filteredMaterials.map(row => {
+        const stockVal = stockMap.has(row.id)
+          ? stockMap.get(row.id)
+          : Number(row.stock || 0);
+        return mapMaterialRow(row, stockVal, branchId);
+      }),
       error: null
     };
   },
 
   async createRawMaterial({ id, name, unitName, stock = 0, pricePerUnit = 0, minStock = 10, note = '', branchId = DEFAULT_BRANCH_ID }) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
+    const finalId = formatBranchRowId(id, branchId);
+
     const payload = {
-      id,
+      id: finalId,
       name,
       unit_name: unitName,
       stock: Number(stock) || 0,
@@ -83,13 +94,50 @@ export const rawMaterialsService = {
     }
 
     if (branchId) {
-      await this.updateStock(id, Number(stock) || 0, branchId);
+      await this.updateStock(finalId, Number(stock) || 0, branchId);
     }
 
     return {
-      data: mapMaterialRow(data, stock),
+      data: mapMaterialRow(data, stock, branchId),
       error: null
     };
+  },
+
+  async copyFromBranch(sourceBranchId = DEFAULT_BRANCH_ID, targetBranchId) {
+    if (!isSupabaseConfigured()) return { count: 0, error: new Error('Supabase not configured') };
+    if (!targetBranchId || targetBranchId === sourceBranchId) return { count: 0, error: null };
+
+    const { data: sourceMaterials, error: fetchErr } = await this.getRawMaterials(sourceBranchId);
+    if (fetchErr || !sourceMaterials || sourceMaterials.length === 0) {
+      return { count: 0, error: fetchErr };
+    }
+
+    const payloads = sourceMaterials.map(m => {
+      const cleanId = stripBranchFromId(m.id);
+      return {
+        id: formatBranchRowId(cleanId, targetBranchId),
+        name: m.name,
+        unit_name: m.unitName,
+        stock: 0, // Salin master bahan dengan saldo awal 0 untuk opname/restok baru
+        price_per_unit: m.pricePerUnit,
+        min_stock: m.minStock,
+        note: m.note,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .upsert(payloads)
+      .select();
+
+    if (error) {
+      console.error('rawMaterialsService.copyFromBranch error:', error);
+      return { count: 0, error };
+    }
+
+    return { count: data?.length || payloads.length, error: null };
   },
 
   async updateRawMaterial(id, { name, unitName, stock, pricePerUnit, minStock, note, branchId = DEFAULT_BRANCH_ID }) {

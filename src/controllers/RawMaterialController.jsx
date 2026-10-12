@@ -6,6 +6,7 @@ import { getLocalDateStr, formatDateIndonesian } from '../utils/dateUtils';
 import { subscribeToTable } from '../lib/supabase';
 import { useUnit } from './UnitController';
 import { useAuth } from './AuthController';
+import { stripBranchFromId } from '../models/BranchModel';
 
 const RawMaterialContext = createContext();
 
@@ -307,7 +308,7 @@ export const RawMaterialProvider = ({ children }) => {
     }
 
     const nextNumber = rawMaterials.length > 0
-      ? Math.max(...rawMaterials.map(r => parseInt(r.id.replace('RAW-', '')) || 0)) + 1
+      ? Math.max(...rawMaterials.map(r => parseInt(stripBranchFromId(r.id).replace('RAW-', '')) || 0)) + 1
       : 1;
     const formattedId = `RAW-${String(nextNumber).padStart(3, '0')}`;
     const parsedStock = Math.max(0, Number(stock) || 0);
@@ -2007,15 +2008,36 @@ export const RawMaterialProvider = ({ children }) => {
     setPhotoPreviewModalState({ isOpen: false, photoUrl: '', title: '', meta: {} });
   };
 
+  const copyMaterialsFromBranch = async (sourceBranchId = 'BR-DEFAULT') => {
+    setIsSubmitting(true);
+    try {
+      const { count, error: err } = await rawMaterialsService.copyFromBranch(sourceBranchId, activeBranchId);
+      if (err) {
+        showToast(err.message || 'Gagal menyalin bahan baku', 'error');
+        return { success: false, error: err.message };
+      }
+      showToast(`Berhasil menyalin ${count} bahan baku ke cabang ini!`, 'success');
+      await fetchData();
+      return { success: true, count };
+    } catch (err) {
+      showToast(err.message, 'error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <RawMaterialContext.Provider
       value={{
         rawMaterials,
+        activeBranchId,
         stockLogs,
         isLoading,
         error,
         isSubmitting,
         refetch: fetchData,
+        copyMaterialsFromBranch,
         availableUnits,
         activeTab,
         setActiveTab,

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { DEFAULT_BRANCH_ID, isRowForBranch, formatBranchRowId, stripBranchFromId } from '../models/BranchModel';
 
 const TABLE = 'toppings';
 
@@ -23,7 +24,7 @@ const saveLocalToppingReceiptSetting = (toppingId, showOnReceipt) => {
 };
 
 export const toppingsService = {
-  async getToppings() {
+  async getToppings(branchId = DEFAULT_BRANCH_ID) {
     const localReceiptMap = getLocalToppingReceiptSettings();
     if (!isSupabaseConfigured()) return { data: [], error: null };
     const { data, error } = await supabase
@@ -36,9 +37,14 @@ export const toppingsService = {
       return { data: [], error };
     }
 
+    const filtered = (data || []).filter(row => isRowForBranch(row.id, branchId));
+
     return {
-      data: (data || []).map(row => ({
+      data: filtered.map(row => ({
         id: row.id,
+        rawId: row.id,
+        displayId: stripBranchFromId(row.id),
+        branchId: branchId,
         name: row.name,
         price: Number(row.price) || 0,
         description: row.description || '',
@@ -53,13 +59,14 @@ export const toppingsService = {
     };
   },
 
-  async createTopping({ id, name, price = 0, description = '', ingredients = [], showOnReceipt = true }) {
+  async createTopping({ id, name, price = 0, description = '', ingredients = [], showOnReceipt = true, branchId = DEFAULT_BRANCH_ID }) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
-    saveLocalToppingReceiptSetting(id, showOnReceipt);
+    const finalId = formatBranchRowId(id, branchId);
+    saveLocalToppingReceiptSetting(finalId, showOnReceipt);
 
     const basePayload = {
-      id,
+      id: finalId,
       name,
       price: Number(price) || 0,
       description,
@@ -97,6 +104,9 @@ export const toppingsService = {
     return {
       data: {
         id: data.id,
+        rawId: data.id,
+        displayId: stripBranchFromId(data.id),
+        branchId,
         name: data.name,
         price: Number(data.price) || 0,
         description: data.description || '',
@@ -107,6 +117,41 @@ export const toppingsService = {
       },
       error: null
     };
+  },
+
+  async copyFromBranch(sourceBranchId = DEFAULT_BRANCH_ID, targetBranchId) {
+    if (!isSupabaseConfigured()) return { count: 0, error: new Error('Supabase not configured') };
+    if (!targetBranchId || targetBranchId === sourceBranchId) return { count: 0, error: null };
+
+    const { data: sourceToppings, error: fetchErr } = await this.getToppings(sourceBranchId);
+    if (fetchErr || !sourceToppings || sourceToppings.length === 0) {
+      return { count: 0, error: fetchErr };
+    }
+
+    const payloads = sourceToppings.map(t => {
+      const cleanId = stripBranchFromId(t.id);
+      return {
+        id: formatBranchRowId(cleanId, targetBranchId),
+        name: t.name,
+        price: t.price,
+        description: t.description,
+        ingredients: t.ingredients,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .upsert(payloads)
+      .select();
+
+    if (error) {
+      console.error('toppingsService.copyFromBranch error:', error);
+      return { count: 0, error };
+    }
+
+    return { count: data?.length || payloads.length, error: null };
   },
 
   async updateTopping(id, { name, price, description, ingredients, showOnReceipt }) {

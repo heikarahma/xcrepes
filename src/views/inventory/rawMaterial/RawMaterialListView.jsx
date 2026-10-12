@@ -56,7 +56,9 @@ export const RawMaterialListView = () => {
     openDeleteModal,
     openBatchDeleteModal,
     openAdjustModal,
-    openWasteModal
+    openWasteModal,
+    activeBranchId,
+    copyMaterialsFromBranch
   } = useRawMaterial();
   const { currentUser } = useAuth();
   const isCashier = currentUser?.role === 'kasir';

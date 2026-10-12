@@ -4,7 +4,6 @@ import { useSettings } from '../../controllers/SettingsController';
 import { useAuth } from '../../controllers/AuthController';
 import { hasAdminPrivileges, isStoreAdminRole } from '../../models/UserModel';
 import { 
-  Clock, 
   User, 
   ChevronRight, 
   ChevronDown,
@@ -31,19 +30,13 @@ import {
 export const Navbar = () => {
   const { activeMenu, isMobileMenuOpen, setIsMobileMenuOpen } = useUnit();
   const { settings } = useSettings();
-  const { currentUser, openProfileModal, logout } = useAuth();
-  const [time, setTime] = useState(new Date());
+  const { currentUser, openProfileModal, logout, accessibleBranches = [], switchActiveBranch } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const isSuperAdmin = currentUser?.role === 'superadmin';
   const isStoreAdmin = isStoreAdminRole(currentUser?.role);
   const hasFullAccess = hasAdminPrivileges(currentUser?.role);
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -59,11 +52,6 @@ export const Navbar = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
-
-  const formattedTime = time.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 
   const getModuleInfo = () => {
     switch (activeMenu) {
@@ -147,15 +135,60 @@ export const Navbar = () => {
         </div>
       </div>
 
-      {/* Right Section: Clock & User Profile */}
+      {/* Right Section: Branch Switcher & User Profile */}
       <div className="navbar-right-section" style={styles.rightSection}>
-        {/* Real-time Clock (Desktop/Tablet) */}
-        <div className="navbar-clock" style={styles.clockBox}>
-          <Clock size={14} color="var(--blue-500)" />
-          <span style={{ fontWeight: 600, fontSize: '0.813rem', color: 'var(--neutral-800)' }}>
-            {formattedTime} WIB
-          </span>
-        </div>
+        {/* Branch Selector Pill */}
+        {accessibleBranches && accessibleBranches.length > 1 ? (
+          <div className="navbar-branch-box" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '20px',
+            padding: '4px 10px',
+            height: '34px'
+          }}>
+            <Building2 size={14} color="var(--blue-600)" style={{ flexShrink: 0 }} />
+            <select
+              value={currentUser?.activeBranchId || 'BR-DEFAULT'}
+              onChange={(e) => switchActiveBranch(e.target.value)}
+              title="Pilih Cabang Aktif"
+              style={{
+                border: 'none',
+                backgroundColor: 'transparent',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                color: 'var(--blue-900)',
+                cursor: 'pointer',
+                outline: 'none',
+                maxWidth: '160px'
+              }}
+            >
+              {accessibleBranches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="navbar-branch-box" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: 'var(--neutral-100)',
+            border: '1px solid var(--neutral-200)',
+            borderRadius: '20px',
+            padding: '4px 10px',
+            height: '34px'
+          }}>
+            <Building2 size={13} color="var(--neutral-600)" />
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neutral-800)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentUser?.activeBranchName || 'Cabang Utama'}
+            </span>
+          </div>
+        )}
 
         {/* User Profile Chip with Dropdown */}
         <div style={{ position: 'relative' }} ref={dropdownRef}>

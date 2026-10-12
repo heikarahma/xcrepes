@@ -515,8 +515,15 @@ export const AuthProvider = ({ children }) => {
     );
     if (duplicate) return { success: false, error: 'Nama atau kode cabang sudah digunakan.' };
 
-    const nextNumber = branches.length + 1;
-    const id = `BR-${String(nextNumber).padStart(3, '0')}`;
+    const numericIds = branches.map(b => {
+      const match = String(b.id || '').match(/^BR-(\d+)$/);
+      return match ? parseInt(match[1], 10) : 0;
+    });
+    const maxNum = Math.max(0, ...numericIds);
+    let id = `BR-${String(maxNum + 1).padStart(3, '0')}`;
+    if (branches.some(b => b.id === id)) {
+      id = `BR-${Date.now().toString(36).toUpperCase()}`;
+    }
     const generatedCode = trimmedCode || trimmedName.split(/\s+/).map(word => word[0]).join('').slice(0, 8).toUpperCase() || id;
 
     const payload = {

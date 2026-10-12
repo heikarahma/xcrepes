@@ -45,7 +45,9 @@ export const ProductMenuListView = () => {
     totalAllMenus,
     openAddModal,
     openEditModal,
-    openDeleteModal
+    openDeleteModal,
+    activeBranchId,
+    copyMenusFromBranch
   } = useProductMenu();
 
   const { categories } = useCategory();

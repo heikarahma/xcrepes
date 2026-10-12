@@ -3,6 +3,8 @@ import { productMenusService } from '../services/productMenusService';
 import { subscribeToTable } from '../lib/supabase';
 import { useUnit } from './UnitController';
 import { useRawMaterial } from './RawMaterialController';
+import { useAuth } from './AuthController';
+import { stripBranchFromId } from '../models/BranchModel';
 
 const ProductMenuContext = createContext();
 
@@ -19,6 +21,8 @@ export const useProductMenuController = useProductMenu;
 export const ProductMenuProvider = ({ children }) => {
   const { showToast } = useUnit();
   const { rawMaterials } = useRawMaterial();
+  const { currentUser } = useAuth();
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
 
   // 1. Cloud Database State via Supabase
   const [productMenus, setProductMenus] = useState([]);
@@ -52,7 +56,7 @@ export const ProductMenuProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await productMenusService.getProductMenus();
+      const { data, error: fetchErr } = await productMenusService.getProductMenus(activeBranchId);
       if (fetchErr) {
         setError(fetchErr.message || 'Gagal memuat menu produk dari server.');
       } else {
@@ -64,7 +68,7 @@ export const ProductMenuProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   // Initial fetch and Realtime sync
   useEffect(() => {
@@ -149,7 +153,7 @@ export const ProductMenuProvider = ({ children }) => {
     }
 
     const nextNumber = productMenus.length > 0
-      ? Math.max(...productMenus.map(m => parseInt(m.id.replace('MENU-', '')) || 0)) + 1
+      ? Math.max(...productMenus.map(m => parseInt(stripBranchFromId(m.id).replace('MENU-', '')) || 0)) + 1
       : 1;
     const formattedId = `MENU-${String(nextNumber).padStart(3, '0')}`;
 
@@ -167,7 +171,7 @@ export const ProductMenuProvider = ({ children }) => {
         ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
         toppings: Array.isArray(data.toppings) ? data.toppings : [],
         isActive: data.isActive !== false
-      });
+      }, activeBranchId);
 
       if (err) {
         showToast(`Gagal menambahkan menu: ${err.message}`, 'error', 'Error Database');
@@ -272,15 +276,36 @@ export const ProductMenuProvider = ({ children }) => {
     setDeleteModalState({ isOpen: false, item: null });
   };
 
+  const copyMenusFromBranch = async (sourceBranchId = 'BR-DEFAULT') => {
+    setIsSubmitting(true);
+    try {
+      const { count, error: err } = await productMenusService.copyFromBranch(sourceBranchId, activeBranchId);
+      if (err) {
+        showToast(err.message || 'Gagal menyalin menu', 'error');
+        return { success: false, error: err.message };
+      }
+      showToast(`Berhasil menyalin ${count} menu ke cabang ini!`, 'success');
+      await fetchProductMenus();
+      return { success: true, count };
+    } catch (err) {
+      showToast(err.message, 'error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <ProductMenuContext.Provider
       value={{
         productMenus,
         menus: productMenus,
+        activeBranchId,
         isLoading,
         error,
         isSubmitting,
         refetch: fetchProductMenus,
+        copyMenusFromBranch,
         searchTerm,
         setSearchTerm,
         sortBy,
