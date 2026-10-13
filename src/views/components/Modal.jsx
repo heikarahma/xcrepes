@@ -51,6 +51,12 @@ export const Modal = ({
     }
   };
 
+  const handleCloseClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
+  };
+
   return (
     <div
       className="blue-modal-backdrop"
@@ -81,8 +87,8 @@ export const Modal = ({
           </div>
           <button
             type="button"
-            className="btn-icon btn-ghost"
-            onClick={onClose}
+            className="btn-icon btn-ghost blue-modal-close-btn"
+            onClick={handleCloseClick}
             aria-label="Tutup modal"
           >
             <X size={20} />

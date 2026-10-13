@@ -127,9 +127,9 @@ export const KasirOrderView = () => {
       if (!cartSectionRef.current) return;
       const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
       const isMobileLayout = window.innerWidth <= 1024;
-      // Di mobile section pesanan berada paling atas, jadi floating cart baru perlu tampil setelah user turun ke katalog.
-      if (isMobileLayout && scrollY < 260) {
-        setIsCartInView(true);
+      // Di mobile section pesanan berada paling atas, jadi floating cart tampil saat user sudah turun ke katalog.
+      if (isMobileLayout) {
+        setIsCartInView(scrollY < 260);
         return;
       }
       // Di desktop/tablet lama, saat kasir berada di bagian paling atas (katalog menu), floating cart tampil.
@@ -175,6 +175,7 @@ export const KasirOrderView = () => {
   // Order Preset Dropdown state & Global Discount Accordion state
   const [showPresetDropdown, setShowPresetDropdown] = useState(false);
   const [isGlobalDiscountOpen, setIsGlobalDiscountOpen] = useState(false);
+  const [itemDiscountOpenMap, setItemDiscountOpenMap] = useState({});
 
   // Currency formatter
   const formatIDR = (val) => {
@@ -536,7 +537,12 @@ export const KasirOrderView = () => {
                 </span>
               </div>
             ) : (
-              safeCart.map((item) => (
+              safeCart.map((item) => {
+                const matchedMenu = menus.find(menu => menu.id === item.menuId);
+                const hasToppingOptions = Array.isArray(matchedMenu?.toppings) && matchedMenu.toppings.length > 0;
+                const isItemDiscountOpen = itemDiscountOpenMap[item.cartItemId] ?? (Number(item.itemDiscountValue) > 0);
+
+                return (
                 <div key={item.cartItemId} className="kasir-cart-item-card" style={styles.cartItemCard}>
                   {/* Top Item Row: Title, Toppings, and Price */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
@@ -566,7 +572,7 @@ export const KasirOrderView = () => {
                             );
                           })}
                         </div>
-                      ) : (
+                      ) : hasToppingOptions ? (
                         <span
                           style={{ ...styles.cartNoToppingPill, cursor: 'pointer' }}
                           onClick={() => openEditModal(item)}
@@ -574,7 +580,7 @@ export const KasirOrderView = () => {
                         >
                           Tanpa Topping
                         </span>
-                      )}
+                      ) : null}
 
                       {/* Notes if any */}
                       {item.note && (
@@ -613,15 +619,32 @@ export const KasirOrderView = () => {
 
                   {/* Inline Item Discount */}
                   <div style={{
+                    backgroundColor: '#f8fafc',
+                    border: (item.itemDiscountValue > 0 || isItemDiscountOpen) ? '1.5px solid var(--blue-500)' : '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '9px 11px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '4px',
+                    gap: isItemDiscountOpen ? '8px' : 0,
                     marginTop: '2px'
                   }}>
                     {/* Header: Label Diskon Item + Live Hemat Badge */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', marginBottom: '2px' }}>
+                    <div
+                      onClick={() => setItemDiscountOpenMap(prev => ({
+                        ...prev,
+                        [item.cartItemId]: !isItemDiscountOpen
+                      }))}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                      title={isItemDiscountOpen ? 'Klik untuk tutup input diskon item' : 'Klik untuk buka input diskon item'}
+                    >
                       <label style={{
-                        fontSize: '0.75rem',
+                        fontSize: '0.781rem',
                         fontWeight: 700,
                         color: 'var(--neutral-800)',
                         display: 'flex',
@@ -629,39 +652,46 @@ export const KasirOrderView = () => {
                         gap: '6px',
                         margin: 0
                       }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: 'var(--emerald-100)', color: 'var(--emerald-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Tag size={11} />
+                        <div style={{ width: '20px', height: '20px', borderRadius: '5px', backgroundColor: 'var(--emerald-100)', color: 'var(--emerald-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Tag size={12} />
                         </div>
                         <span>Diskon</span>
                       </label>
-                      {item.itemDiscountAmount > 0 && (
-                        <span style={{
-                          fontSize: '0.656rem',
-                          fontWeight: 800,
-                          color: '#065f46',
-                          backgroundColor: '#d1fae5',
-                          border: '1px solid #a7f3d0',
-                          padding: '1px 6px',
-                          borderRadius: '9999px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}>
-                          <Sparkles size={9} /> Hemat -{formatIDR(item.itemDiscountAmount)}
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {item.itemDiscountAmount > 0 && (
+                          <span style={{
+                            fontSize: '0.719rem',
+                            fontWeight: 800,
+                            color: '#065f46',
+                            backgroundColor: '#d1fae5',
+                            border: '1px solid #a7f3d0',
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <Sparkles size={11} /> Hemat -{formatIDR(item.itemDiscountAmount)}
+                          </span>
+                        )}
+                        <ChevronDown
+                          size={14}
+                          color="var(--neutral-500)"
+                          style={{
+                            transform: isItemDiscountOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease'
+                          }}
+                        />
+                      </div>
                     </div>
 
                     {/* Dropdown Tipe + Input Besaran Nilai */}
+                    {isItemDiscountOpen && (
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '1.05fr 0.95fr',
-                      gap: '6px',
-                      alignItems: 'center',
-                      padding: '3px 6px',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '6px',
-                      border: (item.itemDiscountValue > 0) ? '1px solid var(--emerald-400)' : '1px solid var(--neutral-200)'
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                      alignItems: 'center'
                     }}>
                       {/* Left Dropdown: Tipe Diskon Item */}
                       <div style={{ position: 'relative' }}>
@@ -677,36 +707,33 @@ export const KasirOrderView = () => {
                           className="blue-input"
                           style={{
                             width: '100%',
-                            height: '28px',
-                            fontSize: '0.719rem',
+                            height: '36px',
+                            fontSize: '0.781rem',
                             fontWeight: 600,
-                            paddingLeft: '6px',
-                            paddingRight: '20px',
-                            paddingTop: 0,
-                            paddingBottom: 0,
+                            paddingLeft: '10px',
+                            paddingRight: '26px',
                             appearance: 'none',
                             WebkitAppearance: 'none',
                             MozAppearance: 'none',
                             cursor: 'pointer',
-                            backgroundColor: '#ffffff',
-                            border: 'none'
+                            backgroundColor: '#ffffff'
                           }}
                           title="Tipe Diskon Item"
                         >
                           <option value="percent">Persentase (%)</option>
                           <option value="fixed">Nominal (Rp)</option>
                         </select>
-                        <ChevronDown size={12} color="var(--neutral-400)" style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                        <ChevronDown size={14} color="var(--neutral-400)" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                       </div>
 
                       {/* Right Input: Besaran Diskon Item */}
                       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                         <span style={{
                           position: 'absolute',
-                          left: '6px',
+                          left: '10px',
                           top: '50%',
                           transform: 'translateY(-50%)',
-                          fontSize: '0.719rem',
+                          fontSize: '0.781rem',
                           fontWeight: 700,
                           color: (item.itemDiscountValue > 0) ? 'var(--emerald-600)' : 'var(--neutral-400)',
                           pointerEvents: 'none',
@@ -732,15 +759,12 @@ export const KasirOrderView = () => {
                           className="blue-input"
                           style={{
                             width: '100%',
-                            height: '28px',
-                            fontSize: '0.75rem',
+                            height: '36px',
+                            fontSize: '0.813rem',
                             fontWeight: 700,
-                            paddingLeft: (item.itemDiscountType === 'fixed') ? '24px' : '18px',
-                            paddingRight: (item.itemDiscountValue > 0) ? '22px' : '6px',
-                            paddingTop: 0,
-                            paddingBottom: 0,
+                            paddingLeft: (item.itemDiscountType === 'fixed') ? '32px' : '26px',
+                            paddingRight: (item.itemDiscountValue > 0) ? '28px' : '10px',
                             backgroundColor: '#ffffff',
-                            border: 'none',
                             color: (item.itemDiscountAmount > 0) ? 'var(--emerald-700)' : 'var(--neutral-900)'
                           }}
                           title="Besaran Diskon Item"
@@ -748,10 +772,16 @@ export const KasirOrderView = () => {
                         {item.itemDiscountValue > 0 && (
                           <button
                             type="button"
-                            onClick={() => setItemDiscount(item.cartItemId, { type: 'none', value: 0 })}
+                            onClick={() => {
+                              setItemDiscount(item.cartItemId, { type: 'none', value: 0 });
+                              setItemDiscountOpenMap(prev => ({
+                                ...prev,
+                                [item.cartItemId]: false
+                              }));
+                            }}
                             style={{
                               position: 'absolute',
-                              right: '4px',
+                              right: '8px',
                               top: '50%',
                               transform: 'translateY(-50%)',
                               background: 'none',
@@ -765,11 +795,12 @@ export const KasirOrderView = () => {
                             }}
                             title="Hapus Diskon Item"
                           >
-                            <X size={12} strokeWidth={2} />
+                            <X size={13} strokeWidth={2} />
                           </button>
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
 
                   {/* Bottom Item Row: Quantity Stepper & Delete */}
@@ -790,7 +821,7 @@ export const KasirOrderView = () => {
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '42px' }}>
                       <div style={styles.cartStepper}>
                         <button
                           type="button"
@@ -822,7 +853,8 @@ export const KasirOrderView = () => {
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -1296,11 +1328,11 @@ export const KasirOrderView = () => {
           .kasir-cart-items-scroll {
             max-height: none !important;
             min-height: 0 !important;
-            gap: 6px !important;
+            gap: 12px !important;
           }
           .kasir-cart-item-card {
             padding: 7px 9px !important;
-            gap: 5px !important;
+            gap: 8px !important;
           }
           .kasir-order-discount-box {
             padding: 7px 9px !important;
@@ -1324,20 +1356,56 @@ export const KasirOrderView = () => {
             border-radius: 12px !important;
           }
         }
+        @media (max-width: 425px) {
+          .kasir-menu-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 7px !important;
+          }
+          .kasir-menu-card {
+            min-width: 0 !important;
+            border-radius: 8px !important;
+          }
+          .kasir-menu-card img,
+          .kasir-menu-card > div:first-child {
+            height: 76px !important;
+          }
+          .kasir-card-content {
+            padding: 7px 8px !important;
+          }
+          .kasir-card-title {
+            font-size: 0.75rem !important;
+            line-height: 1.2 !important;
+          }
+          .kasir-menu-card [style*="Harga"] {
+            font-size: 0.625rem !important;
+          }
+          .kasir-card-content [style*="font-size: 1.063rem"] {
+            font-size: 0.875rem !important;
+          }
+          .kasir-card-content [title="Pilih Menu & Topping"],
+          .kasir-card-content [title="Tidak dapat dipesan (Stok bahan kosong)"] {
+            width: 28px !important;
+            height: 28px !important;
+            border-radius: 7px !important;
+          }
+          .kasir-menu-card .initials-avatar {
+            font-size: 1rem !important;
+          }
+        }
         @media (max-width: 390px) {
           .kasir-order-page {
             padding: 0 0 16px 0 !important;
           }
           .kasir-menu-grid {
-            grid-template-columns: 1fr !important;
-            gap: 10px !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px !important;
           }
           .kasir-menu-card img,
           .kasir-menu-card > div:first-child {
-            height: 112px !important;
+            height: 72px !important;
           }
           .kasir-card-title {
-            font-size: 0.875rem !important;
+            font-size: 0.72rem !important;
           }
           .discount-unified-group select {
             font-size: 0.65rem !important;
@@ -1680,7 +1748,7 @@ const styles = {
     padding: '10px 0',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '12px',
     minHeight: '220px',
     maxHeight: '380px'
   },
@@ -1748,33 +1816,43 @@ const styles = {
     borderTop: '1px dashed var(--neutral-200)'
   },
   cartStepper: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '36px minmax(0, 1fr) 36px',
     alignItems: 'center',
+    width: '124px',
+    height: '42px',
     backgroundColor: '#ffffff',
     border: '1px solid var(--border-color)',
-    borderRadius: '6px'
+    borderRadius: '8px',
+    padding: '2px',
+    boxSizing: 'border-box',
+    overflow: 'hidden'
   },
   cartStepperBtn: {
-    width: '26px',
-    height: '26px',
+    width: '36px',
+    height: '36px',
+    minHeight: '36px',
     border: 'none',
-    backgroundColor: 'transparent',
+    backgroundColor: 'var(--neutral-100)',
     color: 'var(--neutral-700)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    borderRadius: '7px'
   },
   cartStepperNumber: {
-    width: '24px',
+    minWidth: 0,
     textAlign: 'center',
     fontSize: '0.813rem',
     fontWeight: 700,
     color: 'var(--neutral-900)'
   },
   cartDeleteBtn: {
-    width: '26px',
-    height: '26px',
+    width: '42px',
+    height: '42px',
+    minWidth: '42px',
+    minHeight: '42px',
     border: '1px solid var(--red-200)',
     backgroundColor: '#ffffff',
     color: 'var(--red-500)',

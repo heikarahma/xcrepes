@@ -3,7 +3,7 @@ import { useOrder } from '../../controllers/OrderController';
 import { useTopping } from '../../controllers/ToppingController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
 import { useUnit } from '../../controllers/UnitController';
-import { calculateItemDiscount, QUICK_PERCENT_PRESETS, QUICK_NOMINAL_PRESETS, checkMenuAvailability, checkToppingAvailability } from '../../models';
+import { checkMenuAvailability, checkToppingAvailability } from '../../models';
 import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
 import { InitialsAvatar } from '../components/InitialsAvatar';
@@ -16,9 +16,6 @@ import {
   MessageSquareQuote,
   ShoppingBag,
   Edit3,
-  Percent,
-  Coins,
-  ChevronDown,
   X,
   Ban,
   AlertCircle,
@@ -38,8 +35,6 @@ export const ToppingSelectionModal = () => {
   const [selectedToppings, setSelectedToppings] = useState([]);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
-  const [itemDiscountType, setItemDiscountType] = useState('none'); // 'none' | 'percent' | 'fixed'
-  const [itemDiscountValue, setItemDiscountValue] = useState(0);
   const [toppingSearchQuery, setToppingSearchQuery] = useState('');
 
   // Check menu portions limit based on available raw materials
@@ -74,14 +69,10 @@ export const ToppingSelectionModal = () => {
         setSelectedToppings(validExistingToppings);
         setQuantity(Math.min(maxAllowedPortions, Math.max(1, Number(cartItem.quantity) || 1)));
         setNote(cartItem.note || '');
-        setItemDiscountType(cartItem.itemDiscountType || 'none');
-        setItemDiscountValue(Number(cartItem.itemDiscountValue) || 0);
       } else {
         setSelectedToppings([]);
         setQuantity(1);
         setNote('');
-        setItemDiscountType('none');
-        setItemDiscountValue(0);
       }
     }
   }, [isOpen, menu, cartItem, rawMaterials, masterToppings, maxAllowedPortions]);
@@ -193,8 +184,7 @@ export const ToppingSelectionModal = () => {
   const basePrice = Number(menu.price ?? menu.basePrice) || 0;
   const unitPrice = basePrice + toppingsTotal;
   const grossTotalPrice = unitPrice * quantity;
-  const itemDiscountAmount = calculateItemDiscount(unitPrice, quantity, itemDiscountType, itemDiscountValue);
-  const netTotalPrice = Math.max(0, grossTotalPrice - itemDiscountAmount);
+  const netTotalPrice = grossTotalPrice;
 
   const handleAddWithToppings = () => {
     if (cartItem) {
@@ -204,8 +194,8 @@ export const ToppingSelectionModal = () => {
         selectedToppings,
         quantity,
         note,
-        itemDiscountType,
-        itemDiscountValue
+        itemDiscountType: 'none',
+        itemDiscountValue: 0
       });
     } else {
       addToCart({
@@ -213,15 +203,13 @@ export const ToppingSelectionModal = () => {
         selectedToppings,
         quantity,
         note,
-        itemDiscountType,
-        itemDiscountValue
+        itemDiscountType: 'none',
+        itemDiscountValue: 0
       });
     }
     setSelectedToppings([]);
     setQuantity(1);
     setNote('');
-    setItemDiscountType('none');
-    setItemDiscountValue(0);
     closeToppingModal();
   };
 
@@ -229,8 +217,6 @@ export const ToppingSelectionModal = () => {
     setSelectedToppings([]);
     setQuantity(1);
     setNote('');
-    setItemDiscountType('none');
-    setItemDiscountValue(0);
     closeToppingModal();
   };
 
@@ -275,6 +261,7 @@ export const ToppingSelectionModal = () => {
         </div>
 
         {/* Toppings Selection List */}
+        {displayToppings.length > 0 && (
         <div style={styles.section}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <label style={styles.sectionLabel}>
@@ -315,14 +302,7 @@ export const ToppingSelectionModal = () => {
             </div>
           )}
 
-          {displayToppings.length === 0 ? (
-            <div style={styles.emptyToppingsAlert}>
-              <AlertCircle size={16} color="var(--neutral-400)" style={{ flexShrink: 0 }} />
-              <span style={{ fontWeight: 600, color: 'var(--neutral-600)', fontSize: '0.813rem' }}>
-                Tidak ada pilihan extra topping
-              </span>
-            </div>
-          ) : filteredToppings.length === 0 ? (
+          {filteredToppings.length === 0 ? (
             <div style={styles.emptySearchAlert}>
               <Search size={22} color="var(--neutral-400)" />
               <span style={{ fontWeight: 600, color: 'var(--neutral-700)', fontSize: '0.813rem' }}>
@@ -519,11 +499,12 @@ export const ToppingSelectionModal = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* Quantity & Notes Controls */}
-        <div className="topping-qty-notes-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(136px, 0.34fr) minmax(0, 1fr)', gap: '10px', alignItems: 'flex-start' }}>
+        <div className="topping-qty-notes-row" style={{ display: 'grid', gridTemplateColumns: '164px minmax(0, 1fr)', gap: '10px', alignItems: 'flex-start' }}>
           {/* Quantity Stepper */}
-          <div style={styles.section}>
+          <div className="topping-quantity-section" style={styles.section}>
             <label className="topping-quantity-label" style={{ ...styles.sectionLabel, margin: '0 0 6px 0', fontSize: '0.719rem' }}>
               <span className="topping-quantity-label-main">JUMLAH PORSI</span>
               {maxAllowedPortions < 999 && (
@@ -532,7 +513,7 @@ export const ToppingSelectionModal = () => {
                 </span>
               )}
             </label>
-            <div style={styles.stepperContainer}>
+            <div className="topping-quantity-stepper" style={styles.stepperContainer}>
               <button
                 type="button"
                 onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
@@ -575,157 +556,14 @@ export const ToppingSelectionModal = () => {
           </div>
         </div>
 
-        {/* Item Discount Section - Modern Unified Input Group */}
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '10px',
-          padding: '9px 11px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label style={{ ...styles.sectionLabel, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.781rem', color: 'var(--neutral-800)' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '5px', backgroundColor: 'var(--emerald-100)', color: 'var(--emerald-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Tag size={12} />
-              </div>
-              <span>Diskon</span>
-            </label>
-            {itemDiscountAmount > 0 && (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '0.719rem',
-                fontWeight: 800,
-                color: '#065f46',
-                backgroundColor: '#d1fae5',
-                border: '1px solid #a7f3d0',
-                padding: '2px 8px',
-                borderRadius: '9999px'
-              }}>
-                <Sparkles size={11} /> Hemat -{formatIDR(itemDiscountAmount)}
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
-            {/* Dropdown Tipe Diskon */}
-            <div style={{ position: 'relative' }}>
-              <select
-                value={itemDiscountType === 'none' ? 'percent' : itemDiscountType}
-                onChange={(e) => {
-                  setItemDiscountType(e.target.value);
-                }}
-                className="blue-input"
-                style={{
-                  width: '100%',
-                  height: '36px',
-                  fontSize: '0.781rem',
-                  fontWeight: 600,
-                  paddingLeft: '10px',
-                  paddingRight: '26px',
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  MozAppearance: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: '#ffffff'
-                }}
-              >
-                <option value="percent">Persentase (%)</option>
-                <option value="fixed">Nominal (Rp)</option>
-              </select>
-              <ChevronDown size={14} color="var(--neutral-400)" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-            </div>
-
-            {/* Direct Number Input */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <span style={{
-                position: 'absolute',
-                left: '10px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                fontSize: '0.781rem',
-                fontWeight: 700,
-                color: itemDiscountValue > 0 ? 'var(--emerald-600)' : 'var(--neutral-400)',
-                pointerEvents: 'none',
-                zIndex: 1
-              }}>
-                {itemDiscountType === 'fixed' ? 'Rp' : '%'}
-              </span>
-              <input
-                type="number"
-                min="0"
-                max={itemDiscountType === 'fixed' ? grossTotalPrice : 100}
-                value={itemDiscountValue === 0 ? '' : itemDiscountValue}
-                onChange={(e) => {
-                  const val = Math.max(0, Number(e.target.value) || 0);
-                  const maxVal = itemDiscountType === 'fixed' ? grossTotalPrice : 100;
-                  if (itemDiscountType === 'none') {
-                    setItemDiscountType('percent');
-                  }
-                  setItemDiscountValue(Math.min(maxVal, val));
-                }}
-                placeholder="0"
-                className="blue-input"
-                style={{
-                  width: '100%',
-                  height: '36px',
-                  fontSize: '0.813rem',
-                  fontWeight: 700,
-                  paddingLeft: itemDiscountType === 'fixed' ? '32px' : '26px',
-                  paddingRight: itemDiscountValue > 0 ? '28px' : '10px',
-                  backgroundColor: '#ffffff',
-                  color: itemDiscountAmount > 0 ? 'var(--emerald-700)' : 'var(--neutral-900)'
-                }}
-              />
-              {itemDiscountValue > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setItemDiscountValue(0)}
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--neutral-400)',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Hapus Diskon"
-                >
-                  <X size={13} strokeWidth={2} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Live Calculation Banner */}
         <div style={styles.calcBanner}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)', fontWeight: 600 }}>Total Pesanan Item</span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-              {itemDiscountAmount > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--emerald-600)' }}>
-                    {formatIDR(netTotalPrice)}
-                  </span>
-                  <span style={{ fontSize: '0.813rem', color: 'var(--neutral-400)', textDecoration: 'line-through' }}>
-                    {formatIDR(grossTotalPrice)}
-                  </span>
-                </div>
-              ) : (
-                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-700)' }}>
-                  {formatIDR(grossTotalPrice)}
-                </span>
-              )}
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--blue-700)' }}>
+                {formatIDR(grossTotalPrice)}
+              </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
                 ({quantity}x @ {formatIDR(unitPrice)})
               </span>
@@ -744,11 +582,6 @@ export const ToppingSelectionModal = () => {
                 +{formatIDR(toppingsTotal * quantity)} ({totalToppingCount * quantity}x Topping)
               </span>
             )}
-            {itemDiscountAmount > 0 && (
-              <span style={{ fontSize: '0.688rem', color: 'var(--emerald-700)', fontWeight: 700, backgroundColor: 'var(--emerald-50)', padding: '3px 6px', borderRadius: '4px' }}>
-                -{formatIDR(itemDiscountAmount)} Diskon Item
-              </span>
-            )}
           </div>
         </div>
 
@@ -757,7 +590,6 @@ export const ToppingSelectionModal = () => {
           <Button
             type="button"
             variant="primary"
-            icon={cartItem ? Check : ShoppingBag}
             onClick={handleAddWithToppings}
             style={{ width: '100%', padding: '12px 0', fontSize: '0.938rem', borderRadius: '8px' }}
           >
@@ -790,30 +622,58 @@ export const ToppingSelectionModal = () => {
           }
           @media (max-width: 1024px) {
             .topping-qty-notes-row {
-              grid-template-columns: minmax(132px, 0.34fr) minmax(0, 1fr) !important;
-              gap: 8px !important;
+              grid-template-columns: max-content minmax(0, 1fr) !important;
+              gap: 10px !important;
+            }
+            .topping-quantity-section {
+              width: max-content !important;
+            }
+            .topping-quantity-label {
+              width: 164px !important;
+              max-width: calc(100vw - 48px) !important;
+            }
+            .topping-quantity-stepper {
+              width: 164px !important;
+              max-width: calc(100vw - 48px) !important;
+              height: 42px !important;
+              padding: 2px !important;
+              border-radius: 8px !important;
+            }
+            .topping-quantity-stepper button {
+              width: 36px !important;
+              height: 36px !important;
+              min-height: 36px !important;
+              border-radius: 7px !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+            .topping-quantity-stepper span {
+              width: auto !important;
+              max-width: none !important;
+              font-size: 0.875rem !important;
             }
           }
           @media (max-width: 640px) {
             .topping-quantity-label {
-              align-items: flex-start;
-              flex-direction: column;
-              justify-content: flex-start;
-              min-height: 32px;
+              align-items: center;
+              flex-direction: row;
+              justify-content: space-between;
+              min-height: 18px;
             }
             .topping-notes-label {
-              min-height: 32px;
+              min-height: 18px;
             }
           }
           @media (max-width: 480px) {
             .topping-qty-notes-row {
-              grid-template-columns: minmax(118px, 0.34fr) minmax(0, 1fr) !important;
+              grid-template-columns: max-content minmax(0, 1fr) !important;
               gap: 8px !important;
             }
           }
           @media (max-width: 360px) {
             .topping-qty-notes-row {
-              grid-template-columns: 112px minmax(0, 1fr) !important;
+              grid-template-columns: max-content minmax(0, 1fr) !important;
               gap: 6px !important;
             }
           }
@@ -1016,19 +876,22 @@ const styles = {
     color: 'var(--neutral-600)'
   },
   stepperContainer: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '36px minmax(0, 1fr) 36px',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    height: '38px',
+    height: '42px',
     border: '1px solid var(--border-color)',
     borderRadius: '8px',
     backgroundColor: '#ffffff',
-    padding: '0 3px',
-    boxSizing: 'border-box'
+    padding: '2px',
+    boxSizing: 'border-box',
+    width: '100%',
+    overflow: 'hidden'
   },
   stepperBtn: {
-    width: '30px',
-    height: '30px',
+    width: '36px',
+    height: '36px',
+    minHeight: '36px',
     borderRadius: '6px',
     border: 'none',
     backgroundColor: 'var(--neutral-100)',
@@ -1045,7 +908,7 @@ const styles = {
     fontWeight: 700,
     color: 'var(--neutral-900)',
     textAlign: 'center',
-    flex: 1
+    minWidth: 0
   },
   calcBanner: {
     display: 'flex',

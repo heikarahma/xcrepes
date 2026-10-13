@@ -320,6 +320,14 @@
   flex-shrink: 0;
 }
 
+.blue-modal-close-btn {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
 .blue-modal-title {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);

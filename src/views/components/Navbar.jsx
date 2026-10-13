@@ -418,6 +418,12 @@ export const Navbar = () => {
           }
           .mobile-menu-btn {
             display: inline-flex !important;
+            width: 36px !important;
+            height: 36px !important;
+            min-width: 36px !important;
+            min-height: 36px !important;
+            max-width: 36px !important;
+            max-height: 36px !important;
           }
           .navbar-clock {
             display: none !important;
@@ -550,6 +556,9 @@ const styles = {
     width: '36px',
     height: '36px',
     minWidth: '36px',
+    minHeight: '36px',
+    maxWidth: '36px',
+    maxHeight: '36px',
     borderRadius: '8px',
     backgroundColor: 'var(--neutral-100)',
     display: 'flex',

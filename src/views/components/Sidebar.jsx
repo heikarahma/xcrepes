@@ -618,6 +618,12 @@ export const Sidebar = () => {
             }
             .mobile-close-btn {
               display: flex;
+              width: 36px !important;
+              height: 36px !important;
+              min-width: 36px !important;
+              min-height: 36px !important;
+              max-width: 36px !important;
+              max-height: 36px !important;
             }
           }
         `}</style>
@@ -683,8 +689,14 @@ const styles = {
   closeBtn: {
     width: '36px',
     height: '36px',
+    minWidth: '36px',
+    minHeight: '36px',
+    maxWidth: '36px',
+    maxHeight: '36px',
     borderRadius: 'var(--radius-md)',
     backgroundColor: 'var(--neutral-100)',
+    border: '1px solid var(--border-color)',
+    padding: 0,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer'
