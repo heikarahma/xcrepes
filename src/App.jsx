@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // Controllers [C]
 import { 
@@ -7,13 +7,20 @@ import {
   UnitProvider, 
   useUnit, 
   CategoryProvider, 
+  useCategory,
   RawMaterialProvider, 
+  useRawMaterial,
   ToppingProvider, 
+  useTopping,
   ProductMenuProvider, 
+  useProductMenu,
   OrderProvider,
+  useOrder,
   SettingsProvider,
+  useSettings,
   ReportProvider,
-  StockOpnameProvider
+  StockOpnameProvider,
+  useStockOpname
 } from './controllers';
 
 // Views [V] - Auth
@@ -23,6 +30,7 @@ import { LoginView } from './views/auth/LoginView';
 import { Sidebar } from './views/components/Sidebar';
 import { Navbar } from './views/components/Navbar';
 import { ToastContainer } from './views/components/Toast';
+import { SystemLoadingModal } from './views/components/SystemLoadingModal';
 
 // Views [V] - POS Kasir
 import { KasirOrderView } from './views/pos/KasirOrderView';
@@ -62,7 +70,6 @@ import { OrderCancelModal } from './views/pos/OrderCancelModal';
 import { OrderRevisionModal } from './views/pos/OrderRevisionModal';
 import { ReturnsManagementView } from './views/returns/ReturnsManagementView';
 import { ImagePreviewModal } from './views/components/ImagePreviewModal';
-import { useRawMaterial } from './controllers/RawMaterialController';
 
 // Views [V] - Konfigurasi & Pengaturan
 import { SettingsView } from './views/settings/SettingsView';
@@ -227,6 +234,47 @@ function AuthenticatedApp() {
   return <MainLayout />;
 }
 
+function SystemLoadingGate() {
+  const { isLoading: authLoading } = useAuth();
+  const { isLoading: unitLoading } = useUnit();
+  const { isLoading: settingsLoading } = useSettings();
+  const { isLoading: categoryLoading } = useCategory();
+  const { isLoading: rawMaterialLoading } = useRawMaterial();
+  const { isLoading: stockOpnameLoading } = useStockOpname();
+  const { isLoading: toppingLoading } = useTopping();
+  const { isLoading: productMenuLoading } = useProductMenu();
+  const { isLoading: orderLoading } = useOrder();
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const isLoadingPreview = import.meta.env.DEV && new URLSearchParams(window.location.search).has('previewLoading');
+
+  const isSystemLoading = Boolean(
+    authLoading ||
+    unitLoading ||
+    settingsLoading ||
+    categoryLoading ||
+    rawMaterialLoading ||
+    stockOpnameLoading ||
+    toppingLoading ||
+    productMenuLoading ||
+    orderLoading
+  );
+
+  useEffect(() => {
+    if (!isSystemLoading) {
+      setShowLoadingModal(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowLoadingModal(true);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [isSystemLoading]);
+
+  return <SystemLoadingModal isOpen={isLoadingPreview || showLoadingModal} />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -240,6 +288,7 @@ function App() {
                     <OrderProvider>
                       <ReportProvider>
                         <AuthenticatedApp />
+                        <SystemLoadingGate />
                       </ReportProvider>
                     </OrderProvider>
                   </ProductMenuProvider>
