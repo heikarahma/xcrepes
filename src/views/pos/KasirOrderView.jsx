@@ -522,12 +522,17 @@ export const KasirOrderView = () => {
           <div className="kasir-cart-items-scroll" style={styles.cartItemsScroll}>
             {safeCart.length === 0 ? (
               <div style={styles.emptyCartState}>
-                <ShoppingBag size={48} color="var(--neutral-300)" />
+                <img
+                  src="/foodpack-empty-cart.svg"
+                  alt=""
+                  aria-hidden="true"
+                  style={styles.emptyCartIcon}
+                />
                 <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-700)', marginTop: '8px' }}>
-                  Keranjang Kosong
+                  Belum Ada Pesanan
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--neutral-400)', textAlign: 'center', maxWidth: '200px' }}>
-                  Klik salah satu menu di sebelah kiri untuk menambahkan pesanan.
+                  Pilih produk untuk mulai membuat pesananan
                 </span>
               </div>
             ) : (
@@ -1188,7 +1193,7 @@ export const KasirOrderView = () => {
             width: 100% !important;
           }
           .kasir-menu-grid {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             gap: 12px !important;
           }
           .kasir-menu-card {
@@ -1686,6 +1691,12 @@ const styles = {
     justifyContent: 'center',
     padding: '40px 10px',
     gap: '4px'
+  },
+  emptyCartIcon: {
+    width: '128px',
+    height: '128px',
+    objectFit: 'contain',
+    display: 'block'
   },
   cartItemCard: {
     padding: '10px 12px',

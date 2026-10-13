@@ -19,7 +19,6 @@ import {
   BarChart3,
   TrendingUp,
   Users,
-  ShieldCheck,
   KeyRound,
   LogOut,
   RotateCcw,
@@ -167,7 +166,7 @@ export const Navbar = () => {
             >
               {accessibleBranches.map(b => (
                 <option key={b.id} value={b.id}>
-                  {b.name}
+                  {b.code || b.id}
                 </option>
               ))}
             </select>
@@ -185,7 +184,7 @@ export const Navbar = () => {
           }}>
             <Building2 size={13} color="var(--neutral-600)" />
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neutral-800)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentUser?.activeBranchName || 'Cabang Utama'}
+              {currentUser?.activeBranchCode || currentUser?.activeBranchId || 'PUSAT'}
             </span>
           </div>
         )}
@@ -215,13 +214,10 @@ export const Navbar = () => {
                 backgroundColor: isSuperAdmin ? 'var(--blue-100)' : (isStoreAdmin ? '#ede9fe' : 'var(--green-100)')
               }}
             >
-              {isSuperAdmin ? (
-                <ShieldCheck size={16} color="var(--blue-600)" />
-              ) : isStoreAdmin ? (
-                <ShieldCheck size={16} color="#7c3aed" />
-              ) : (
-                <User size={16} color="var(--green-600)" />
-              )}
+              <User
+                size={16}
+                color={isSuperAdmin ? 'var(--blue-600)' : (isStoreAdmin ? '#7c3aed' : 'var(--green-600)')}
+              />
             </div>
             <div className="navbar-user-info" style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
               <span className="navbar-username" style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--neutral-900)' }}>
@@ -260,13 +256,10 @@ export const Navbar = () => {
                     width: '32px',
                     height: '32px'
                   }}>
-                    {isSuperAdmin ? (
-                      <ShieldCheck size={17} color="var(--blue-700)" />
-                    ) : isStoreAdmin ? (
-                      <ShieldCheck size={17} color="#7c3aed" />
-                    ) : (
-                      <User size={17} color="var(--green-700)" />
-                    )}
+                    <User
+                      size={17}
+                      color={isSuperAdmin ? 'var(--blue-700)' : (isStoreAdmin ? '#7c3aed' : 'var(--green-700)')}
+                    />
                   </div>
                   <div style={{ overflow: 'hidden' }}>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--neutral-900)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
@@ -557,7 +550,7 @@ const styles = {
     width: '36px',
     height: '36px',
     minWidth: '36px',
-    borderRadius: 'var(--radius-md)',
+    borderRadius: '8px',
     backgroundColor: 'var(--neutral-100)',
     display: 'flex',
     alignItems: 'center',
