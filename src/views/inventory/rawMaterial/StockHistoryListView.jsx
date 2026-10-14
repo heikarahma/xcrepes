@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { exportStockHistoryToPDF } from '../../../utils/reportExportUtils';
 
-export const StockHistoryListView = ({ mobileActionButtons }) => {
+export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
   const { currentUser } = useAuth();
   const isCashier = currentUser?.role === 'kasir';
 
@@ -242,6 +242,8 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
           <span style={styles.statSub}>Koreksi stok opname</span>
         </div>
       </div>
+
+      {tabsSlot}
 
       {/* Mobile Action Buttons: Placed below information cards on mobile */}
       {mobileActionButtons && (
@@ -766,6 +768,7 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
           gap: 12px;
+          margin-bottom: 12px;
         }
         .stock-history-filter-controls {
           display: grid;
@@ -857,7 +860,7 @@ export const StockHistoryListView = ({ mobileActionButtons }) => {
             gap: 8px !important;
           }
           .stock-history-toolbar {
-            padding: 12px 14px !important;
+            padding: 0 0 8px !important;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 10px !important;
@@ -1107,7 +1110,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
-    padding: '12px'
+    padding: '12px 0 0'
   },
   mobileLogCard: {
     backgroundColor: 'var(--bg-surface)',

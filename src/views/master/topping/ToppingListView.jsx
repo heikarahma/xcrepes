@@ -342,7 +342,7 @@ export const ToppingListView = () => {
                     style={{ flexDirection: 'column', alignItems: 'stretch', gap: '12px' }}
                   >
                     {/* Top Row: Checkbox, #No, Name, Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <div className="mobile-topping-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                       <div className="mobile-unit-left">
                         <input
                           type="checkbox"
@@ -354,7 +354,7 @@ export const ToppingListView = () => {
                         <span style={styles.rowNumberTag}>
                           #{rowNumber}
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <div className="mobile-topping-main-info" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span className="mobile-unit-name">
                             {item.name}
                           </span>
@@ -406,11 +406,11 @@ export const ToppingListView = () => {
                     </div>
 
                     {/* Bottom Row: Harga Jual */}
-                    <div style={styles.mobileBottomCostRow}>
-                      <span style={{ fontSize: '0.813rem', color: 'var(--neutral-700)', fontWeight: 600 }}>
+                    <div className="mobile-topping-price-row" style={styles.mobileBottomCostRow}>
+                      <span className="mobile-topping-price-label" style={{ fontSize: '0.813rem', color: 'var(--neutral-700)', fontWeight: 600 }}>
                         Harga Jual:
                       </span>
-                      <span style={{ fontWeight: 800, fontSize: '1.063rem', color: 'var(--neutral-900)' }}>
+                      <span className="mobile-topping-price-value" style={{ fontWeight: 800, fontSize: '1.063rem', color: 'var(--neutral-900)' }}>
                         {formatIDR(item.price || 0)}
                       </span>
                     </div>
@@ -475,7 +475,7 @@ export const ToppingListView = () => {
             min-height: 44px !important;
           }
           .topping-toolbar {
-            padding: 16px !important;
+            padding: 0 !important;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 12px !important;
@@ -486,6 +486,7 @@ export const ToppingListView = () => {
             width: 100% !important;
             gap: 12px !important;
             margin: 0 !important;
+            padding-bottom: 8px !important;
           }
           .topping-search-box,
           .topping-sort-box {
@@ -498,6 +499,84 @@ export const ToppingListView = () => {
             width: 100% !important;
             justify-content: space-between !important;
             margin-top: 4px !important;
+          }
+          .topping-card-wrapper .mobile-units-container {
+            gap: 12px !important;
+            padding: 12px 0 0 !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .topping-card-wrapper .mobile-unit-card {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            padding: 0 !important;
+            border-radius: 10px !important;
+            gap: 0 !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+          }
+          .topping-card-wrapper .mobile-topping-card-header {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 12px !important;
+          }
+          .topping-card-wrapper .mobile-unit-left {
+            display: grid !important;
+            grid-template-columns: 18px auto minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+          .topping-card-wrapper .mobile-unit-left input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            margin: 0 !important;
+          }
+          .topping-card-wrapper .mobile-unit-left > div {
+            min-width: 0 !important;
+          }
+          .topping-card-wrapper .mobile-topping-main-info {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 6px !important;
+          }
+          .topping-card-wrapper .mobile-unit-name {
+            min-width: 0 !important;
+            font-size: 0.938rem !important;
+            line-height: 1.2 !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+          }
+          .topping-card-wrapper .mobile-unit-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 40px) !important;
+            gap: 6px !important;
+          }
+          .topping-card-wrapper .mobile-action-btn {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            border-radius: 9px !important;
+          }
+          .topping-card-wrapper .mobile-topping-price-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 10px 12px !important;
+            border-top: 1px solid var(--border-subtle) !important;
+            background: var(--neutral-50) !important;
+          }
+          .topping-card-wrapper .mobile-topping-price-label {
+            font-size: 0.75rem !important;
+          }
+          .topping-card-wrapper .mobile-topping-price-value {
+            font-size: 1rem !important;
+            color: var(--blue-700) !important;
           }
         }
       `}</style>

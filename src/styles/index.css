@@ -132,6 +132,40 @@ a:hover {
   animation: fadeIn var(--transition-smooth) ease forwards;
 }
 
+/* Skeleton Pulse & Spinner Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
+  }
+}
+
 /* Utility Flex & Grids */
 .flex { display: flex; }
 .flex-col { display: flex; flex-direction: column; }

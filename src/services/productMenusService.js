@@ -175,6 +175,25 @@ export const productMenusService = {
     return { data: mapRow(data), error: null };
   },
 
+  async activateProductMenu(id) {
+    if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
+    const { data, error } = await supabase
+      .from(TABLE)
+      .update({
+        is_active: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('productMenusService.activateProductMenu error:', error);
+      return { data: null, error };
+    }
+    return { data: mapRow(data), error: null };
+  },
+
   async deleteProductMenusBatch(ids) {
     if (!isSupabaseConfigured()) return { error: new Error('Supabase not configured') };
     const { error } = await supabase

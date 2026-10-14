@@ -121,6 +121,34 @@ export const RawMaterialListView = () => {
     </div>
   );
 
+  const renderTabs = () => (
+    <div className="raw-material-tab-container" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === 'inventory'}
+        className={`tab-item-btn ${activeTab === 'inventory' ? 'is-active' : ''}`}
+        onClick={() => setActiveTab('inventory')}
+      >
+        <Boxes size={16} style={{ flexShrink: 0 }} />
+        <span className="tab-label-full">Daftar Stok Bahan</span>
+        <span className="tab-label-short">Daftar Stok</span>
+      </button>
+
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === 'history'}
+        className={`tab-item-btn ${activeTab === 'history' ? 'is-active' : ''}`}
+        onClick={() => setActiveTab('history')}
+      >
+        <History size={16} style={{ flexShrink: 0 }} />
+        <span className="tab-label-full">Riwayat Perubahan Stok</span>
+        <span className="tab-label-short">Riwayat Stok</span>
+      </button>
+    </div>
+  );
+
   return (
     <div className="raw-material-list-page animate-fade-in" style={styles.container}>
       {/* Top Title & Primary Actions */}
@@ -146,130 +174,108 @@ export const RawMaterialListView = () => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div 
-        className={`raw-material-stats-grid ${isCashier ? 'is-cashier' : ''}`} 
-        style={{
-          ...styles.statsGrid,
-          gridTemplateColumns: isCashier ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'
-        }}
-      >
-        {/* Card 1: Total Master Bahan */}
+      {activeTab === 'inventory' && (
         <div 
+          className={`raw-material-stats-grid ${isCashier ? 'is-cashier' : ''}`} 
           style={{
-            ...styles.statCard,
-            ...(stockStatusFilter === 'all' ? styles.statCardActive : {})
+            ...styles.statsGrid,
+            gridTemplateColumns: isCashier ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)'
           }}
-          onClick={() => setStockStatusFilter('all')}
-          title="Klik untuk menampilkan semua bahan baku"
         >
-          <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Total Master Bahan</span>
-            <div style={{ ...styles.statIconWrapper, backgroundColor: 'var(--blue-50)', color: 'var(--blue-600)' }}>
-              <Boxes size={18} />
-            </div>
-          </div>
-          <div style={styles.statValue}>
-            {summary.totalItems} <span style={styles.statUnit}>Jenis</span>
-          </div>
-          <div style={styles.statFooter}>
-            Katalog bahan baku aktif
-          </div>
-        </div>
-
-        {/* Card 2: Total Nilai Aset Stok (Di-take out khusus untuk Kasir) */}
-        {!isCashier && (
+          {/* Card 1: Total Master Bahan */}
           <div 
-            style={styles.statCard}
-            title="Estimasi total modal seluruh stok bahan saat ini"
+            style={{
+              ...styles.statCard,
+              ...(stockStatusFilter === 'all' ? styles.statCardActive : {})
+            }}
+            onClick={() => setStockStatusFilter('all')}
+            title="Klik untuk menampilkan semua bahan baku"
           >
             <div style={styles.statHeader}>
-              <span style={styles.statTitle}>Total Nilai Aset Stok</span>
-              <div style={{ ...styles.statIconWrapper, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
-                <Coins size={18} />
+              <span style={styles.statTitle}>Total Master Bahan</span>
+              <div style={{ ...styles.statIconWrapper, backgroundColor: 'var(--blue-50)', color: 'var(--blue-600)' }}>
+                <Boxes size={18} />
               </div>
             </div>
-            <div style={{ ...styles.statValue, color: 'var(--blue-600)' }}>
-              {formatIDR(summary.totalInventoryValue)}
+            <div style={styles.statValue}>
+              {summary.totalItems} <span style={styles.statUnit}>Jenis</span>
             </div>
             <div style={styles.statFooter}>
-              Akumulasi modal fisik bahan
+              Katalog bahan baku aktif
             </div>
           </div>
-        )}
 
-        {/* Card 3: Stok Menipis (Kritis) */}
-        <div 
-          style={{
-            ...styles.statCard,
-            ...(stockStatusFilter === 'low' ? { ...styles.statCardActive, borderColor: '#f59e0b', backgroundColor: '#fffdf5' } : {})
-          }}
-          onClick={() => setStockStatusFilter(stockStatusFilter === 'low' ? 'all' : 'low')}
-          title="Klik untuk memfilter bahan yang menipis"
-        >
-          <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Stok Menipis (Kritis)</span>
-            <div style={{ ...styles.statIconWrapper, backgroundColor: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }}>
-              <AlertCircle size={18} />
+          {/* Card 2: Total Nilai Aset Stok (Di-take out khusus untuk Kasir) */}
+          {!isCashier && (
+            <div 
+              style={styles.statCard}
+              title="Estimasi total modal seluruh stok bahan saat ini"
+            >
+              <div style={styles.statHeader}>
+                <span style={styles.statTitle}>Total Nilai Aset Stok</span>
+                <div style={{ ...styles.statIconWrapper, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
+                  <Coins size={18} />
+                </div>
+              </div>
+              <div style={{ ...styles.statValue, color: 'var(--blue-600)' }}>
+                {formatIDR(summary.totalInventoryValue)}
+              </div>
+              <div style={styles.statFooter}>
+                Akumulasi modal fisik bahan
+              </div>
+            </div>
+          )}
+
+          {/* Card 3: Stok Menipis (Kritis) */}
+          <div 
+            style={{
+              ...styles.statCard,
+              ...(stockStatusFilter === 'low' ? { ...styles.statCardActive, borderColor: '#f59e0b', backgroundColor: '#fffdf5' } : {})
+            }}
+            onClick={() => setStockStatusFilter(stockStatusFilter === 'low' ? 'all' : 'low')}
+            title="Klik untuk memfilter bahan yang menipis"
+          >
+            <div style={styles.statHeader}>
+              <span style={styles.statTitle}>Stok Menipis (Kritis)</span>
+              <div style={{ ...styles.statIconWrapper, backgroundColor: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }}>
+                <AlertCircle size={18} />
+              </div>
+            </div>
+            <div style={{ ...styles.statValue, color: summary.lowCount > 0 ? '#d97706' : 'var(--neutral-900)' }}>
+              {summary.lowCount} <span style={styles.statUnit}>Bahan</span>
+            </div>
+            <div style={styles.statFooter}>
+              {summary.lowCount > 0 ? 'Sisa stok ≤ 10 unit (Perlu Restok)' : 'Semua stok dalam batas aman'}
             </div>
           </div>
-          <div style={{ ...styles.statValue, color: summary.lowCount > 0 ? '#d97706' : 'var(--neutral-900)' }}>
-            {summary.lowCount} <span style={styles.statUnit}>Bahan</span>
-          </div>
-          <div style={styles.statFooter}>
-            {summary.lowCount > 0 ? 'Sisa stok ≤ 10 unit (Perlu Restok)' : 'Semua stok dalam batas aman'}
+
+          {/* Card 4: Stok Habis / Kosong */}
+          <div 
+            style={{
+              ...styles.statCard,
+              ...(stockStatusFilter === 'empty' ? { ...styles.statCardActive, borderColor: '#ef4444', backgroundColor: '#fff5f5' } : {})
+            }}
+            onClick={() => setStockStatusFilter(stockStatusFilter === 'empty' ? 'all' : 'empty')}
+            title="Klik untuk memfilter bahan yang habis"
+          >
+            <div style={styles.statHeader}>
+              <span style={styles.statTitle}>Stok Habis (Kosong)</span>
+              <div style={{ ...styles.statIconWrapper, backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                <AlertTriangle size={18} />
+              </div>
+            </div>
+            <div style={{ ...styles.statValue, color: summary.emptyCount > 0 ? '#dc2626' : 'var(--neutral-900)' }}>
+              {summary.emptyCount} <span style={styles.statUnit}>Bahan</span>
+            </div>
+            <div style={styles.statFooter}>
+              {summary.emptyCount > 0 ? 'Stok 0 (Menu terkait terkunci)' : 'Tidak ada bahan yang habis'}
+            </div>
           </div>
         </div>
-
-        {/* Card 4: Stok Habis / Kosong */}
-        <div 
-          style={{
-            ...styles.statCard,
-            ...(stockStatusFilter === 'empty' ? { ...styles.statCardActive, borderColor: '#ef4444', backgroundColor: '#fff5f5' } : {})
-          }}
-          onClick={() => setStockStatusFilter(stockStatusFilter === 'empty' ? 'all' : 'empty')}
-          title="Klik untuk memfilter bahan yang habis"
-        >
-          <div style={styles.statHeader}>
-            <span style={styles.statTitle}>Stok Habis (Kosong)</span>
-            <div style={{ ...styles.statIconWrapper, backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
-              <AlertTriangle size={18} />
-            </div>
-          </div>
-          <div style={{ ...styles.statValue, color: summary.emptyCount > 0 ? '#dc2626' : 'var(--neutral-900)' }}>
-            {summary.emptyCount} <span style={styles.statUnit}>Bahan</span>
-          </div>
-          <div style={styles.statFooter}>
-            {summary.emptyCount > 0 ? 'Stok 0 (Menu terkait terkunci)' : 'Tidak ada bahan yang habis'}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Navigation Tabs (Segmented Control) */}
-      <div className="raw-material-tab-container" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'inventory'}
-          className={`tab-item-btn ${activeTab === 'inventory' ? 'is-active' : ''}`}
-          onClick={() => setActiveTab('inventory')}
-        >
-          <Boxes size={16} style={{ flexShrink: 0 }} />
-          <span className="tab-label-full">Daftar Stok Bahan</span>
-          <span className="tab-label-short">Daftar Stok</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'history'}
-          className={`tab-item-btn ${activeTab === 'history' ? 'is-active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          <History size={16} style={{ flexShrink: 0 }} />
-          <span className="tab-label-full">Riwayat Perubahan Stok</span>
-          <span className="tab-label-short">Riwayat Stok</span>
-        </button>
-      </div>
+      {activeTab === 'inventory' && renderTabs()}
 
       {/* Action Buttons (Mobile only - placed below tabs for inventory tab) */}
       {activeTab === 'inventory' && (
@@ -593,8 +599,8 @@ export const RawMaterialListView = () => {
                       style={styles.mobileRawCard}
                     >
                       {/* Top Row: Checkbox, #No, Name, Edit/Delete Actions */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <div className="mobile-raw-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <div className="mobile-raw-card-title-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
                           {!isCashier && (
                             <input
                               type="checkbox"
@@ -607,13 +613,13 @@ export const RawMaterialListView = () => {
                           <span style={styles.rowNumberTag}>
                             #{rowNumber}
                           </span>
-                          <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-900)', wordBreak: 'break-word', lineHeight: 1.25, flex: 1, minWidth: 0 }}>
+                          <span className="mobile-raw-card-name" style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-900)', wordBreak: 'break-word', lineHeight: 1.25, flex: 1, minWidth: 0 }}>
                             {item.name}
                           </span>
                         </div>
 
                         {!isCashier && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <div className="mobile-raw-card-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => openEditModal(item)}
@@ -644,7 +650,7 @@ export const RawMaterialListView = () => {
                         <div style={styles.mobileDetailBox}>
                           <span style={styles.mobileDetailLabel}>Sisa Stok</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
-                            <span style={{ 
+                            <span className="mobile-raw-stock-value" style={{ 
                               fontWeight: 800, 
                               fontSize: '1rem',
                               whiteSpace: 'nowrap',
@@ -653,11 +659,11 @@ export const RawMaterialListView = () => {
                               {new Intl.NumberFormat('id-ID').format(stockVal)} {item.unitName || item.unit_name}
                             </span>
                             {isEmpty ? (
-                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              <span className="mobile-raw-stock-badge" style={{ fontSize: '0.688rem', fontWeight: 700, color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fecaca', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 Habis (0)
                               </span>
                             ) : isLowStock ? (
-                              <span style={{ fontSize: '0.688rem', fontWeight: 700, color: '#d97706', backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              <span className="mobile-raw-stock-badge" style={{ fontSize: '0.688rem', fontWeight: 700, color: '#d97706', backgroundColor: '#fffbeb', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 Menipis
                               </span>
                             ) : null}
@@ -667,7 +673,7 @@ export const RawMaterialListView = () => {
                         {!isCashier && (
                           <div style={styles.mobileDetailBox}>
                             <span style={styles.mobileDetailLabel}>Harga Beli Satuan</span>
-                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-800)' }}>
+                            <span className="mobile-raw-price-value" style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--neutral-800)' }}>
                               {formatIDR(item.pricePerUnit || item.price_per_unit)} <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)', fontWeight: 500 }}>/{item.unitName || item.unit_name}</span>
                             </span>
                           </div>
@@ -696,7 +702,10 @@ export const RawMaterialListView = () => {
 
       {/* TAB CONTENT 2: RIWAYAT PERUBAHAN STOK */}
       {activeTab === 'history' && (
-        <StockHistoryListView mobileActionButtons={renderActionButtons()} />
+        <StockHistoryListView
+          mobileActionButtons={renderActionButtons()}
+          tabsSlot={renderTabs()}
+        />
       )}
 
       {/* Embedded Mobile Responsive Styles */}
@@ -989,7 +998,7 @@ export const RawMaterialListView = () => {
           }
 
           .raw-material-toolbar {
-            padding: 12px 14px !important;
+            padding: 0 0 8px !important;
           }
 
           .raw-material-toolbar-inner {
@@ -1073,8 +1082,77 @@ export const RawMaterialListView = () => {
             display: block !important;
           }
           .mobile-units-container {
-            padding: 10px 12px 14px 12px !important;
+            padding: 12px 0 0 !important;
+            gap: 12px !important;
+          }
+
+          .raw-material-card-wrapper .mobile-unit-card {
+            gap: 12px !important;
+            padding: 12px !important;
+            border-radius: 12px !important;
+          }
+
+          .mobile-raw-card-header {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
             gap: 10px !important;
+            width: 100% !important;
+          }
+
+          .mobile-raw-card-title-row {
+            display: grid !important;
+            grid-template-columns: 18px auto minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+
+          .mobile-raw-card-title-row input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            margin: 0 !important;
+          }
+
+          .mobile-raw-card-name {
+            font-size: 0.938rem !important;
+            line-height: 1.2 !important;
+            overflow-wrap: anywhere !important;
+          }
+
+          .mobile-raw-card-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 40px) !important;
+            gap: 6px !important;
+            justify-self: end !important;
+            align-self: start !important;
+          }
+
+          .mobile-raw-card-actions button {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            border-radius: 9px !important;
+          }
+
+          .raw-material-card-wrapper .mobile-detail-grid {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+            gap: 12px !important;
+            padding: 10px !important;
+            box-sizing: border-box !important;
+          }
+
+          .raw-material-card-wrapper .mobile-detail-grid > div {
+            min-width: 0 !important;
+          }
+
+          .mobile-raw-stock-value,
+          .mobile-raw-price-value {
+            overflow-wrap: anywhere !important;
+            white-space: normal !important;
           }
         }
 
@@ -1105,6 +1183,10 @@ export const RawMaterialListView = () => {
 
           .raw-material-stats-grid.is-cashier > div:last-child {
             grid-column: span 1 !important;
+          }
+
+          .raw-material-card-wrapper .mobile-detail-grid {
+            grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
           }
         }
 
@@ -1158,20 +1240,19 @@ const styles = {
   statCard: {
     backgroundColor: '#ffffff',
     border: '1px solid var(--border-color)',
-    borderRadius: '12px',
-    padding: '16px',
+    borderRadius: 'var(--radius-md)',
+    padding: '14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    gap: '4px',
+    boxShadow: 'var(--shadow-xs)',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
     userSelect: 'none'
   },
   statCardActive: {
     borderColor: 'var(--blue-500)',
-    boxShadow: '0 0 0 2px var(--blue-100), 0 2px 8px rgba(0,91,198,0.08)',
-    backgroundColor: '#f8fbff'
+    backgroundColor: 'var(--blue-50)'
   },
   statHeader: {
     display: 'flex',
@@ -1181,15 +1262,13 @@ const styles = {
   },
   statTitle: {
     fontSize: '0.75rem',
-    fontWeight: 700,
-    color: 'var(--neutral-500)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.3px'
+    fontWeight: 600,
+    color: 'var(--neutral-500)'
   },
   statIconWrapper: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '8px',
+    width: '32px',
+    height: '32px',
+    borderRadius: 'var(--radius-sm)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1199,8 +1278,8 @@ const styles = {
     fontSize: '1.375rem',
     fontWeight: 800,
     color: 'var(--neutral-900)',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.2
+    lineHeight: 1.2,
+    marginTop: '2px'
   },
   statUnit: {
     fontSize: '0.813rem',
@@ -1210,8 +1289,7 @@ const styles = {
   },
   statFooter: {
     fontSize: '0.688rem',
-    color: 'var(--neutral-400)',
-    marginTop: '2px'
+    color: 'var(--neutral-400)'
   },
   activeFilterBadge: {
     display: 'inline-flex',

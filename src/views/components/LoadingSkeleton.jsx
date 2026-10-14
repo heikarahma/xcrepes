@@ -91,13 +91,13 @@ const styles = {
     backgroundColor: 'var(--neutral-200)',
     borderRadius: '4px',
     flex: 1,
-    animation: 'pulse 1.5s infinite'
+    animation: 'pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
   },
   skeletonBarTd: {
     height: '16px',
     backgroundColor: 'var(--neutral-150)',
     borderRadius: '4px',
-    animation: 'pulse 1.5s infinite'
+    animation: 'pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
   },
   cardGridSkeleton: {
     display: 'grid',
@@ -116,6 +116,6 @@ const styles = {
     height: '120px',
     borderRadius: '8px',
     backgroundColor: 'var(--neutral-150)',
-    animation: 'pulse 1.5s infinite'
+    animation: 'pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite'
   }
 };

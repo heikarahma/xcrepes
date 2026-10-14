@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useProductMenu } from '../../controllers/ProductMenuController';
 import { useCategory } from '../../controllers/CategoryController';
@@ -36,6 +36,8 @@ import {
   PercentCircle,
   Gift,
   ChevronDown,
+  ChevronUp,
+  AlertTriangle,
   Ban,
   AlertCircle,
   SlidersHorizontal
@@ -172,6 +174,13 @@ export const KasirOrderView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
+  const firstOutOfStockCardRef = useRef(null);
+
+  // Auto-calculated list of all out-of-stock menus
+  const outOfStockMenus = useMemo(() => {
+    return menus.filter(menu => !checkMenuAvailability(menu, rawMaterials).isAvailable);
+  }, [menus, rawMaterials]);
+
   // Order Preset Dropdown state & Global Discount Accordion state
   const [showPresetDropdown, setShowPresetDropdown] = useState(false);
   const [isGlobalDiscountOpen, setIsGlobalDiscountOpen] = useState(false);
@@ -194,6 +203,24 @@ export const KasirOrderView = () => {
     const matchesCat = selectedCategory === 'all' || menu.categoryId === selectedCategory;
     return matchesSearch && matchesCat;
   });
+
+  const orderedFilteredMenus = [...filteredMenus].sort((a, b) => {
+    const aOutOfStock = !checkMenuAvailability(a, rawMaterials).isAvailable;
+    const bOutOfStock = !checkMenuAvailability(b, rawMaterials).isAvailable;
+    return Number(aOutOfStock) - Number(bOutOfStock);
+  });
+
+  const handleSeeOutOfStockMenus = () => {
+    setSelectedCategory('all');
+    setSearchTerm('');
+
+    window.setTimeout(() => {
+      firstOutOfStockCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 80);
+  };
 
   return (
     <div className="kasir-order-page" style={styles.pageLayout}>
@@ -318,6 +345,34 @@ export const KasirOrderView = () => {
           </div>
         )}
 
+        {/* Section Menu Stok Habis */}
+        {!isMenusLoading && !menusError && outOfStockMenus.length > 0 && (
+          <section
+            className="kasir-out-of-stock-section"
+            aria-label="Menu Stok Habis"
+            style={styles.outOfStockSection}
+          >
+            <div className="kasir-out-of-stock-header" style={styles.outOfStockHeader}>
+              <div className="kasir-out-of-stock-title-group" style={styles.outOfStockTitleGroup}>
+                <AlertTriangle size={17} color="#DC2626" aria-hidden="true" style={{ flexShrink: 0 }} />
+                <h2 className="kasir-out-of-stock-title" style={styles.outOfStockTitle}>
+                  {outOfStockMenus.length} Menu Stok Habis
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSeeOutOfStockMenus}
+                className="kasir-out-of-stock-toggle-btn"
+                style={styles.outOfStockToggleBtn}
+                aria-label="Lihat kartu menu stok bahan habis"
+              >
+                Lihat
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* Menu Grid */}
         {isMenusLoading ? (
           <div style={{ padding: '8px 0' }}>
@@ -335,9 +390,10 @@ export const KasirOrderView = () => {
           </div>
         ) : (
           <div className="kasir-menu-grid" style={styles.menuGrid}>
-            {filteredMenus.map(menu => {
+            {orderedFilteredMenus.map(menu => {
               const availability = checkMenuAvailability(menu, rawMaterials);
               const isOutOfStock = !availability.isAvailable;
+              const isFirstOutOfStock = isOutOfStock && menu.id === outOfStockMenus[0]?.id;
 
               const handleCardClick = () => {
                 if (isOutOfStock) {
@@ -354,6 +410,7 @@ export const KasirOrderView = () => {
               return (
                 <div
                   key={menu.id}
+                  ref={isFirstOutOfStock ? firstOutOfStockCardRef : null}
                   onClick={handleCardClick}
                   className={`kasir-menu-card ${isOutOfStock ? 'kasir-menu-card-disabled' : ''}`}
                   style={{
@@ -522,18 +579,34 @@ export const KasirOrderView = () => {
           {/* Cart Items List */}
           <div className="kasir-cart-items-scroll" style={styles.cartItemsScroll}>
             {safeCart.length === 0 ? (
-              <div style={styles.emptyCartState}>
-                <img
-                  src="/foodpack-empty-cart.svg"
-                  alt=""
-                  aria-hidden="true"
-                  style={styles.emptyCartIcon}
-                />
-                <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-700)', marginTop: '8px' }}>
+              <div className="kasir-empty-cart-container" style={styles.emptyCartState}>
+                <div className="kasir-empty-cart-illustration-wrapper">
+                  {/* Soft pulsing ambient glow behind foodpack */}
+                  <div className="kasir-empty-cart-glow" aria-hidden="true" />
+                  
+                  {/* Floating sparkles / food accents */}
+                  <span className="kasir-empty-cart-sparkle sparkle-top-right" aria-hidden="true">✦</span>
+                  <span className="kasir-empty-cart-sparkle sparkle-top-left" aria-hidden="true">✦</span>
+                  <span className="kasir-empty-cart-sparkle sparkle-bottom-left" aria-hidden="true">•</span>
+
+                  {/* Main floating illustration */}
+                  <img
+                    src="/foodpack-empty-cart.svg"
+                    alt=""
+                    aria-hidden="true"
+                    className="kasir-empty-cart-img"
+                    style={styles.emptyCartIcon}
+                  />
+
+                  {/* Dynamic responsive ground shadow */}
+                  <div className="kasir-empty-cart-shadow" aria-hidden="true" />
+                </div>
+
+                <span style={{ fontSize: '0.938rem', fontWeight: 700, color: 'var(--neutral-700)', marginTop: '10px' }}>
                   Belum Ada Pesanan
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--neutral-400)', textAlign: 'center', maxWidth: '200px' }}>
-                  Pilih produk untuk mulai membuat pesananan
+                <span style={{ fontSize: '0.75rem', color: 'var(--neutral-400)', textAlign: 'center', maxWidth: '210px', lineHeight: 1.4 }}>
+                  Pilih produk untuk mulai membuat pesanan
                 </span>
               </div>
             ) : (
@@ -1508,6 +1581,191 @@ const styles = {
     borderColor: 'var(--border-color)',
     color: 'var(--neutral-700)'
   },
+  outOfStockSection: {
+    backgroundColor: '#FEF2F2',
+    border: '1px solid #FECACA',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    marginBottom: '16px',
+    boxShadow: '0 1px 3px rgba(239, 68, 68, 0.04)',
+    transition: 'all 0.2s ease'
+  },
+  outOfStockHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px'
+  },
+  outOfStockTitleGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap'
+  },
+  outOfStockTitle: {
+    fontSize: '0.875rem',
+    fontWeight: 700,
+    color: '#991B1B',
+    margin: 0,
+    lineHeight: 1.2
+  },
+  outOfStockBadge: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    padding: '2px 8px',
+    borderRadius: '9999px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+    border: '1px solid #FCA5A5',
+    display: 'inline-flex',
+    alignItems: 'center'
+  },
+  outOfStockToggleBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: '#DC2626',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: 0,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    textDecoration: 'underline',
+    textUnderlineOffset: '3px',
+    whiteSpace: 'nowrap'
+  },
+  outOfStockChipsWrap: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    alignItems: 'center'
+  },
+  outOfStockChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 11px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FECACA',
+    borderRadius: '8px',
+    fontSize: '0.813rem',
+    fontWeight: 600,
+    color: '#7F1D1D',
+    cursor: 'pointer',
+    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+    userSelect: 'none'
+  },
+  outOfStockDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#EF4444',
+    flexShrink: 0
+  },
+  outOfStockChipText: {
+    maxWidth: '220px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  outOfStockMoreChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '5px 10px',
+    backgroundColor: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    borderRadius: '8px',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: '#991B1B',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease'
+  },
+  outOfStockExpandedContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px'
+  },
+  outOfStockSearchBox: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center'
+  },
+  outOfStockSearchIcon: {
+    position: 'absolute',
+    left: '10px',
+    pointerEvents: 'none'
+  },
+  outOfStockSearchInput: {
+    width: '100%',
+    height: '34px',
+    padding: '0 30px 0 32px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FECACA',
+    borderRadius: '8px',
+    fontSize: '0.813rem',
+    color: 'var(--neutral-800)',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  outOfStockSearchClear: {
+    position: 'absolute',
+    right: '8px',
+    background: 'none',
+    border: 'none',
+    color: '#9CA3AF',
+    cursor: 'pointer',
+    padding: '2px',
+    display: 'flex',
+    alignItems: 'center'
+  },
+  outOfStockEmptySearch: {
+    padding: '16px',
+    textAlign: 'center',
+    fontSize: '0.813rem',
+    color: '#991B1B'
+  },
+  outOfStockExpandedGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '8px',
+    maxHeight: '260px',
+    overflowY: 'auto',
+    paddingRight: '4px'
+  },
+  outOfStockItemCard: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    padding: '8px 12px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FECACA',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'transform 0.12s ease'
+  },
+  outOfStockExpandedName: {
+    fontSize: '0.813rem',
+    fontWeight: 600,
+    color: '#7F1D1D',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  outOfStockCategoryTag: {
+    fontSize: '0.688rem',
+    fontWeight: 600,
+    padding: '2px 6px',
+    borderRadius: '4px',
+    backgroundColor: '#F3F4F6',
+    color: '#6B7280',
+    whiteSpace: 'nowrap',
+    flexShrink: 0
+  },
   menuGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -1670,7 +1928,6 @@ const styles = {
     border: '1px dashed var(--border-color)',
     gap: '8px'
   },
-
   // Cart Panel Styles
   cartSection: {
     flex: '0 0 380px',

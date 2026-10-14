@@ -403,6 +403,52 @@ export const UnitListView = () => {
             margin-top: 4px !important;
           }
         }
+
+        @media (max-width: 390px) {
+          .unit-card-wrapper .mobile-units-container {
+            gap: 10px !important;
+            padding: 12px 14px !important;
+          }
+          .unit-card-wrapper .mobile-unit-card {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 12px !important;
+            border-radius: 10px !important;
+          }
+          .unit-card-wrapper .mobile-unit-left {
+            display: grid !important;
+            grid-template-columns: 18px auto 34px minmax(0, 1fr) !important;
+            align-items: center !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+          .unit-card-wrapper .mobile-unit-left input[type="checkbox"] {
+            width: 18px !important;
+            height: 18px !important;
+            margin: 0 !important;
+          }
+          .unit-card-wrapper .mobile-unit-name {
+            min-width: 0 !important;
+            font-size: 0.938rem !important;
+            line-height: 1.2 !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+          }
+          .unit-card-wrapper .mobile-unit-actions {
+            display: grid !important;
+            grid-template-columns: repeat(2, 40px) !important;
+            gap: 6px !important;
+          }
+          .unit-card-wrapper .mobile-action-btn {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            min-height: 40px !important;
+            border-radius: 9px !important;
+          }
+        }
       `}</style>
     </div>
   );

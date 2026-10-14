@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useProductMenu } from '../../../controllers/ProductMenuController';
 import { useCategory } from '../../../controllers/CategoryController';
 import { Button } from '../../components/Button';
@@ -11,6 +11,7 @@ import {
   Plus, 
   Search, 
   Edit3, 
+  Eye, 
   EyeOff, 
   Sparkles, 
   X, 
@@ -18,9 +19,7 @@ import {
   ChevronDown, 
   Layers, 
   Tag, 
-  Image as ImageIcon,
-  List as ListIcon,
-  LayoutGrid
+  Image as ImageIcon
 } from 'lucide-react';
 
 export const ProductMenuListView = () => {
@@ -46,14 +45,14 @@ export const ProductMenuListView = () => {
     openAddModal,
     openEditModal,
     openDeleteModal,
+    activateProductMenu,
     activeBranchId,
     copyMenusFromBranch
   } = useProductMenu();
 
   const { categories } = useCategory();
 
-  // View Mode: 'list' (default) vs 'grid'
-  const [viewMode, setViewMode] = useState('list');
+  const viewMode = 'list';
 
   // Currency formatter
   const formatIDR = (val) => {
@@ -172,7 +171,7 @@ export const ProductMenuListView = () => {
               </div>
             </div>
 
-            {/* 3. Satu Jajar: Dropdown Urutkan & List/Grid Switcher (Both Fill Content 50%-50%) */}
+            {/* 3. Dropdown Urutkan */}
             <div className="product-menu-sort-and-view-row">
               {/* Sort Dropdown */}
               <div className="product-menu-sort-wrapper">
@@ -200,30 +199,6 @@ export const ProductMenuListView = () => {
                     </optgroup>
                   </select>
                   <ChevronDown size={14} color="var(--neutral-400)" style={styles.filterChevron} />
-                </div>
-              </div>
-
-              {/* View Mode Toggle (List vs Grid) */}
-              <div className="product-menu-view-wrapper">
-                <div className="product-menu-view-switcher">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('list')}
-                    className={`product-menu-view-btn ${viewMode === 'list' ? 'is-active' : ''}`}
-                    title="Tampilan List"
-                  >
-                    <ListIcon size={15} />
-                    <span>List</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('grid')}
-                    className={`product-menu-view-btn ${viewMode === 'grid' ? 'is-active' : ''}`}
-                    title="Tampilan Grid"
-                  >
-                    <LayoutGrid size={15} />
-                    <span>Grid</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -322,13 +297,16 @@ export const ProductMenuListView = () => {
                     </button>
                     <button 
                       type="button"
-                      className="product-menu-action-btn"
-                      style={{ ...styles.listBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', borderColor: 'var(--red-100)' }}
-                      onClick={() => openDeleteModal(item)}
-                      title="Nonaktifkan Menu"
-                      disabled={item.isActive === false}
+                      className={`product-menu-action-btn ${item.isActive === false ? 'is-activate-action' : ''}`}
+                      style={item.isActive === false
+                        ? { ...styles.listBtn, color: 'var(--green-700)', backgroundColor: 'var(--green-50)', borderColor: 'var(--green-100)' }
+                        : { ...styles.listBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', borderColor: 'var(--red-100)' }
+                      }
+                      onClick={() => item.isActive === false ? activateProductMenu(item.id) : openDeleteModal(item)}
+                      title={item.isActive === false ? 'Aktifkan Menu' : 'Nonaktifkan Menu'}
                     >
-                      <EyeOff size={15} /> <span>{item.isActive === false ? 'Nonaktif' : 'Nonaktifkan'}</span>
+                      {item.isActive === false ? <Eye size={15} /> : <EyeOff size={15} />}
+                      <span>{item.isActive === false ? 'Aktifkan' : 'Nonaktifkan'}</span>
                     </button>
                   </div>
                 </div>
@@ -423,11 +401,14 @@ export const ProductMenuListView = () => {
                       <Edit3 size={15} /> Edit
                     </button>
                     <button 
-                      style={{ ...styles.actionBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', border: '1px solid var(--red-100)' }}
-                      onClick={() => openDeleteModal(item)}
-                      disabled={item.isActive === false}
+                      style={item.isActive === false
+                        ? { ...styles.actionBtn, color: 'var(--green-700)', backgroundColor: 'var(--green-50)', border: '1px solid var(--green-100)' }
+                        : { ...styles.actionBtn, color: 'var(--red-600)', backgroundColor: 'var(--red-50)', border: '1px solid var(--red-100)' }
+                      }
+                      onClick={() => item.isActive === false ? activateProductMenu(item.id) : openDeleteModal(item)}
                     >
-                      <EyeOff size={15} /> {item.isActive === false ? 'Nonaktif' : 'Nonaktifkan'}
+                      {item.isActive === false ? <Eye size={15} /> : <EyeOff size={15} />}
+                      {item.isActive === false ? 'Aktifkan' : 'Nonaktifkan'}
                     </button>
                   </div>
                 </div>
@@ -589,52 +570,6 @@ export const ProductMenuListView = () => {
           box-sizing: border-box !important;
         }
 
-        .product-menu-view-wrapper {
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-        }
-
-        .product-menu-view-switcher {
-          display: flex !important;
-          align-items: stretch !important;
-          height: 42px !important;
-          min-height: 42px !important;
-          max-height: 42px !important;
-          background-color: var(--neutral-100) !important;
-          border-radius: 8px !important;
-          padding: 3px !important;
-          border: 1px solid var(--neutral-200) !important;
-          box-sizing: border-box !important;
-        }
-
-        .product-menu-view-btn {
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 6px !important;
-          height: 100% !important;
-          min-height: 100% !important;
-          max-height: 100% !important;
-          padding: 0 14px !important;
-          border-radius: 6px !important;
-          border: none !important;
-          font-size: 0.813rem !important;
-          font-weight: 600 !important;
-          cursor: pointer !important;
-          background-color: transparent !important;
-          color: var(--neutral-600) !important;
-          transition: all 0.15s ease !important;
-          box-sizing: border-box !important;
-        }
-
-        .product-menu-view-btn.is-active {
-          background-color: #ffffff !important;
-          color: var(--blue-600) !important;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-          font-weight: 700 !important;
-        }
-
         /* Tablet & Mobile layout (<= 1024px) */
         @media (max-width: 1024px) {
           .product-menu-list-page {
@@ -708,7 +643,7 @@ export const ProductMenuListView = () => {
           /* Baris 3: Satu Jajar Dropdown Urutkan & List/Grid (Sama-sama 42px height) */
           .product-menu-sort-and-view-row {
             display: grid !important;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+            grid-template-columns: minmax(0, 1fr) !important;
             width: 100% !important;
             gap: 10px !important;
             align-items: stretch !important;
@@ -734,51 +669,6 @@ export const ProductMenuListView = () => {
             border-radius: 8px !important;
             text-overflow: ellipsis !important;
             background-color: var(--bg-surface) !important;
-            box-sizing: border-box !important;
-          }
-
-          /* List/Grid Switcher (42px height matching dropdown) */
-          .product-menu-view-wrapper {
-            flex: 1 1 0 !important;
-            width: 100% !important;
-            min-width: 0 !important;
-            display: flex !important;
-          }
-
-          .product-menu-view-switcher {
-            width: 100% !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            max-height: 42px !important;
-            display: flex !important;
-            align-items: stretch !important;
-            border-radius: 8px !important;
-            padding: 3px !important;
-            background-color: var(--neutral-100) !important;
-            border: 1px solid var(--border-color) !important;
-            box-sizing: border-box !important;
-          }
-
-          @media (max-width: 480px) {
-            .product-menu-sort-and-view-row {
-              grid-template-columns: 1fr !important;
-            }
-          }
-
-          .product-menu-view-btn {
-            flex: 1 1 0 !important;
-            width: 50% !important;
-            height: 100% !important;
-            min-height: unset !important;
-            max-height: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 5px !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            border-radius: 6px !important;
-            padding: 0 4px !important;
             box-sizing: border-box !important;
           }
 
@@ -965,7 +855,7 @@ const styles = {
   statusBadgeActive: {
     backgroundColor: 'var(--green-50)',
     color: 'var(--green-700)',
-    borderColor: 'var(--green-200)'
+    borderColor: 'var(--green-100)'
   },
   statusBadgeInactive: {
     backgroundColor: 'var(--neutral-100)',
@@ -973,7 +863,6 @@ const styles = {
     borderColor: 'var(--border-color)'
   },
   inactiveCard: {
-    opacity: 0.72,
     backgroundColor: 'var(--neutral-50)'
   },
   categoryBadgeContainer: {

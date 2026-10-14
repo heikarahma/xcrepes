@@ -255,6 +255,26 @@ export const ProductMenuProvider = ({ children }) => {
     }
   };
 
+  const activateProductMenu = async (id) => {
+    const target = productMenus.find(m => m.id === id);
+    setIsSubmitting(true);
+    try {
+      const { data: updatedMenu, error: err } = await productMenusService.activateProductMenu(id);
+      if (err) {
+        showToast(`Gagal mengaktifkan menu: ${err.message}`, 'error', 'Error Database');
+        return { success: false, error: err.message };
+      }
+      setProductMenus(prev => prev.map(m => m.id === id ? updatedMenu : m));
+      showToast(`Menu "${target ? target.name : id}" aktif kembali dan tampil di kasir.`, 'success', 'Menu Diaktifkan');
+      return { success: true };
+    } catch (err) {
+      showToast(err.message, 'error', 'Error');
+      return { success: false, error: err.message };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Modal Control Helpers
   const openAddModal = () => {
     setFormModalState({ isOpen: true, mode: 'add', item: null });
@@ -326,6 +346,8 @@ export const ProductMenuProvider = ({ children }) => {
         addMenu: addProductMenu,
         updateProductMenu,
         updateMenu: updateProductMenu,
+        activateProductMenu,
+        activateMenu: activateProductMenu,
         deleteProductMenu,
         deleteMenu: deleteProductMenu,
         formModalState,

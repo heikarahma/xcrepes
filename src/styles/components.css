@@ -788,4 +788,367 @@
   border: 1px solid var(--red-200);
 }
 
+/* ----------------------------------------------------------
+   12. EMPTY CART STATE ANIMATIONS (KASIR POS)
+   ---------------------------------------------------------- */
+.kasir-empty-cart-container {
+  user-select: none;
+}
+
+.kasir-empty-cart-illustration-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ambient Pulsing Glow */
+.kasir-empty-cart-glow {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 172, 23, 0.18) 0%, rgba(0, 114, 255, 0.08) 55%, transparent 75%);
+  filter: blur(8px);
+  animation: emptyCartGlowPulse 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Main Floating Foodpack Illustration */
+.kasir-empty-cart-img {
+  position: relative;
+  z-index: 2;
+  transform-origin: center bottom;
+  animation: emptyCartFloat 3.2s ease-in-out infinite;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.kasir-empty-cart-container:hover .kasir-empty-cart-img {
+  animation-play-state: paused;
+  transform: translateY(-10px) rotate(2.5deg) scale(1.04);
+}
+
+/* Synchronized Dynamic Ground Shadow */
+.kasir-empty-cart-shadow {
+  position: absolute;
+  bottom: 8px;
+  width: 72px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.26) 0%, rgba(15, 23, 42, 0.06) 50%, transparent 75%);
+  animation: emptyCartShadowPulse 3.2s ease-in-out infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.kasir-empty-cart-container:hover .kasir-empty-cart-shadow {
+  animation-play-state: paused;
+  transform: scale(0.75);
+  opacity: 0.16;
+}
+
+/* Sparkle Floating & Twinkling Accents */
+.kasir-empty-cart-sparkle {
+  position: absolute;
+  font-family: inherit;
+  font-weight: 800;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.sparkle-top-right {
+  top: 14px;
+  right: 14px;
+  font-size: 15px;
+  color: #FFAC17;
+  animation: emptyCartSparkleTwinkle 2.8s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+.sparkle-top-left {
+  top: 24px;
+  left: 14px;
+  font-size: 11px;
+  color: var(--blue-400);
+  animation: emptyCartSparkleTwinkle 3.4s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+.sparkle-bottom-left {
+  bottom: 28px;
+  left: 16px;
+  font-size: 14px;
+  color: #2BA476;
+  animation: emptyCartSparkleTwinkle 3.1s ease-in-out infinite;
+  animation-delay: 1.4s;
+}
+
+/* Keyframes */
+@keyframes emptyCartFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(-2deg);
+  }
+}
+
+@keyframes emptyCartShadowPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(0.76);
+    opacity: 0.14;
+  }
+}
+
+@keyframes emptyCartGlowPulse {
+  0%, 100% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 0.95;
+  }
+}
+
+@keyframes emptyCartSparkleTwinkle {
+  0%, 100% {
+    transform: translateY(0px) scale(0.75);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-5px) scale(1.15);
+    opacity: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kasir-empty-cart-img,
+  .kasir-empty-cart-shadow,
+  .kasir-empty-cart-glow,
+  .kasir-empty-cart-sparkle {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================
+   KASIR POS: SECTION MENU STOK HABIS
+   ========================================================== */
+.kasir-out-of-stock-section {
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.04);
+  transition: all 0.2s ease;
+}
+
+.kasir-out-of-stock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kasir-out-of-stock-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kasir-out-of-stock-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #991B1B;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.kasir-out-of-stock-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+  display: inline-flex;
+  align-items: center;
+}
+
+.kasir-out-of-stock-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #DC2626;
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.kasir-out-of-stock-toggle-btn:hover {
+  color: #7F1D1D;
+}
+
+.kasir-out-of-stock-toggle-btn:focus-visible {
+  outline: 2px solid #DC2626;
+  outline-offset: 1px;
+}
+
+.kasir-out-of-stock-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.kasir-out-of-stock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  background-color: #FFFFFF;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: #7F1D1D;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+}
+
+.kasir-out-of-stock-chip:hover {
+  background-color: #FFF5F5;
+  border-color: #F87171;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.08);
+}
+
+.kasir-out-of-stock-chip:focus-visible {
+  outline: 2px solid #DC2626;
+  outline-offset: 1px;
+}
+
+.kasir-out-of-stock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #EF4444;
+  flex-shrink: 0;
+}
+
+.kasir-out-of-stock-chip-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #991B1B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.kasir-out-of-stock-chip-more:hover {
+  background-color: #FECACA;
+  color: #7F1D1D;
+}
+
+.kasir-out-of-stock-expanded-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kasir-out-of-stock-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.kasir-out-of-stock-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 32px;
+  background-color: #FFFFFF;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  font-size: 0.813rem;
+  color: var(--neutral-800);
+  outline: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.kasir-out-of-stock-search-input:focus {
+  border-color: #DC2626;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.kasir-out-of-stock-expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.kasir-out-of-stock-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #FFFFFF;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.kasir-out-of-stock-item-card:hover {
+  background-color: #FFF5F5;
+  border-color: #F87171;
+  transform: translateY(-1px);
+}
+
+.kasir-menu-card-disabled {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 768px) {
+  .kasir-out-of-stock-section {
+    padding: 8px 12px;
+    margin-bottom: 14px;
+  }
+  .kasir-out-of-stock-expanded-grid {
+    grid-template-columns: 1fr;
+  }
+  .kasir-out-of-stock-toggle-btn {
+    min-height: 36px;
+  }
+}
+
+
 
