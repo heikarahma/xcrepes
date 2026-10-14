@@ -14,7 +14,6 @@ import {
   Check, 
   X, 
   AlertCircle, 
-  ArrowDownLeft, 
   ArrowUpRight, 
   Sparkles, 
   ShoppingBag, 
@@ -313,7 +312,7 @@ export const OrderRevisionModal = () => {
             disabled={isSubmitting || items.length === 0}
             className="rev-footer-btn-submit"
           >
-            {isSubmitting ? 'Menyimpan Revisi & Cetak...' : 'Simpan & Cetak Struk'}
+            {isSubmitting ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}
           </Button>
         </div>
       }
@@ -527,6 +526,7 @@ export const OrderRevisionModal = () => {
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            height: 22px;
             padding: 3px 8px 3px 10px;
             border-radius: 9999px;
             background-color: var(--blue-50);
@@ -539,14 +539,19 @@ export const OrderRevisionModal = () => {
             border: none;
             background: transparent;
             color: var(--blue-500);
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            aspect-ratio: 1 / 1;
             border-radius: 50%;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            flex: 0 0 16px;
             cursor: pointer;
             padding: 0;
+            line-height: 1;
             transition: background 0.15s ease;
           }
           .rev-topping-remove-btn:hover {
@@ -563,7 +568,8 @@ export const OrderRevisionModal = () => {
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 4px 10px;
+            height: 22px;
+            padding: 3px 10px;
             border-radius: 6px;
             border: 1px dashed var(--blue-300);
             background-color: #ffffff;
@@ -774,13 +780,96 @@ export const OrderRevisionModal = () => {
             justify-content: center !important;
           }
 
+          @media (max-width: 640px) {
+            /* Mobile readability pass */
+            .rev-items-container {
+              gap: 12px !important;
+            }
+            .rev-top-actions {
+              padding: 10px 12px !important;
+              background: #f8fafc !important;
+              border: 1px solid var(--neutral-200) !important;
+              border-radius: 12px !important;
+            }
+            .rev-cart-card {
+              padding: 0 !important;
+              gap: 0 !important;
+              overflow: hidden !important;
+            }
+            .rev-card-header-row {
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) 40px !important;
+              align-items: start !important;
+              gap: 10px !important;
+              padding: 12px !important;
+            }
+            .rev-card-title-line {
+              display: grid !important;
+              grid-template-columns: auto minmax(0, 1fr) !important;
+              gap: 8px !important;
+              min-width: 0 !important;
+            }
+            .rev-item-name-text {
+              min-width: 0 !important;
+              font-weight: 800 !important;
+              overflow-wrap: anywhere !important;
+            }
+            .rev-item-unit-price {
+              line-height: 1.35 !important;
+            }
+            .rev-btn-delete {
+              width: 40px !important;
+              height: 40px !important;
+            }
+            .rev-toppings-bar {
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) !important;
+              align-items: stretch !important;
+              gap: 8px !important;
+              padding: 10px 12px !important;
+              border-top: 1px solid var(--neutral-100) !important;
+            }
+            .rev-no-topping-text {
+              padding: 7px 0 !important;
+            }
+            .rev-modify-topping-btn {
+              width: 100% !important;
+              min-height: 40px !important;
+              justify-content: center !important;
+              border-radius: 8px !important;
+            }
+            .rev-card-bottom-row {
+              display: grid !important;
+              grid-template-columns: auto minmax(0, 1fr) !important;
+              align-items: center !important;
+              gap: 12px !important;
+              padding: 12px !important;
+              background: #fbfdff !important;
+              border-top: 1px dashed var(--neutral-100) !important;
+            }
+            .rev-stepper-box {
+              min-height: 42px !important;
+            }
+            .rev-stepper-touch-btn {
+              width: 42px !important;
+              height: 42px !important;
+            }
+            .rev-stepper-touch-val {
+              min-width: 38px !important;
+              font-size: 0.938rem !important;
+            }
+            .rev-item-subtotal-area {
+              min-width: 0 !important;
+            }
+          }
+
           /* Specific Mobile Breakpoint (<= 640px) */
           @media (max-width: 640px) {
             .rev-modal-body {
               gap: 12px;
             }
             .rev-cart-card {
-              padding: 10px 12px;
+              padding: 0 !important;
             }
             .rev-card-title-line {
               gap: 4px;
@@ -816,6 +905,149 @@ export const OrderRevisionModal = () => {
             .rev-footer-btn-submit {
               width: 100% !important;
               height: 44px !important;
+            }
+          }
+
+          @media (max-width: 1024px) {
+            .rev-toppings-bar {
+              display: flex !important;
+              align-items: center !important;
+              flex-wrap: wrap !important;
+              gap: 6px !important;
+              padding: 2px 12px !important;
+              background: transparent !important;
+              border-top: 0 !important;
+              border-bottom: 0 !important;
+            }
+            .rev-modify-topping-btn {
+              display: inline-flex !important;
+              align-items: center !important;
+              gap: 5px !important;
+              flex: 0 1 auto !important;
+              width: auto !important;
+              height: 22px !important;
+              min-height: 0 !important;
+              padding: 3px 10px !important;
+              border-radius: 6px !important;
+              border: 1px dashed var(--blue-300) !important;
+              background-color: #ffffff !important;
+              color: var(--blue-600) !important;
+              font-size: 0.719rem !important;
+              font-weight: 700 !important;
+              line-height: normal !important;
+              cursor: pointer !important;
+              transition: all 0.15s ease !important;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .rev-cart-card {
+              border-color: #dbe7f3 !important;
+              border-radius: 14px !important;
+              background: #ffffff !important;
+              box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06) !important;
+            }
+            .rev-cart-card + .rev-cart-card {
+              margin-top: 2px !important;
+            }
+            .rev-card-header-row {
+              grid-template-columns: minmax(0, 1fr) 42px !important;
+              padding: 12px 12px 10px !important;
+              background: #ffffff !important;
+            }
+            .rev-card-title-wrap {
+              gap: 4px !important;
+            }
+            .rev-card-title-line {
+              grid-template-columns: auto minmax(0, 1fr) !important;
+              align-items: start !important;
+              gap: 8px !important;
+            }
+            .rev-item-index-badge {
+              height: 22px !important;
+              min-width: 28px !important;
+              display: inline-flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              border-radius: 7px !important;
+              background: #eff6ff !important;
+              color: var(--blue-600) !important;
+              border: 1px solid #bfdbfe !important;
+              padding: 0 7px !important;
+            }
+            .rev-item-name-text {
+              font-size: 0.938rem !important;
+              line-height: 1.28 !important;
+              letter-spacing: 0 !important;
+            }
+            .rev-item-unit-price {
+              color: #64748b !important;
+              font-size: 0.781rem !important;
+              font-weight: 700 !important;
+            }
+            .rev-btn-delete {
+              width: 42px !important;
+              height: 42px !important;
+              border-radius: 10px !important;
+            }
+            .rev-toppings-bar {
+              display: flex !important;
+              align-items: center !important;
+              flex-wrap: wrap !important;
+              gap: 6px !important;
+              padding: 2px 12px !important;
+              background: transparent !important;
+              border-top: 0 !important;
+              border-bottom: 0 !important;
+            }
+            .rev-no-topping-text {
+              min-height: 0 !important;
+              display: inline !important;
+              color: var(--neutral-400) !important;
+              line-height: normal !important;
+            }
+            .rev-modify-topping-btn {
+              display: inline-flex !important;
+              align-items: center !important;
+              gap: 5px !important;
+              flex: 0 1 auto !important;
+              width: auto !important;
+              height: 22px !important;
+              min-height: 0 !important;
+              padding: 3px 10px !important;
+              border-radius: 6px !important;
+              border: 1px dashed var(--blue-300) !important;
+              background-color: #ffffff !important;
+              color: var(--blue-600) !important;
+              font-size: 0.719rem !important;
+              font-weight: 700 !important;
+              line-height: normal !important;
+              cursor: pointer !important;
+              transition: all 0.15s ease !important;
+            }
+            .rev-card-bottom-row {
+              padding: 12px !important;
+              background: #ffffff !important;
+              border-top: 0 !important;
+            }
+            .rev-stepper-box {
+              border-radius: 10px !important;
+              background: #f8fafc !important;
+            }
+            .rev-stepper-touch-btn {
+              width: 42px !important;
+              height: 42px !important;
+            }
+            .rev-stepper-touch-val {
+              min-width: 38px !important;
+              font-size: 0.938rem !important;
+            }
+            .rev-item-subtotal-area {
+              gap: 2px !important;
+            }
+            .rev-item-subtotal-number {
+              font-size: 1.063rem !important;
+              line-height: 1.1 !important;
             }
           }
         `}</style>
@@ -998,9 +1230,7 @@ export const OrderRevisionModal = () => {
                         </span>
                       );
                     })
-                  ) : (
-                    <span className="rev-no-topping-text">Tanpa Topping (Porsi Polos)</span>
-                  )}
+                  ) : null}
 
                   <button
                     type="button"
@@ -1009,7 +1239,7 @@ export const OrderRevisionModal = () => {
                     title="Ubah atau pilih topping"
                   >
                     <Edit3 size={11} />
-                    <span>{isEditingTopping ? 'Tutup Pilihan' : 'Ubah / + Topping'}</span>
+                    <span>{isEditingTopping ? 'Tutup Pilihan' : item.toppings?.length > 0 ? 'Ubah / + Topping' : '+ Topping'}</span>
                     {isEditingTopping ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                   </button>
                 </div>
@@ -1142,17 +1372,17 @@ export const OrderRevisionModal = () => {
 
           {/* Difference Banner */}
           <div className={`rev-diff-banner ${
-            priceDifference < 0 ? 'rev-diff-banner-refund' : priceDifference > 0 ? 'rev-diff-banner-charge' : 'rev-diff-banner-equal'
+            priceDifference > 0 ? 'rev-diff-banner-charge' : 'rev-diff-banner-equal'
           }`}>
-            {priceDifference !== 0 && (
+            {priceDifference > 0 && (
               <div 
                 className="rev-diff-icon-circle"
                 style={{
-                  backgroundColor: priceDifference < 0 ? '#d1fae5' : '#fef3c7',
-                  color: priceDifference < 0 ? '#059669' : '#d97706'
+                  backgroundColor: '#fef3c7',
+                  color: '#d97706'
                 }}
               >
-                {priceDifference < 0 ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                <ArrowUpRight size={18} />
               </div>
             )}
 
@@ -1160,24 +1390,20 @@ export const OrderRevisionModal = () => {
               <div style={{
                 fontSize: '0.906rem',
                 fontWeight: 800,
-                color: priceDifference < 0 ? '#065f46' : priceDifference > 0 ? '#92400e' : '#3730a3'
+                color: priceDifference > 0 ? '#92400e' : '#3730a3'
               }}>
-                {priceDifference < 0 
-                  ? `💸 Kembalikan Uang: ${formatIDR(Math.abs(priceDifference))}`
-                  : priceDifference > 0 
-                    ? `⚠️ Kurang Bayar: ${formatIDR(priceDifference)}`
-                    : '✓ Nilai Total Sama (Tanpa Selisih Uang)'}
+                {priceDifference > 0 
+                  ? `⚠️ Tambahan Bayar: ${formatIDR(priceDifference)}`
+                  : '✓ Nilai Total Sesuai'}
               </div>
               <div style={{
                 fontSize: '0.719rem',
-                color: priceDifference < 0 ? '#047857' : priceDifference > 0 ? '#b45309' : '#4f46e5',
+                color: priceDifference > 0 ? '#b45309' : '#4f46e5',
                 marginTop: '2px'
               }}>
-                {priceDifference < 0
-                  ? 'Kembalikan uang selisih kepada pelanggan dari kasir.'
-                  : priceDifference > 0
-                    ? 'Pelanggan membayar kekurangan sebelum struk baru dicetak.'
-                    : 'Komposisi menu/topping diperbarui tanpa perubahan total pembayaran.'}
+                {priceDifference > 0
+                  ? 'Pelanggan perlu membayar tambahan sebelum perubahan disimpan.'
+                  : 'Perubahan pesanan tidak membutuhkan tambahan pembayaran.'}
               </div>
             </div>
           </div>

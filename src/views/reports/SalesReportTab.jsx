@@ -1673,7 +1673,7 @@ export const SalesReportTab = () => {
                       </div>
 
                       {/* 2. Pelanggan & Meja & Kasir Row */}
-                      <div style={{
+                      <div className="transaction-mobile-info-row" style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -1684,15 +1684,15 @@ export const SalesReportTab = () => {
                         border: '1px solid #e2e8f0',
                         fontSize: '0.813rem'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>
+                        <div className="transaction-mobile-customer-wrap" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="transaction-mobile-customer-name" style={{ fontWeight: 700, color: 'var(--neutral-900)' }}>
                             {order.customerName || 'Pelanggan Umum'}
                           </span>
                           {(() => {
                             const table = (order.tableNumber || '').trim().toLowerCase();
                             const isTake = table.includes('take') || table.includes('bungkus');
                             return (
-                              <span style={{
+                              <span className="transaction-mobile-order-type" style={{
                                 fontSize: '0.688rem',
                                 color: isTake ? '#e11d48' : '#b45309',
                                 backgroundColor: isTake ? '#fff1f2' : '#fef3c7',
@@ -1711,7 +1711,7 @@ export const SalesReportTab = () => {
                           })()}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
+                        <div className="transaction-mobile-cashier-wrap" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--neutral-500)' }}>
                           <User size={12} color="var(--neutral-400)" />
                           <span>Kasir: <strong>{order.cashierName || 'Kasir'}</strong></span>
                         </div>
@@ -1828,18 +1828,7 @@ export const SalesReportTab = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedOrderDetailId(order.id)}
-                          className="transaction-mobile-action-btn"
-                          style={{
-                            width: '100%',
-                            justifyContent: 'center',
-                            backgroundColor: 'var(--blue-50)',
-                            borderColor: 'var(--blue-200)',
-                            color: 'var(--blue-700)',
-                            fontWeight: 700,
-                            padding: '9px 14px',
-                            borderRadius: '8px',
-                            gap: '8px'
-                          }}
+                          className="sales-mobile-detail-btn"
                         >
                           <Eye size={16} />
                           <span>Lihat Detail & Aksi Transaksi</span>
@@ -2049,6 +2038,51 @@ export const SalesReportTab = () => {
             flex-direction: column !important;
             gap: 10px !important;
             box-sizing: border-box !important;
+          }
+          .transaction-mobile-info-row {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 9px 10px !important;
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 9px !important;
+          }
+          .transaction-mobile-customer-wrap {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+          }
+          .transaction-mobile-customer-name {
+            min-width: 0 !important;
+            color: var(--neutral-900) !important;
+            font-size: 0.813rem !important;
+            font-weight: 800 !important;
+            line-height: 1.25 !important;
+            overflow-wrap: anywhere !important;
+          }
+          .transaction-mobile-order-type {
+            min-width: 52px !important;
+            justify-content: center !important;
+            text-align: center !important;
+            line-height: 1.1 !important;
+            padding: 4px 7px !important;
+            border-radius: 6px !important;
+          }
+          .transaction-mobile-cashier-wrap {
+            justify-self: end !important;
+            max-width: 112px !important;
+            min-width: 0 !important;
+            color: var(--neutral-500) !important;
+            font-size: 0.719rem !important;
+            line-height: 1.25 !important;
+          }
+          .transaction-mobile-cashier-wrap span {
+            min-width: 0 !important;
+            overflow-wrap: anywhere !important;
           }
           .transaction-mobile-card-actions {
             display: flex !important;

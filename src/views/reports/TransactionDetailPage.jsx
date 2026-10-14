@@ -490,38 +490,7 @@ export const TransactionDetailPage = ({
             </div>
           </div>
 
-          {/* Card 2: Informasi Tambahan & Kasir */}
-          <div className="transaction-detail-card" style={styles.sectionCard}>
-            <div className="transaction-detail-card-header" style={styles.sectionCardHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <User size={18} color="var(--blue-600)" />
-                <h3 style={styles.sectionCardTitle}>Informasi Layanan</h3>
-              </div>
-            </div>
-
-            <div style={styles.infoMetaList}>
-              <div style={styles.infoMetaItem}>
-                <span style={styles.infoMetaLabel}>Kasir Bertugas:</span>
-                <span style={styles.infoMetaValue}>{order.cashierName || 'admin'}</span>
-              </div>
-              <div style={styles.infoMetaItem}>
-                <span style={styles.infoMetaLabel}>Nama Pelanggan:</span>
-                <span style={styles.infoMetaValue}>{order.customerName || 'Pelanggan Umum'}</span>
-              </div>
-              <div style={styles.infoMetaItem}>
-                <span style={styles.infoMetaLabel}>Tipe / Meja:</span>
-                <span style={styles.infoMetaValue}>{order.tableNumber || 'Takeaway'}</span>
-              </div>
-              <div style={styles.infoMetaItem}>
-                <span style={styles.infoMetaLabel}>Status Pesanan:</span>
-                <span style={{ fontWeight: 700, color: isCancelled ? '#dc2626' : isReturned ? '#d97706' : '#059669' }}>
-                  {isCancelled ? 'Dibatalkan' : isReturned ? 'Diretur' : 'Lunas & Selesai'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Khusus Super Admin - Estimasi HPP & Laba */}
+          {/* Card 2: Khusus Super Admin - Estimasi HPP & Laba */}
           {isSuperAdmin && (
             <div className="transaction-detail-card" style={{ ...styles.sectionCard, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}>
               <div className="transaction-detail-card-header" style={styles.sectionCardHeader}>
@@ -1128,23 +1097,5 @@ const styles = {
     fontWeight: 800,
     fontSize: '1.125rem',
     color: 'var(--blue-600)'
-  },
-  infoMetaList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px'
-  },
-  infoMetaItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '0.813rem'
-  },
-  infoMetaLabel: {
-    color: 'var(--neutral-500)'
-  },
-  infoMetaValue: {
-    fontWeight: 600,
-    color: 'var(--neutral-900)'
   }
 };
