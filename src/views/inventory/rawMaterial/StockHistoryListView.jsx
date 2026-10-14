@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRawMaterial } from '../../../controllers/RawMaterialController';
 import { useAuth } from '../../../controllers/AuthController';
 import { Button } from '../../components/Button';
@@ -41,6 +41,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
     paginatedStockLogs,
     logTotalPages,
     logTotalItems,
+    fetchStockLogsPage,
     logSearchTerm,
     setLogSearchTerm,
     logTypeFilter,
@@ -70,6 +71,10 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
   const [exportType, setExportType] = useState(logTypeFilter);
   const [exportMaterial, setExportMaterial] = useState(logMaterialFilter);
   const [exportDate, setExportDate] = useState(logDateFrom || logDateTo);
+  const [serverStockLogs, setServerStockLogs] = useState([]);
+  const [serverStockLogTotal, setServerStockLogTotal] = useState(0);
+  const [serverStockLogLoading, setServerStockLogLoading] = useState(false);
+  const [serverStockLogError, setServerStockLogError] = useState(null);
   const materialFilterOptions = [
     { value: 'ALL', label: 'Semua Bahan' },
     ...Array.from(new Set(stockLogs.map(log => log.rawMaterialName).filter(Boolean)))
@@ -116,6 +121,75 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
     });
     setIsExportModalOpen(false);
   };
+
+  const serverLogDateFilters = useMemo(() => {
+    const from = logDateFrom || logDateTo;
+    const to = logDateTo || logDateFrom;
+
+    return {
+      dateFrom: from ? new Date(`${from}T00:00:00`).toISOString() : '',
+      dateTo: to ? new Date(`${to}T23:59:59.999`).toISOString() : ''
+    };
+  }, [logDateFrom, logDateTo]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadStockLogsPage = async () => {
+      if (!fetchStockLogsPage) return;
+
+      setServerStockLogLoading(true);
+      setServerStockLogError(null);
+
+      const { data, count, error } = await fetchStockLogsPage({
+        page: logCurrentPage,
+        pageSize: logItemsPerPage,
+        filters: {
+          search: logSearchTerm,
+          type: logTypeFilter,
+          material: logMaterialFilter,
+          ...serverLogDateFilters
+        }
+      });
+
+      if (!isActive) return;
+
+      if (error) {
+        setServerStockLogError(error.message || 'Gagal memuat halaman riwayat stok.');
+        setServerStockLogs([]);
+        setServerStockLogTotal(0);
+      } else {
+        setServerStockLogs(data || []);
+        setServerStockLogTotal(count || 0);
+      }
+
+      setServerStockLogLoading(false);
+    };
+
+    loadStockLogsPage();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    fetchStockLogsPage,
+    logCurrentPage,
+    logItemsPerPage,
+    logSearchTerm,
+    logTypeFilter,
+    logMaterialFilter,
+    serverLogDateFilters
+  ]);
+
+  const displayStockLogs = serverStockLogError ? paginatedStockLogs : serverStockLogs;
+  const displayStockLogTotal = serverStockLogError ? logTotalItems : serverStockLogTotal;
+  const displayStockLogTotalPages = Math.max(1, Math.ceil(displayStockLogTotal / logItemsPerPage));
+
+  useEffect(() => {
+    if (logCurrentPage > displayStockLogTotalPages) {
+      setLogCurrentPage(displayStockLogTotalPages);
+    }
+  }, [logCurrentPage, displayStockLogTotalPages, setLogCurrentPage]);
 
   // Helper format datetime
   const formatDateTime = (isoString) => {
@@ -345,7 +419,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
           </div>
         )}
 
-        {isLoading ? (
+        {isLoading || serverStockLogLoading ? (
           <div style={{ padding: '16px' }}>
             <TableSkeleton rows={6} cols={isCashier ? 6 : 9} />
           </div>
@@ -368,7 +442,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
               </tr>
             </thead>
             <tbody>
-              {paginatedStockLogs.length === 0 ? (
+              {displayStockLogs.length === 0 ? (
                 <tr>
                   <td colSpan={isCashier ? 6 : 9} style={{ padding: 0 }}>
                     <EmptyState
@@ -391,7 +465,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                   </td>
                 </tr>
               ) : (
-                paginatedStockLogs.map((log, index) => {
+                displayStockLogs.map((log, index) => {
                   const rowNumber = (logCurrentPage - 1) * logItemsPerPage + index + 1;
                   const isPositive = log.type === 'IN';
                   const isNegative = log.type === 'OUT' || log.type === 'WASTE' || log.type === 'RETURN_ORDER';
@@ -524,7 +598,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
 
         {/* 4. Mobile Card View (< 768px) */}
         <div className="mobile-history-cards-wrapper">
-          {paginatedStockLogs.length === 0 ? (
+          {displayStockLogs.length === 0 ? (
             <EmptyState
               icon={History}
               title={hasLogFilters ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat'}
@@ -544,7 +618,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
             />
           ) : (
             <div style={styles.mobileCardsList}>
-              {paginatedStockLogs.map((log, index) => {
+              {displayStockLogs.map((log, index) => {
                 const rowNumber = (logCurrentPage - 1) * logItemsPerPage + index + 1;
                 const isPositive = log.type === 'IN';
                 const isWaste = log.type === 'WASTE' || log.type === 'RETURN_ORDER';
@@ -645,12 +719,12 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
     )}
 
         {/* 5. Pagination Footer */}
-        {logTotalItems > 0 && (
+        {displayStockLogTotal > 0 && (
           <div style={styles.paginationWrapper}>
             <Pagination
               currentPage={logCurrentPage}
-              totalPages={logTotalPages}
-              totalItems={logTotalItems}
+              totalPages={displayStockLogTotalPages}
+              totalItems={displayStockLogTotal}
               itemsPerPage={logItemsPerPage}
               onPageChange={setLogCurrentPage}
               onItemsPerPageChange={setLogItemsPerPage}

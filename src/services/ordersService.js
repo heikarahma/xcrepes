@@ -120,6 +120,73 @@ const fetchOrdersPaged = async (branchId, includeBranchFilter = true) => {
   return { data: rows, error: null };
 };
 
+const applyOrderPageFilters = (query, filters = {}, branchId, includeBranchFilter = true) => {
+  const {
+    search = '',
+    payment = 'ALL',
+    orderType = 'ALL',
+    dateFrom = '',
+    dateTo = ''
+  } = filters;
+
+  let nextQuery = query;
+
+  if (includeBranchFilter && branchId) {
+    nextQuery = nextQuery.eq('branch_id', branchId);
+  }
+
+  if (dateFrom) {
+    nextQuery = nextQuery.gte('date', dateFrom);
+  }
+
+  if (dateTo) {
+    nextQuery = nextQuery.lte('date', dateTo);
+  }
+
+  if (payment && payment !== 'ALL') {
+    nextQuery = nextQuery.eq('payment_method', payment);
+  }
+
+  if (orderType && orderType !== 'ALL') {
+    if (orderType === 'takeaway') {
+      nextQuery = nextQuery.or('table_number.ilike.%take%,table_number.ilike.%bungkus%');
+    } else if (orderType === 'dineIn') {
+      nextQuery = nextQuery.not('table_number', 'ilike', '%take%').not('table_number', 'ilike', '%bungkus%');
+    }
+  }
+
+  const q = String(search || '').trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
+  if (q) {
+    const escaped = q.replace(/[%_]/g, '\\$&');
+    nextQuery = nextQuery.or([
+      `invoice_number.ilike.%${escaped}%`,
+      `customer_name.ilike.%${escaped}%`,
+      `cashier_name.ilike.%${escaped}%`,
+      `table_number.ilike.%${escaped}%`
+    ].join(','));
+  }
+
+  return nextQuery;
+};
+
+const fetchOrdersPage = async ({ branchId, page = 1, pageSize = 10, filters = {}, includeBranchFilter = true }) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 10));
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+
+  let query = supabase
+    .from(TABLE)
+    .select(ORDER_COLUMNS, { count: 'exact' })
+    .order('date', { ascending: false })
+    .range(from, to);
+
+  query = applyOrderPageFilters(query, filters, branchId, includeBranchFilter);
+
+  const { data, error, count } = await query;
+  return { data: data || [], error, count: count || 0 };
+};
+
 export const ordersService = {
   async getOrders(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
@@ -138,6 +205,62 @@ export const ordersService = {
 
     return {
       data: (data || []).map(mapOrderRow),
+      error: null
+    };
+  },
+
+  async getOrdersPage({ branchId = DEFAULT_BRANCH_ID, page = 1, pageSize = 10, filters = {} } = {}) {
+    if (!isSupabaseConfigured()) return { data: [], count: 0, error: null };
+    let { data, error, count } = await fetchOrdersPage({
+      branchId,
+      page,
+      pageSize,
+      filters,
+      includeBranchFilter: true
+    });
+
+    if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
+      const retry = await fetchOrdersPage({
+        branchId,
+        page,
+        pageSize,
+        filters,
+        includeBranchFilter: false
+      });
+      data = retry.data;
+      error = retry.error;
+      count = retry.count;
+    }
+
+    if (error) {
+      console.error('ordersService.getOrdersPage error:', error);
+      return { data: [], count: 0, error };
+    }
+
+    return {
+      data: (data || []).map(mapOrderRow),
+      count: count || 0,
+      error: null
+    };
+  },
+
+  async getOrderById(id) {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    if (!id) return { data: null, error: new Error('Order id is required') };
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(ORDER_COLUMNS)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('ordersService.getOrderById error:', error);
+      return { data: null, error };
+    }
+
+    return {
+      data: data ? mapOrderRow(data) : null,
       error: null
     };
   },

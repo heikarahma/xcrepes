@@ -77,6 +77,78 @@ const fetchStockLogsPaged = async (branchId, includeBranchFilter = true) => {
   return { data: rows, error: null };
 };
 
+const applyStockLogPageFilters = (query, filters = {}, branchId, includeBranchFilter = true) => {
+  const {
+    search = '',
+    type = 'ALL',
+    material = 'ALL',
+    dateFrom = '',
+    dateTo = ''
+  } = filters;
+
+  let nextQuery = query;
+
+  if (includeBranchFilter && branchId) {
+    nextQuery = nextQuery.eq('branch_id', branchId);
+  }
+
+  if (dateFrom) {
+    nextQuery = nextQuery.gte('created_at', dateFrom);
+  }
+
+  if (dateTo) {
+    nextQuery = nextQuery.lte('created_at', dateTo);
+  }
+
+  if (type && type !== 'ALL') {
+    if (type === 'WASTE') {
+      nextQuery = nextQuery.in('type', ['WASTE', 'RETURN_ORDER']);
+    } else {
+      nextQuery = nextQuery.eq('type', type);
+    }
+  }
+
+  if (material && material !== 'ALL') {
+    nextQuery = nextQuery.eq('raw_material_name', material);
+  }
+
+  const q = String(search || '').trim().replace(/[(),]/g, ' ').replace(/\s+/g, ' ');
+  if (q) {
+    const escaped = q.replace(/[%_]/g, '\\$&');
+    nextQuery = nextQuery.or([
+      `raw_material_name.ilike.%${escaped}%`,
+      `reason.ilike.%${escaped}%`,
+      `note.ilike.%${escaped}%`,
+      `reference_invoice.ilike.%${escaped}%`,
+      `source_menu.ilike.%${escaped}%`,
+      `topping_name.ilike.%${escaped}%`,
+      `customer_name.ilike.%${escaped}%`,
+      `user_name.ilike.%${escaped}%`
+    ].join(','));
+  }
+
+  return nextQuery;
+};
+
+const fetchStockLogsPage = async ({ branchId, page = 1, pageSize = 10, filters = {}, includeBranchFilter = true }) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.min(100, Math.max(1, Number(pageSize) || 10));
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+
+  let query = supabase
+    .from(TABLE)
+    .select(STOCK_LOG_COLUMNS, { count: 'exact' })
+    .neq('type', 'OPNAME_REPORT')
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  query = applyStockLogPageFilters(query, filters, branchId, includeBranchFilter);
+
+  const { data, error, count } = await query;
+  return { data: data || [], error, count: count || 0 };
+};
+
 export const stockLogsService = {
   async getStockLogs(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
@@ -95,6 +167,62 @@ export const stockLogsService = {
 
     return {
       data: (data || []).map(mapStockLogRow),
+      error: null
+    };
+  },
+
+  async getStockLogsPage({ branchId = DEFAULT_BRANCH_ID, page = 1, pageSize = 10, filters = {} } = {}) {
+    if (!isSupabaseConfigured()) return { data: [], count: 0, error: null };
+    let { data, error, count } = await fetchStockLogsPage({
+      branchId,
+      page,
+      pageSize,
+      filters,
+      includeBranchFilter: true
+    });
+
+    if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
+      const retry = await fetchStockLogsPage({
+        branchId,
+        page,
+        pageSize,
+        filters,
+        includeBranchFilter: false
+      });
+      data = retry.data;
+      error = retry.error;
+      count = retry.count;
+    }
+
+    if (error) {
+      console.error('stockLogsService.getStockLogsPage error:', error);
+      return { data: [], count: 0, error };
+    }
+
+    return {
+      data: (data || []).map(mapStockLogRow),
+      count: count || 0,
+      error: null
+    };
+  },
+
+  async getStockLogById(id) {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    if (!id) return { data: null, error: new Error('Stock log id is required') };
+
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select(STOCK_LOG_COLUMNS)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('stockLogsService.getStockLogById error:', error);
+      return { data: null, error };
+    }
+
+    return {
+      data: data ? mapStockLogRow(data) : null,
       error: null
     };
   },

@@ -4,6 +4,11 @@ import { DEFAULT_BRANCH_ID, isRowForBranch, formatBranchRowId, stripBranchFromId
 const TABLE = 'raw_materials';
 const STOCK_TABLE = 'store_branch_stocks';
 
+const applyBranchRowQuery = (query, branchId = DEFAULT_BRANCH_ID) => {
+  if (!branchId || branchId === DEFAULT_BRANCH_ID) return query;
+  return query.like('id', `${branchId}__%`);
+};
+
 const mapMaterialRow = (row, stockOverride = null, branchId = DEFAULT_BRANCH_ID) => {
   const stockValue = stockOverride !== null && stockOverride !== undefined
     ? Number(stockOverride)
@@ -29,10 +34,12 @@ const mapMaterialRow = (row, stockOverride = null, branchId = DEFAULT_BRANCH_ID)
 export const rawMaterialsService = {
   async getRawMaterials(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    const { data: materials, error } = await supabase
+    const query = supabase
       .from(TABLE)
       .select('*')
       .order('created_at', { ascending: false });
+
+    const { data: materials, error } = await applyBranchRowQuery(query, branchId);
 
     if (error) {
       console.error('rawMaterialsService.getRawMaterials error:', error);

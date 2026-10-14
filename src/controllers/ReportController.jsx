@@ -5,6 +5,7 @@ import { useProductMenu } from './ProductMenuController';
 import { useTopping } from './ToppingController';
 import { useSettings } from './SettingsController';
 import { useAuth } from './AuthController';
+import { useUnit } from './UnitController';
 import {
   getPeriodLabel,
   exportProductPerformanceToExcel,
@@ -30,8 +31,14 @@ export const useReportController = useReport;
 
 export const ReportProvider = ({ children }) => {
   const { currentUser } = useAuth();
+  const { activeMenu } = useUnit();
   const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const isCashier = currentUser?.role === 'kasir';
+  const isReportRoute = activeMenu === 'reports' ||
+    activeMenu === 'reports-sales' ||
+    activeMenu === 'reports-sales-summary' ||
+    activeMenu === 'reports-sales-transactions' ||
+    activeMenu === 'reports-materials';
   const { orders = [] } = useOrder();
   const { rawMaterials = [], stockLogs = [] } = useRawMaterial();
   const { productMenus = [] } = useProductMenu();
@@ -141,6 +148,8 @@ export const ReportProvider = ({ children }) => {
 
   // 1. FILTERED ORDERS by Date Range
   const filteredOrders = useMemo(() => {
+    if (!isReportRoute) return [];
+
     const { start, end } = getDateBounds(dateRangePreset);
 
     return orders.filter(order => {
@@ -148,7 +157,7 @@ export const ReportProvider = ({ children }) => {
       if (orderDate < start || orderDate > end) return false;
       return true;
     });
-  }, [orders, dateRangePreset, customStartDate, customEndDate]);
+  }, [orders, isReportRoute, dateRangePreset, customStartDate, customEndDate]);
 
   // 2. DETAILED ENRICHED ORDERS (with individual HPP calculation)
   const enrichedOrders = useMemo(() => {
@@ -493,6 +502,8 @@ export const ReportProvider = ({ children }) => {
 
   // 5. MATERIAL USAGE / DEDUCTION AUDIT LOGS
   const materialDeductionLogs = useMemo(() => {
+    if (!isReportRoute) return [];
+
     const { start, end } = getDateBounds(dateRangePreset);
 
     return stockLogs
@@ -577,7 +588,7 @@ export const ReportProvider = ({ children }) => {
           badgeColor
         };
       });
-  }, [stockLogs, rawMaterials, dateRangePreset, customStartDate, customEndDate, materialIdFilter, materialEventTypeFilter, materialSearchTerm]);
+  }, [stockLogs, rawMaterials, isReportRoute, dateRangePreset, customStartDate, customEndDate, materialIdFilter, materialEventTypeFilter, materialSearchTerm]);
 
   // 6. MATERIAL USAGE KPI SUMMARY
   const materialSummary = useMemo(() => {

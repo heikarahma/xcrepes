@@ -3,6 +3,11 @@ import { DEFAULT_BRANCH_ID, isRowForBranch, formatBranchRowId, stripBranchFromId
 
 const TABLE = 'toppings';
 
+const applyBranchRowQuery = (query, branchId = DEFAULT_BRANCH_ID) => {
+  if (!branchId || branchId === DEFAULT_BRANCH_ID) return query;
+  return query.like('id', `${branchId}__%`);
+};
+
 const getLocalToppingReceiptSettings = () => {
   try {
     const raw = localStorage.getItem('toppings_receipt_settings');
@@ -27,10 +32,12 @@ export const toppingsService = {
   async getToppings(branchId = DEFAULT_BRANCH_ID) {
     const localReceiptMap = getLocalToppingReceiptSettings();
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    const { data, error } = await supabase
+    const query = supabase
       .from(TABLE)
       .select('*')
       .order('created_at', { ascending: false });
+
+    const { data, error } = await applyBranchRowQuery(query, branchId);
 
     if (error) {
       console.error('toppingsService.getToppings error:', error);

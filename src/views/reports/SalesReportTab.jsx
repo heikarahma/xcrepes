@@ -8,6 +8,7 @@ import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { SearchSelect } from '../components/SearchSelect';
+import { Pagination } from '../components/Pagination';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -56,10 +57,13 @@ export const SalesReportTab = () => {
     setActiveSalesSection,
     selectedOrderDetailId,
     setSelectedOrderDetailId,
+    dateRangePreset,
+    customStartDate,
+    customEndDate,
     periodLabel
   } = useReport();
 
-  const { openReceiptModal, openOrderReturnModal, openOrderCancelModal, openOrderRevisionModal } = useOrder();
+  const { openReceiptModal, openOrderReturnModal, openOrderCancelModal, openOrderRevisionModal, fetchOrdersPage } = useOrder();
   const { openPhotoPreviewModal } = useRawMaterial();
   const { currentUser } = useAuth();
 
@@ -70,6 +74,12 @@ export const SalesReportTab = () => {
   const [menuSearchTerm, setMenuSearchTerm] = useState('');
   const [transactionSearchTerm, setTransactionSearchTerm] = useState('');
   const [salesOrderTypeFilter, setSalesOrderTypeFilter] = useState('ALL'); // 'ALL' | 'dineIn' | 'takeaway'
+  const [transactionCurrentPage, setTransactionCurrentPage] = useState(1);
+  const [transactionItemsPerPage, setTransactionItemsPerPage] = useState(10);
+  const [serverTransactionOrders, setServerTransactionOrders] = useState([]);
+  const [serverTransactionTotal, setServerTransactionTotal] = useState(0);
+  const [serverTransactionLoading, setServerTransactionLoading] = useState(false);
+  const [serverTransactionError, setServerTransactionError] = useState(null);
 
   // Reset detail view when switching between summary and transactions
   useEffect(() => {
@@ -107,6 +117,61 @@ export const SalesReportTab = () => {
       return isoString;
     }
   };
+
+  const transactionDateFilters = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const makeRange = (start, end) => ({
+      dateFrom: start ? start.toISOString() : '',
+      dateTo: end ? end.toISOString() : ''
+    });
+
+    switch (dateRangePreset) {
+      case 'today':
+        return makeRange(todayStart, todayEnd);
+      case 'yesterday': {
+        const start = new Date(todayStart);
+        start.setDate(start.getDate() - 1);
+        const end = new Date(todayEnd);
+        end.setDate(end.getDate() - 1);
+        return makeRange(start, end);
+      }
+      case '7days': {
+        const start = new Date(todayStart);
+        start.setDate(start.getDate() - 6);
+        return makeRange(start, todayEnd);
+      }
+      case '30days': {
+        const start = new Date(todayStart);
+        start.setDate(start.getDate() - 29);
+        return makeRange(start, todayEnd);
+      }
+      case 'this_month': {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        return makeRange(start, todayEnd);
+      }
+      case 'custom': {
+        if (!customStartDate && !customEndDate) return {};
+        let start = customStartDate ? new Date(`${customStartDate}T00:00:00`) : null;
+        let end = customEndDate
+          ? new Date(`${customEndDate}T23:59:59.999`)
+          : (customStartDate ? new Date(`${customStartDate}T23:59:59.999`) : todayEnd);
+
+        if (start && end && start > end) {
+          const temp = start;
+          start = end;
+          end = temp;
+        }
+
+        return makeRange(start, end);
+      }
+      case 'all':
+      default:
+        return {};
+    }
+  }, [dateRangePreset, customStartDate, customEndDate]);
 
   // Insights Data
   const combinedList = menuSalesWithToppings?.list || [];
@@ -245,6 +310,101 @@ export const SalesReportTab = () => {
       return true;
     });
   }, [enrichedOrders, salesPaymentFilter, salesOrderTypeFilter, transactionSearchTerm]);
+
+  useEffect(() => {
+    setTransactionCurrentPage(1);
+  }, [salesPaymentFilter, salesOrderTypeFilter, transactionSearchTerm, activeSalesSection, dateRangePreset, customStartDate, customEndDate]);
+
+  const transactionTotalPages = Math.max(1, Math.ceil(filteredTransactionOrders.length / transactionItemsPerPage));
+  const paginatedTransactionOrders = useMemo(() => {
+    const safePage = Math.min(transactionCurrentPage, transactionTotalPages);
+    const startIndex = (safePage - 1) * transactionItemsPerPage;
+    return filteredTransactionOrders.slice(startIndex, startIndex + transactionItemsPerPage);
+  }, [filteredTransactionOrders, transactionCurrentPage, transactionItemsPerPage, transactionTotalPages]);
+
+  useEffect(() => {
+    if (transactionCurrentPage > transactionTotalPages) {
+      setTransactionCurrentPage(transactionTotalPages);
+    }
+  }, [transactionCurrentPage, transactionTotalPages]);
+
+  const enrichedOrderById = useMemo(() => {
+    return new Map((enrichedOrders || []).map(order => [order.id, order]));
+  }, [enrichedOrders]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadTransactionsPage = async () => {
+      if (!fetchOrdersPage || activeSalesSection !== 'transactions') return;
+
+      setServerTransactionLoading(true);
+      setServerTransactionError(null);
+
+      const { data, count, error } = await fetchOrdersPage({
+        page: transactionCurrentPage,
+        pageSize: transactionItemsPerPage,
+        filters: {
+          search: transactionSearchTerm,
+          payment: salesPaymentFilter,
+          orderType: salesOrderTypeFilter,
+          ...transactionDateFilters
+        }
+      });
+
+      if (!isActive) return;
+
+      if (error) {
+        setServerTransactionError(error.message || 'Gagal memuat halaman transaksi.');
+        setServerTransactionOrders([]);
+        setServerTransactionTotal(0);
+      } else {
+        setServerTransactionOrders(data || []);
+        setServerTransactionTotal(count || 0);
+      }
+
+      setServerTransactionLoading(false);
+    };
+
+    loadTransactionsPage();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    activeSalesSection,
+    fetchOrdersPage,
+    transactionCurrentPage,
+    transactionItemsPerPage,
+    transactionSearchTerm,
+    salesPaymentFilter,
+    salesOrderTypeFilter,
+    transactionDateFilters
+  ]);
+
+  const serverTransactionDisplayOrders = useMemo(() => {
+    return (serverTransactionOrders || []).map(order => {
+      const enriched = enrichedOrderById.get(order.id);
+      return {
+        grossRevenue: Number(order.totalAmount) || 0,
+        netProfit: 0,
+        orderTotalHPP: 0,
+        ...order,
+        ...(enriched || {})
+      };
+    });
+  }, [serverTransactionOrders, enrichedOrderById]);
+
+  const shouldUseServerTransactions = activeSalesSection === 'transactions' && !serverTransactionError;
+  const displayTransactionOrders = shouldUseServerTransactions ? serverTransactionDisplayOrders : paginatedTransactionOrders;
+  const displayTransactionTotal = shouldUseServerTransactions ? serverTransactionTotal : filteredTransactionOrders.length;
+  const displayTransactionTotalPages = Math.max(1, Math.ceil(displayTransactionTotal / transactionItemsPerPage));
+
+  useEffect(() => {
+    if (transactionCurrentPage > displayTransactionTotalPages) {
+      setTransactionCurrentPage(displayTransactionTotalPages);
+    }
+  }, [transactionCurrentPage, displayTransactionTotalPages]);
 
   return (
     <div className="sales-report-tab" style={styles.container}>
@@ -1356,7 +1516,11 @@ export const SalesReportTab = () => {
 
           {/* Section 2 Table: Riwayat Transaksi Kasir */}
           <div className="transaction-table-card" style={styles.tableCard}>
-            {filteredTransactionOrders.length === 0 ? (
+            {serverTransactionLoading ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--neutral-500)', fontWeight: 600 }}>
+                Memuat halaman transaksi...
+              </div>
+            ) : displayTransactionTotal === 0 ? (
               <EmptyState
                 title="Tidak ada riwayat transaksi"
                 description="Belum ada transaksi kasir pada periode waktu atau filter yang dipilih."
@@ -1379,7 +1543,7 @@ export const SalesReportTab = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTransactionOrders.map((order) => {
+                    {displayTransactionOrders.map((order) => {
                       const isReturned = order.status === 'returned';
                       const isCancelled = order.status === 'cancelled';
                       return (
@@ -1608,7 +1772,7 @@ export const SalesReportTab = () => {
 
               {/* 2. Mobile Cards View (Shown on mobile screens <= 1024px) */}
               <div className="transaction-mobile-cards">
-                {filteredTransactionOrders.map((order) => {
+                {displayTransactionOrders.map((order) => {
                   const isReturned = order.status === 'returned';
                   const isCancelled = order.status === 'cancelled';
                   const borderLeftColor = isCancelled ? '#ef4444' : isReturned ? '#f97316' : 'var(--blue-600)';
@@ -1837,6 +2001,20 @@ export const SalesReportTab = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--neutral-100)' }}>
+                <Pagination
+                  currentPage={transactionCurrentPage}
+                  totalPages={displayTransactionTotalPages}
+                  totalItems={displayTransactionTotal}
+                  itemsPerPage={transactionItemsPerPage}
+                  onPageChange={setTransactionCurrentPage}
+                  onItemsPerPageChange={(value) => {
+                    setTransactionItemsPerPage(value);
+                    setTransactionCurrentPage(1);
+                  }}
+                />
               </div>
             </>
           )}

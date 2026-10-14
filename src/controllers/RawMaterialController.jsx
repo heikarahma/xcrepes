@@ -256,22 +256,129 @@ export const RawMaterialProvider = ({ children }) => {
     }
   }, [activeBranchId]);
 
+  const fetchStockLogsPage = useCallback(async ({ page = 1, pageSize = 10, filters = {} } = {}) => {
+    return stockLogsService.getStockLogsPage({
+      branchId: activeBranchId,
+      page,
+      pageSize,
+      filters
+    });
+  }, [activeBranchId]);
+
+  const fetchMaterialsAndReports = useCallback(async () => {
+    try {
+      const [matRes, opnameRes] = await Promise.all([
+        rawMaterialsService.getRawMaterials(activeBranchId),
+        opnameReportsService.getOpnameReports(activeBranchId)
+      ]);
+
+      if (matRes.error) {
+        setError(matRes.error.message || 'Gagal memuat data bahan baku.');
+      } else {
+        setRawMaterials(matRes.data || []);
+      }
+
+      if (opnameRes.data) {
+        setDailyOpnameReports(prevLocal => {
+          const remoteReports = opnameRes.data || [];
+          const mergedMap = new Map();
+
+          remoteReports.forEach(r => {
+            if (r && r.id) mergedMap.set(r.id, r);
+            else if (r && r.date) mergedMap.set(`date-${r.date}`, r);
+          });
+
+          (prevLocal || []).forEach(localR => {
+            if (!localR) return;
+            const key = localR.id || `date-${localR.date}`;
+            if (!mergedMap.has(key)) {
+              mergedMap.set(key, localR);
+              opnameReportsService.saveOpnameReport({ ...localR, branchId: activeBranchId }).catch(e => {
+                console.warn('Background sync of local opname report to Supabase:', e);
+              });
+            }
+          });
+
+          const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+            const timeA = new Date(a.closedAt || a.date).getTime() || 0;
+            const timeB = new Date(b.closedAt || b.date).getTime() || 0;
+            return timeB - timeA;
+          });
+
+          try {
+            localStorage.setItem(DAILY_REPORTS_STORAGE_KEY, JSON.stringify(mergedList));
+          } catch (e) {}
+
+          return mergedList;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to refresh inventory materials:', err);
+    }
+  }, [activeBranchId]);
+
+  const upsertStockLogInState = useCallback((log) => {
+    if (!log || log.type === 'OPNAME_REPORT' || log.branchId !== activeBranchId) return;
+
+    setStockLogs(prev => {
+      const exists = prev.some(item => item.id === log.id);
+      const next = exists
+        ? prev.map(item => item.id === log.id ? log : item)
+        : [log, ...prev];
+
+      return next.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    });
+  }, [activeBranchId]);
+
+  const handleStockLogRealtimeChange = useCallback(async (payload) => {
+    const eventType = payload?.eventType;
+    const newRow = payload?.new;
+    const oldRow = payload?.old;
+    const rowBranchId = newRow?.branch_id || oldRow?.branch_id || activeBranchId;
+
+    if (rowBranchId && rowBranchId !== activeBranchId) return;
+
+    if (eventType === 'DELETE') {
+      const deletedId = oldRow?.id;
+      if (deletedId) {
+        setStockLogs(prev => prev.filter(log => log.id !== deletedId));
+      }
+      return;
+    }
+
+    if (newRow?.type === 'OPNAME_REPORT') {
+      fetchMaterialsAndReports();
+      return;
+    }
+
+    const targetId = newRow?.id;
+    if (!targetId) return;
+
+    const { data, error: fetchErr } = await stockLogsService.getStockLogById(targetId);
+    if (fetchErr) {
+      console.error('Failed to sync realtime stock log:', fetchErr);
+      return;
+    }
+
+    if (data) {
+      upsertStockLogInState(data);
+    }
+  }, [activeBranchId, fetchMaterialsAndReports, upsertStockLogInState]);
+
   // Initial fetch and Realtime sync
   useEffect(() => {
     fetchData();
 
     const channel1 = subscribeToTable('raw_materials', () => {
-      fetchData();
+      fetchMaterialsAndReports();
     });
-    const channel2 = subscribeToTable('inventory_stock_logs', () => {
-      fetchData();
-    });
+    const channel2 = subscribeToTable('inventory_stock_logs', handleStockLogRealtimeChange);
 
     return () => {
       if (channel1) channel1.unsubscribe();
       if (channel2) channel2.unsubscribe();
     };
-  }, [fetchData]);
+  }, [fetchData, fetchMaterialsAndReports, handleStockLogRealtimeChange]);
 
   // Reset pagination when search/filter changes
   useEffect(() => {
@@ -2037,6 +2144,7 @@ export const RawMaterialProvider = ({ children }) => {
         error,
         isSubmitting,
         refetch: fetchData,
+        fetchStockLogsPage,
         copyMaterialsFromBranch,
         availableUnits,
         activeTab,

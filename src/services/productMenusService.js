@@ -3,6 +3,11 @@ import { DEFAULT_BRANCH_ID, isRowForBranch, formatBranchRowId, stripBranchFromId
 
 const TABLE = 'product_menus';
 
+const applyBranchRowQuery = (query, branchId = DEFAULT_BRANCH_ID) => {
+  if (!branchId || branchId === DEFAULT_BRANCH_ID) return query;
+  return query.like('id', `${branchId}__%`);
+};
+
 const mapRow = (row, branchId = DEFAULT_BRANCH_ID) => ({
   id: row.id,
   rawId: row.id,
@@ -25,10 +30,12 @@ const mapRow = (row, branchId = DEFAULT_BRANCH_ID) => ({
 export const productMenusService = {
   async getProductMenus(branchId = DEFAULT_BRANCH_ID) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    const { data, error } = await supabase
+    const query = supabase
       .from(TABLE)
       .select('*')
       .order('created_at', { ascending: false });
+
+    const { data, error } = await applyBranchRowQuery(query, branchId);
 
     if (error) {
       console.error('productMenusService.getProductMenus error:', error);

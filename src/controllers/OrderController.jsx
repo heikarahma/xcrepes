@@ -155,18 +155,68 @@ export const OrderProvider = ({ children }) => {
     }
   }, [activeBranchId]);
 
+  const fetchOrdersPage = useCallback(async ({ page = 1, pageSize = 10, filters = {} } = {}) => {
+    return ordersService.getOrdersPage({
+      branchId: activeBranchId,
+      page,
+      pageSize,
+      filters
+    });
+  }, [activeBranchId]);
+
+  const upsertOrderInState = useCallback((order) => {
+    if (!order || order.branchId !== activeBranchId) return;
+
+    setOrders(prev => {
+      const exists = prev.some(item => item.id === order.id);
+      const next = exists
+        ? prev.map(item => item.id === order.id ? order : item)
+        : [order, ...prev];
+
+      return next.sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+    });
+  }, [activeBranchId]);
+
+  const handleOrderRealtimeChange = useCallback(async (payload) => {
+    const eventType = payload?.eventType;
+    const newRow = payload?.new;
+    const oldRow = payload?.old;
+    const rowBranchId = newRow?.branch_id || oldRow?.branch_id || activeBranchId;
+
+    if (rowBranchId && rowBranchId !== activeBranchId) return;
+
+    if (eventType === 'DELETE') {
+      const deletedId = oldRow?.id;
+      if (deletedId) {
+        setOrders(prev => prev.filter(order => order.id !== deletedId));
+      }
+      return;
+    }
+
+    const targetId = newRow?.id;
+    if (!targetId) return;
+
+    const { data, error: fetchErr } = await ordersService.getOrderById(targetId);
+    if (fetchErr) {
+      console.error('Failed to sync realtime order:', fetchErr);
+      return;
+    }
+
+    if (data) {
+      upsertOrderInState(data);
+    }
+  }, [activeBranchId, upsertOrderInState]);
+
   // Initial fetch and Realtime sync
   useEffect(() => {
     fetchOrders();
 
-    const channel = subscribeToTable('orders', () => {
-      fetchOrders();
-    });
+    const channel = subscribeToTable('orders', handleOrderRealtimeChange);
 
     return () => {
       if (channel) channel.unsubscribe();
     };
-  }, [fetchOrders]);
+  }, [fetchOrders, handleOrderRealtimeChange]);
 
   // Helper to generate unique key matching menu + sorted toppings (including topping quantities)
   const getCartItemKey = (menuId, toppings = []) => {
@@ -1035,6 +1085,7 @@ export const OrderProvider = ({ children }) => {
         error,
         isSubmitting,
         refetch: fetchOrders,
+        fetchOrdersPage,
         cart,
         customerName,
         setCustomerName,
