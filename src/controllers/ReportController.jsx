@@ -60,7 +60,7 @@ export const ReportProvider = ({ children }) => {
   // Sales Tab Specific Filters
   const [salesSearchTerm, setSalesSearchTerm] = useState('');
   const [salesPaymentFilter, setSalesPaymentFilter] = useState('ALL'); // 'ALL' | 'cash' | 'qris' | 'card'
-  const [salesItemTypeFilter, setSalesItemTypeFilter] = useState('COMBINED'); // 'COMBINED' | 'ALL' | 'MENU' | 'TOPPING'
+  const [salesItemTypeFilter, setSalesItemTypeFilter] = useState('MENU'); // 'MENU' | 'TOPPING'
   const [selectedOrderDetailId, setSelectedOrderDetailId] = useState(null);
 
   // Material Usage Tab Specific Filters

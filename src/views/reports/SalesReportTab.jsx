@@ -517,30 +517,6 @@ export const SalesReportTab = () => {
               </div>
             </div>
 
-            {/* Section 1 Controls: Search & Filter Pills & Export Buttons */}
-            <div className="reports-section-controls" style={styles.sectionHeaderRight}>
-              {/* Search Input for Menu & Topping */}
-              <div className="reports-search-wrapper" style={styles.searchWrapper}>
-                <Search size={15} color="var(--neutral-400)" style={styles.searchIcon} />
-                <input
-                  type="text"
-                  placeholder="Cari nama menu / topping..."
-                  value={menuSearchTerm}
-                  onChange={(e) => setMenuSearchTerm(e.target.value)}
-                  style={styles.searchInput}
-                />
-                {menuSearchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setMenuSearchTerm('')}
-                    style={styles.clearSearchBtn}
-                    title="Hapus kata kunci pencarian"
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="top-selling-menu-summary" style={styles.topSellingMenuSummary}>
@@ -584,18 +560,7 @@ export const SalesReportTab = () => {
           </div>
 
           {/* Contextual Item Type Filter Pills */}
-          <div className="reports-pill-group reports-pill-group-below-top-menu" style={{ ...styles.pillGroup, justifyContent: 'flex-start', marginTop: '12px', marginBottom: '16px' }}>
-            <button
-              className={`reports-pill-btn ${salesItemTypeFilter === 'COMBINED' ? 'is-active' : ''}`}
-              onClick={() => setSalesItemTypeFilter('COMBINED')}
-              style={{
-                ...styles.pillBtn,
-                ...(salesItemTypeFilter === 'COMBINED' ? styles.pillBtnActive : {})
-              }}
-              title="Tampilan ringkasan menu beserta rincian topping yang dipesan bersamanya"
-            >
-              Kombinasi Menu & Topping
-            </button>
+          <div className="reports-pill-group reports-pill-group-below-top-menu" style={styles.salesMenuTabs}>
             <button
               className={`reports-pill-btn ${salesItemTypeFilter === 'MENU' ? 'is-active' : ''}`}
               onClick={() => setSalesItemTypeFilter('MENU')}
@@ -616,6 +581,29 @@ export const SalesReportTab = () => {
             >
               Topping Saja
             </button>
+          </div>
+
+          <div className="reports-menu-search-row">
+            <div className="reports-search-wrapper reports-menu-search-wrapper" style={styles.menuSearchWrapper}>
+              <Search size={15} color="var(--neutral-400)" style={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="Cari nama menu / topping..."
+                value={menuSearchTerm}
+                onChange={(e) => setMenuSearchTerm(e.target.value)}
+                style={styles.searchInput}
+              />
+              {menuSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setMenuSearchTerm('')}
+                  style={styles.clearSearchBtn}
+                  title="Hapus kata kunci pencarian"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Table Content: COMBINED vs Standard Products List */}
@@ -2079,6 +2067,20 @@ export const SalesReportTab = () => {
         .reports-pill-btn {
           min-width: 0;
         }
+        .reports-pill-group-below-top-menu .reports-pill-btn {
+          width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .reports-menu-search-row {
+          display: flex;
+          justify-content: flex-start;
+          margin-bottom: 16px;
+        }
+        .reports-menu-search-wrapper {
+          width: 100% !important;
+        }
         .sales-table-count-badge,
         .top-selling-menu-count-badge {
           width: fit-content !important;
@@ -2216,7 +2218,7 @@ export const SalesReportTab = () => {
           }
           .reports-pill-group {
             display: grid !important;
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             flex-wrap: nowrap !important;
           }
           .reports-pill-btn {
@@ -2226,6 +2228,15 @@ export const SalesReportTab = () => {
             text-overflow: ellipsis !important;
             white-space: nowrap !important;
             text-align: center !important;
+          }
+          .reports-pill-group-below-top-menu {
+            height: 42px !important;
+          }
+          .reports-menu-search-row {
+            margin-bottom: 14px !important;
+          }
+          .reports-menu-search-wrapper {
+            max-width: 100% !important;
           }
           .sales-data-table-header {
             align-items: flex-start !important;
@@ -2723,17 +2734,18 @@ const styles = {
   },
   topSellingMenuRow: {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: '10px',
-    padding: '11px',
+    minHeight: '42px',
+    padding: '8px 10px',
     borderRadius: '10px',
     border: '1px solid #e2e8f0',
     backgroundColor: '#f8fafc',
     minWidth: 0
   },
   topSellingMenuRank: {
-    width: '32px',
-    height: '32px',
+    width: '30px',
+    height: '30px',
     borderRadius: '999px',
     backgroundColor: 'var(--blue-50)',
     color: 'var(--blue-600)',
@@ -2746,7 +2758,9 @@ const styles = {
   },
   topSellingMenuMain: {
     flex: 1,
-    minWidth: 0
+    minWidth: 0,
+    display: 'flex',
+    alignItems: 'center'
   },
   topSellingMenuNameRow: {
     display: 'flex',
@@ -2759,7 +2773,10 @@ const styles = {
     fontSize: '13px',
     fontWeight: 800,
     color: 'var(--neutral-900)',
-    minWidth: 0
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   topSellingMenuQty: {
     fontSize: '12px',
@@ -2842,7 +2859,8 @@ const styles = {
   },
   searchInput: {
     width: '100%',
-    padding: '8px 28px 8px 32px',
+    height: '42px',
+    padding: '0 28px 0 32px',
     borderRadius: '8px',
     border: '1px solid var(--border-color)',
     fontSize: '13px',
@@ -2870,16 +2888,41 @@ const styles = {
     gap: '2px',
     flexWrap: 'wrap'
   },
+  salesMenuTabs: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    alignItems: 'center',
+    height: '42px',
+    backgroundColor: 'var(--neutral-100)',
+    border: '1px solid var(--border-color)',
+    borderRadius: '8px',
+    padding: '3px',
+    gap: '3px',
+    marginTop: '12px',
+    marginBottom: '10px'
+  },
+  menuSearchWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: '420px'
+  },
   pillBtn: {
     border: 'none',
     backgroundColor: 'transparent',
-    padding: '6px 12px',
+    height: '34px',
+    padding: '0 12px',
     borderRadius: '6px',
     fontSize: '12px',
     fontWeight: 600,
     color: 'var(--neutral-600)',
     cursor: 'pointer',
-    transition: 'var(--transition-fast)'
+    transition: 'var(--transition-fast)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 0
   },
   pillBtnActive: {
     backgroundColor: '#FFFFFF',
