@@ -1,28 +1,3 @@
-# 📏 Master Data Satuan Ukur — Blibli BLUE Design System (MVP)
-
-Aplikasi web responsif modern untuk pengelolaan **Master Data Satuan Ukur (Unit of Measurement / UOM)** dengan antarmuka berbasis standar resmi **[Blibli BLUE Design System (BLUE 3)](https://blue.blibli.com/blue3/)**.
-
----
-
-## 🌟 Fitur Utama
-
-1. **CRUD Master Data Satuan Ukur Lengkap**:
-   - **Tambah Satuan Ukur (Create)**: Input nama satuan ukur melalui modal dialog modern dengan validasi nama wajib diisi dan anti-duplikasi (*case-insensitive*).
-   - **Lihat & Cari (Read)**: Menampilkan tabel data yang rapi dengan instant search bar, filter sorting (A-Z, Z-A, Terbaru, Terlama), dan paginasi interaktif.
-   - **Ubah Satuan Ukur (Update)**: Edit nama satuan ukur yang sudah ada langsung dari modal dialog.
-   - **Hapus Satuan Ukur (Delete)**: Modal konfirmasi penghapusan aman untuk menghapus satuan ukur tunggal atau hapus massal (*batch delete*).
-
-2. **Desain Blibli BLUE 3**:
-   - Palet warna Blibli Blue Signature (`#0072FF`), Blue Dark (`#005BC6`), Blue Light (`#F0F7FF`), dan Warm Orange (`#FF7600`).
-   - Tipografi *Plus Jakarta Sans*.
-   - Elevasi halus, border modern, dan animasi transisi responsif.
-
-3. **Data Persistence**:
-   - Data otomatis tersimpan di `localStorage` browser sehingga perubahan tetap tersimpan saat halaman di-refresh.
-   - Tersedia tombol **"Reset Data Bawaan"** untuk mengembalikan data awal jika diperlukan.
-
----
-
 ## 🚀 Cara Menjalankan Aplikasi
 
 ### Prasyarat:
