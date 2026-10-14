@@ -5,7 +5,6 @@ import { Modal } from '../components/Modal';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { 
-  ShieldCheck, 
   User, 
   AtSign, 
   Lock, 
@@ -156,19 +155,6 @@ export const SuperAdminProfileModal = () => {
       }
     >
       <form onSubmit={handleSubmit} className="superadmin-profile-form">
-        {/* Info Callout */}
-        <div className="profile-info-callout">
-          <div className="callout-icon-box">
-            <ShieldCheck size={20} color="var(--blue-600)" />
-          </div>
-          <div className="callout-text-box">
-            <div className="callout-title">Hak Akses Tertinggi Sistem</div>
-            <div className="callout-desc">
-              Akun Super Admin memiliki akses 100% penuh ke seluruh modul, pengaturan, dan manajemen kasir. Pastikan Anda mengingat kredensial baru ini.
-            </div>
-          </div>
-        </div>
-
         {/* Global Error Banner */}
         {errors.form && (
           <div className="profile-error-banner">
@@ -288,46 +274,6 @@ export const SuperAdminProfileModal = () => {
           display: flex;
           flex-direction: column;
           gap: 16px;
-        }
-
-        .profile-info-callout {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          background-color: var(--blue-50);
-          border: 1px solid var(--blue-200);
-          border-radius: var(--radius-md);
-          padding: 12px 14px;
-        }
-
-        .callout-icon-box {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          background-color: #FFFFFF;
-          border: 1px solid var(--blue-200);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .callout-text-box {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .callout-title {
-          font-size: 0.813rem;
-          font-weight: 700;
-          color: var(--blue-700);
-        }
-
-        .callout-desc {
-          font-size: 0.75rem;
-          color: var(--neutral-600);
-          line-height: 1.4;
         }
 
         .profile-error-banner {

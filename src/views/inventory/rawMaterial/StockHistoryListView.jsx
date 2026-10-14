@@ -21,8 +21,6 @@ import {
   MinusCircle,
   AlertTriangle,
   RotateCcw,
-  Camera,
-  ZoomIn,
   Layers,
   Filter,
   CalendarDays,
@@ -59,7 +57,6 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
     stockLogStats,
     openAdjustModal,
     openWasteModal,
-    openPhotoPreviewModal,
     rawMaterials,
     isLoading,
     error,
@@ -437,14 +434,13 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                 <th style={{ width: '120px', textAlign: 'right' }}>Perubahan</th>
                 {!isCashier && <th style={{ width: '160px', textAlign: 'center' }}>Alur Stok</th>}
                 {!isCashier && <th>Alasan & Catatan</th>}
-                {!isCashier && <th style={{ width: '80px', textAlign: 'center' }}>Foto</th>}
                 <th style={{ width: '90px', textAlign: 'center' }}>Oleh</th>
               </tr>
             </thead>
             <tbody>
               {displayStockLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={isCashier ? 6 : 9} style={{ padding: 0 }}>
+                  <td colSpan={isCashier ? 6 : 8} style={{ padding: 0 }}>
                     <EmptyState
                       icon={History}
                       title={hasLogFilters ? 'Riwayat Tidak Ditemukan' : 'Belum Ada Riwayat Perubahan'}
@@ -552,35 +548,6 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                         </td>
                       )}
 
-                      {/* Bukti Foto */}
-                      {!isCashier && (
-                        <td style={{ textAlign: 'center' }}>
-                          {log.photo ? (
-                            <div
-                              onClick={() => openPhotoPreviewModal(log.photo, `Bukti Foto: ${log.rawMaterialName}`, {
-                                rawMaterialName: log.rawMaterialName,
-                                amount: log.amount,
-                                unitName: log.unitName,
-                                reason: log.reason,
-                                note: log.note,
-                                user: log.user,
-                                orderInvoice: log.referenceInvoice,
-                                createdAt: formatDateTime(log.createdAt)
-                              })}
-                              style={styles.thumbnailWrap}
-                              title="Klik untuk melihat foto ukuran penuh"
-                            >
-                              <img src={log.photo} alt="Bukti" style={styles.thumbnailImg} />
-                              <div style={styles.thumbnailOverlay}>
-                                <ZoomIn size={12} color="#ffffff" />
-                              </div>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: '0.688rem', color: 'var(--neutral-400)' }}>-</span>
-                          )}
-                        </td>
-                      )}
-
                       {/* Oleh / User */}
                       <td style={{ textAlign: 'center' }}>
                         <div style={styles.userBadge}>
@@ -680,7 +647,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                       </div>
                     )}
 
-                    {/* Bottom Row: Photo Preview Button & Timestamp */}
+                    {/* Bottom Row: Timestamp & User */}
                     <div style={styles.mobileBottomMeta}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.719rem', color: 'var(--neutral-500)' }}>
                         <Clock size={11} />
@@ -688,26 +655,6 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                         <span>•</span>
                         <span>{log.user || 'Admin'}</span>
                       </div>
-
-                      {!isCashier && log.photo && (
-                        <button
-                          type="button"
-                          onClick={() => openPhotoPreviewModal(log.photo, `Bukti Foto: ${log.rawMaterialName}`, {
-                            rawMaterialName: log.rawMaterialName,
-                            amount: log.amount,
-                            unitName: log.unitName,
-                            reason: log.reason,
-                            note: log.note,
-                            user: log.user,
-                            orderInvoice: log.referenceInvoice,
-                            createdAt: formatDateTime(log.createdAt)
-                          })}
-                          style={styles.mobilePhotoBtn}
-                        >
-                          <Camera size={12} />
-                          <span>Lihat Foto Bukti</span>
-                        </button>
-                      )}
                     </div>
                   </div>
                 );

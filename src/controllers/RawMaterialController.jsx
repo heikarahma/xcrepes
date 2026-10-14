@@ -626,7 +626,7 @@ export const RawMaterialProvider = ({ children }) => {
   };
 
   // C.3 Record Material Waste (Bahan Rusak / Expired / Tumpah)
-  const recordMaterialWaste = async ({ rawMaterialId, amount, reasonCategory = 'Bahan Kedaluwarsa / Expired', note = '', photo = null, user = 'Admin' }) => {
+  const recordMaterialWaste = async ({ rawMaterialId, amount, reasonCategory = 'Bahan Kedaluwarsa / Expired', note = '', user = 'Admin' }) => {
     const target = rawMaterials.find(r => r.id === rawMaterialId);
     if (!target) return { success: false, error: 'Bahan baku tidak ditemukan.' };
 
@@ -659,7 +659,6 @@ export const RawMaterialProvider = ({ children }) => {
         currentStock: newStock,
         reason: reasonCategory,
         note: note.trim() || reasonCategory,
-        photo: photo || null,
         user: user || 'Admin',
         createdAt: new Date().toISOString()
       };

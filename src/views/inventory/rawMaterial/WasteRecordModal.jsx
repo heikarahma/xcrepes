@@ -124,7 +124,6 @@ export const WasteRecordModal = () => {
         amount: Number(amount),
         reasonCategory: reasonText.trim(),
         note: '',
-        photo: null,
         user: currentUserName
       });
     } catch (err) {

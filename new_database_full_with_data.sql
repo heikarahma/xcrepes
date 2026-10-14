@@ -81,7 +81,6 @@ CREATE TABLE IF NOT EXISTS inventory_stock_logs (
     current_stock NUMERIC NOT NULL DEFAULT 0,
     reason TEXT,
     note TEXT,
-    photo TEXT,
     reference_invoice TEXT,
     order_id TEXT,
     customer_name TEXT,
