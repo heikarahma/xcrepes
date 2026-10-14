@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUnit } from '../../controllers/UnitController';
+import { useNavigation } from '../../controllers/UIController';
 import { useSettings } from '../../controllers/SettingsController';
 import { useAuth } from '../../controllers/AuthController';
 import { hasAdminPrivileges, isStoreAdminRole } from '../../models/UserModel';
@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 
 export const Navbar = () => {
-  const { activeMenu, isMobileMenuOpen, setIsMobileMenuOpen } = useUnit();
+  const { activeMenu, isMobileMenuOpen, setIsMobileMenuOpen } = useNavigation();
   const { settings } = useSettings();
   const { currentUser, openProfileModal, logout, accessibleBranches = [], switchActiveBranch } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

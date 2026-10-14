@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { unitsService } from '../services/unitsService';
 import { subscribeToTable, isSupabaseConfigured } from '../lib/supabase';
+import { useUI } from './UIController';
 
 const UnitContext = createContext();
 
@@ -15,6 +16,9 @@ export const useUnit = () => {
 export const useUnitController = useUnit;
 
 export const UnitProvider = ({ children }) => {
+  // Toast remains available here for older modules; navigation lives in UIController.
+  const { showToast } = useUI();
+
   // 1. Master Units State (Cloud Database via Supabase)
   const [units, setUnits] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,35 +48,6 @@ export const UnitProvider = ({ children }) => {
     unit: null,
     isBatch: false
   });
-
-  // 6. Navigation Active Menu State (Local session UI state)
-  const [activeMenu, setActiveMenu] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pos_active_nav_menu');
-      const validMenus = ['kasir', 'product-menu', 'category', 'topping', 'raw-material', 'stock-opname', 'returns', 'unit', 'settings', 'branch-management', 'reports', 'reports-sales', 'reports-sales-summary', 'reports-sales-transactions', 'reports-materials', 'cashier-management'];
-      return validMenus.includes(saved) ? saved : 'kasir';
-    } catch {
-      return 'kasir';
-    }
-  });
-
-  // 7. Mobile Drawer Sidebar State
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // 8. Toast Notifications
-  const [toasts, setToasts] = useState([]);
-
-  const showToast = useCallback((message, type = 'info', title = '') => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type, title }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3500);
-  }, []);
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
 
   // Fetch Units from Supabase
   const fetchUnits = useCallback(async () => {
@@ -106,14 +81,6 @@ export const UnitProvider = ({ children }) => {
       if (channel) channel.unsubscribe();
     };
   }, [fetchUnits]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('pos_active_nav_menu', activeMenu);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [activeMenu]);
 
   // Reset pagination when search changes
   useEffect(() => {
@@ -337,13 +304,7 @@ export const UnitProvider = ({ children }) => {
         openDeleteModal,
         openBatchDeleteModal,
         closeDeleteModal,
-        activeMenu,
-        setActiveMenu,
-        isMobileMenuOpen,
-        setIsMobileMenuOpen,
-        toasts,
-        showToast,
-        removeToast
+        showToast
       }}
     >
       {children}

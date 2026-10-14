@@ -2,6 +2,8 @@ import React, { useEffect, useState, Suspense, lazy } from 'react';
 
 // Controllers [C]
 import { 
+  UIProvider,
+  useNavigation,
   AuthProvider,
   useAuth,
   UnitProvider, 
@@ -130,7 +132,7 @@ function ModuleLoadingFallback({ activeMenu }) {
 }
 
 function MainLayout() {
-  const { activeMenu, setActiveMenu } = useUnit();
+  const { activeMenu, setActiveMenu } = useNavigation();
   const { currentUser, hasPermission } = useAuth();
   const { photoPreviewModalState, closePhotoPreviewModal } = useRawMaterial();
 
@@ -326,28 +328,30 @@ function SystemLoadingGate() {
 
 function App() {
   return (
-    <AuthProvider>
-      <UnitProvider>
-        <SettingsProvider>
-          <CategoryProvider>
-            <RawMaterialProvider>
-              <StockOpnameProvider>
-                <ToppingProvider>
-                  <ProductMenuProvider>
-                    <OrderProvider>
-                      <ReportProvider>
-                        <AuthenticatedApp />
-                        <SystemLoadingGate />
-                      </ReportProvider>
-                    </OrderProvider>
-                  </ProductMenuProvider>
-                </ToppingProvider>
-              </StockOpnameProvider>
-            </RawMaterialProvider>
-          </CategoryProvider>
-        </SettingsProvider>
-      </UnitProvider>
-    </AuthProvider>
+    <UIProvider>
+      <AuthProvider>
+        <UnitProvider>
+          <SettingsProvider>
+            <CategoryProvider>
+              <RawMaterialProvider>
+                <StockOpnameProvider>
+                  <ToppingProvider>
+                    <ProductMenuProvider>
+                      <OrderProvider>
+                        <ReportProvider>
+                          <AuthenticatedApp />
+                          <SystemLoadingGate />
+                        </ReportProvider>
+                      </OrderProvider>
+                    </ProductMenuProvider>
+                  </ToppingProvider>
+                </StockOpnameProvider>
+              </RawMaterialProvider>
+            </CategoryProvider>
+          </SettingsProvider>
+        </UnitProvider>
+      </AuthProvider>
+    </UIProvider>
   );
 }
 

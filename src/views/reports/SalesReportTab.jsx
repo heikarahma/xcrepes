@@ -26,12 +26,10 @@ import {
   RotateCcw, 
   Camera, 
   AlertTriangle,
-  Award,
   Layers,
   ChevronRight,
   Info,
   X,
-  PieChart,
   User,
   Ban,
   Clock,
@@ -173,19 +171,12 @@ export const SalesReportTab = () => {
     }
   }, [dateRangePreset, customStartDate, customEndDate]);
 
-  // Insights Data
   const combinedList = menuSalesWithToppings?.list || [];
-  const topMenu = menuSalesWithToppings?.topSellingMenu;
-  const topTopping = menuSalesWithToppings?.topSellingTopping;
-  const attachRate = menuSalesWithToppings?.toppingAttachRate || 0;
-  const totalToppingRev = menuSalesWithToppings?.totalToppingRevenue || 0;
-  const toppingShare = menuSalesWithToppings?.toppingRevenueShare || 0;
   const topSellingMenuList = useMemo(() => {
     return [...combinedList]
       .sort((a, b) => (Number(b.qtySold) || 0) - (Number(a.qtySold) || 0))
       .slice(0, 5);
   }, [combinedList]);
-  const topSellingMenuMaxQty = topSellingMenuList[0]?.qtySold || 0;
 
   // Filtered lists by menuSearchTerm
   const filteredCombinedList = useMemo(() => {
@@ -549,120 +540,6 @@ export const SalesReportTab = () => {
                   </button>
                 )}
               </div>
-
-              {/* Contextual Item Type Filter Pills */}
-              <div className="reports-pill-group" style={styles.pillGroup}>
-                <button
-                  className={`reports-pill-btn ${salesItemTypeFilter === 'COMBINED' ? 'is-active' : ''}`}
-                  onClick={() => setSalesItemTypeFilter('COMBINED')}
-                  style={{
-                    ...styles.pillBtn,
-                    ...(salesItemTypeFilter === 'COMBINED' ? styles.pillBtnActive : {})
-                  }}
-                  title="Tampilan ringkasan menu beserta rincian topping yang dipesan bersamanya"
-                >
-                  Kombinasi Menu & Topping
-                </button>
-                <button
-                  className={`reports-pill-btn ${salesItemTypeFilter === 'MENU' ? 'is-active' : ''}`}
-                  onClick={() => setSalesItemTypeFilter('MENU')}
-                  style={{
-                    ...styles.pillBtn,
-                    ...(salesItemTypeFilter === 'MENU' ? styles.pillBtnActive : {})
-                  }}
-                >
-                  Menu Saja
-                </button>
-                <button
-                  className={`reports-pill-btn ${salesItemTypeFilter === 'TOPPING' ? 'is-active' : ''}`}
-                  onClick={() => setSalesItemTypeFilter('TOPPING')}
-                  style={{
-                    ...styles.pillBtn,
-                    ...(salesItemTypeFilter === 'TOPPING' ? styles.pillBtnActive : {})
-                  }}
-                >
-                  Topping Saja
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Menu & Topping Insights Banner Grid */}
-          <div className="menu-topping-insights-grid" style={styles.insightsGrid}>
-            {/* Card 1: Menu Terlaris */}
-            <div style={styles.insightCard}>
-              <div style={styles.insightHeader}>
-                <span style={styles.insightTitle}>Menu Terlaris (Best Seller)</span>
-                <div style={{ ...styles.insightIconWrap, backgroundColor: '#eff6ff', color: 'var(--blue-600)' }}>
-                  <Award size={16} />
-                </div>
-              </div>
-              <div style={styles.insightValue}>
-                {topMenu ? topMenu.name : 'Belum Ada Penjualan'}
-              </div>
-              <div style={styles.insightFooter}>
-                {topMenu ? (
-                  <>
-                    <span style={{ fontWeight: 700, color: 'var(--blue-600)' }}>{topMenu.qtySold} Porsi</span>
-                    {' • '}
-                    <span>Omset: {formatIDR(topMenu.menuGrossRevenue)}</span>
-                  </>
-                ) : 'Menunggu transaksi kasir'}
-              </div>
-            </div>
-
-            {/* Card 2: Extra Topping Terfavorit */}
-            <div style={styles.insightCard}>
-              <div style={styles.insightHeader}>
-                <span style={styles.insightTitle}>Topping Terfavorit</span>
-                <div style={{ ...styles.insightIconWrap, backgroundColor: '#fff7ed', color: '#ea580c' }}>
-                  <Sparkles size={16} />
-                </div>
-              </div>
-              <div style={styles.insightValue}>
-                {topTopping ? topTopping.name : 'Belum Ada Topping'}
-              </div>
-              <div style={styles.insightFooter}>
-                {topTopping ? (
-                  <>
-                    <span style={{ fontWeight: 700, color: '#ea580c' }}>{topTopping.qtySold}x Dipesan</span>
-                    {' • '}
-                    <span>Omset: {formatIDR(topTopping.grossRevenue)}</span>
-                  </>
-                ) : 'Belum ada extra topping'}
-              </div>
-            </div>
-
-            {/* Card 3: Rasio Topping (Attach Rate) */}
-            <div style={styles.insightCard}>
-              <div style={styles.insightHeader}>
-                <span style={styles.insightTitle}>Rasio Topping (Attach Rate)</span>
-                <div style={{ ...styles.insightIconWrap, backgroundColor: '#f0fdf4', color: '#16a34a' }}>
-                  <PieChart size={16} />
-                </div>
-              </div>
-              <div style={{ ...styles.insightValue, color: '#16a34a' }}>
-                {attachRate.toFixed(1)}%
-              </div>
-              <div style={styles.insightFooter}>
-                <span>{menuSalesWithToppings?.itemsWithToppingCount || 0} dari {menuSalesWithToppings?.totalOrderItemsCount || 0} pesanan menambahkan extra topping</span>
-              </div>
-            </div>
-
-            {/* Card 4: Total Omset Topping */}
-            <div style={styles.insightCard}>
-              <div style={styles.insightHeader}>
-                <span style={styles.insightTitle}>Total Omset Extra Topping</span>
-                <div style={{ ...styles.insightIconWrap, backgroundColor: '#fdf4ff', color: '#c026d3' }}>
-                  <Layers size={16} />
-                </div>
-              </div>
-              <div style={{ ...styles.insightValue, color: '#c026d3' }}>
-                {formatIDR(totalToppingRev)}
-              </div>
-              <div style={styles.insightFooter}>
-                <span>Menyumbang {toppingShare.toFixed(1)}% dari total omset kotor</span>
-              </div>
             </div>
           </div>
 
@@ -690,7 +567,6 @@ export const SalesReportTab = () => {
               <div className="top-selling-menu-list" style={styles.topSellingMenuList}>
                 {topSellingMenuList.map((item, index) => {
                   const qty = Number(item.qtySold) || 0;
-                  const progress = topSellingMenuMaxQty > 0 ? Math.max((qty / topSellingMenuMaxQty) * 100, 6) : 0;
                   return (
                     <div className="top-selling-menu-row" style={styles.topSellingMenuRow} key={`top-menu-${item.id}`}>
                       <div className="top-selling-menu-rank" style={styles.topSellingMenuRank}>#{index + 1}</div>
@@ -699,19 +575,47 @@ export const SalesReportTab = () => {
                           <span className="top-selling-menu-name" style={styles.topSellingMenuName}>{item.name}</span>
                           <span className="top-selling-menu-qty" style={styles.topSellingMenuQty}>{qty} porsi</span>
                         </div>
-                        <div className="top-selling-menu-meta" style={styles.topSellingMenuMeta}>
-                          <span>{item.categoryName}</span>
-                          <span>Omset {formatIDR(item.menuGrossRevenue)}</span>
-                        </div>
-                        <div className="top-selling-menu-bar" style={styles.topSellingMenuBar}>
-                          <div style={{ ...styles.topSellingMenuBarFill, width: `${progress}%` }} />
-                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+
+          {/* Contextual Item Type Filter Pills */}
+          <div className="reports-pill-group reports-pill-group-below-top-menu" style={{ ...styles.pillGroup, justifyContent: 'flex-start', marginTop: '12px', marginBottom: '16px' }}>
+            <button
+              className={`reports-pill-btn ${salesItemTypeFilter === 'COMBINED' ? 'is-active' : ''}`}
+              onClick={() => setSalesItemTypeFilter('COMBINED')}
+              style={{
+                ...styles.pillBtn,
+                ...(salesItemTypeFilter === 'COMBINED' ? styles.pillBtnActive : {})
+              }}
+              title="Tampilan ringkasan menu beserta rincian topping yang dipesan bersamanya"
+            >
+              Kombinasi Menu & Topping
+            </button>
+            <button
+              className={`reports-pill-btn ${salesItemTypeFilter === 'MENU' ? 'is-active' : ''}`}
+              onClick={() => setSalesItemTypeFilter('MENU')}
+              style={{
+                ...styles.pillBtn,
+                ...(salesItemTypeFilter === 'MENU' ? styles.pillBtnActive : {})
+              }}
+            >
+              Menu Saja
+            </button>
+            <button
+              className={`reports-pill-btn ${salesItemTypeFilter === 'TOPPING' ? 'is-active' : ''}`}
+              onClick={() => setSalesItemTypeFilter('TOPPING')}
+              style={{
+                ...styles.pillBtn,
+                ...(salesItemTypeFilter === 'TOPPING' ? styles.pillBtnActive : {})
+              }}
+            >
+              Topping Saja
+            </button>
           </div>
 
           {/* Table Content: COMBINED vs Standard Products List */}
@@ -766,9 +670,6 @@ export const SalesReportTab = () => {
                                 <div style={styles.productName}>{item.name}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
                                   <span style={styles.categoryBadge}>{item.categoryName}</span>
-                                  {showProfitMetrics && (
-                                    <span style={{ fontSize: '11px', color: 'var(--neutral-400)' }}>HPP: {formatIDR(item.unitHpp)}/porsi</span>
-                                  )}
                                 </div>
                               </div>
                             </td>
@@ -859,9 +760,6 @@ export const SalesReportTab = () => {
                             <h4 className="sales-mobile-card-title">{item.name}</h4>
                             <div className="sales-mobile-card-meta">
                               <span style={styles.categoryBadge}>{item.categoryName}</span>
-                              {showProfitMetrics && (
-                                <span>HPP: {formatIDR(item.unitHpp)}/porsi</span>
-                              )}
                             </div>
                           </div>
                           <span style={styles.qtyPill}>{item.qtySold}x</span>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useUnit } from '../../controllers/UnitController';
+import { useNavigation } from '../../controllers/UIController';
 import { useCategory } from '../../controllers/CategoryController';
 import { useRawMaterial } from '../../controllers/RawMaterialController';
 import { useTopping } from '../../controllers/ToppingController';
@@ -32,13 +33,8 @@ import {
 } from 'lucide-react';
 
 export const Sidebar = () => {
-  const { 
-    totalAllUnits, 
-    activeMenu, 
-    setActiveMenu, 
-    isMobileMenuOpen, 
-    setIsMobileMenuOpen 
-  } = useUnit();
+  const { totalAllUnits } = useUnit();
+  const { activeMenu, setActiveMenu, isMobileMenuOpen, setIsMobileMenuOpen } = useNavigation();
 
   const { totalAllCategories } = useCategory();
   const { totalAllRawMaterials, opnameSummary } = useRawMaterial();

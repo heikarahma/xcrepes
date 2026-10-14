@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { TableSkeleton } from '../../components/LoadingSkeleton';
 import { ErrorAlert } from '../../components/ErrorAlert';
 import { SearchSelect } from '../../components/SearchSelect';
+import { getLocalDateStr } from '../../../utils/dateUtils';
 import { 
   History, 
   Search, 
@@ -40,6 +41,7 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
     logTotalPages,
     logTotalItems,
     fetchStockLogsPage,
+    fetchAllStockLogs,
     logSearchTerm,
     setLogSearchTerm,
     logTypeFilter,
@@ -72,19 +74,24 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
   const [serverStockLogTotal, setServerStockLogTotal] = useState(0);
   const [serverStockLogLoading, setServerStockLogLoading] = useState(false);
   const [serverStockLogError, setServerStockLogError] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
   const materialFilterOptions = [
     { value: 'ALL', label: 'Semua Bahan' },
-    ...Array.from(new Set(stockLogs.map(log => log.rawMaterialName).filter(Boolean)))
+    ...Array.from(new Set([
+      ...rawMaterials.map(material => material.name),
+      ...stockLogs.map(log => log.rawMaterialName)
+    ].filter(Boolean)))
       .sort((a, b) => a.localeCompare(b, 'id'))
       .map(name => ({ value: name, label: name }))
   ];
   const hasLogFilters = Boolean(logSearchTerm || logTypeFilter !== 'ALL' || logMaterialFilter !== 'ALL' || logDateFrom || logDateTo);
   const resetLogFilters = () => {
+    const today = getLocalDateStr();
     setLogSearchTerm('');
     setLogTypeFilter('ALL');
     setLogMaterialFilter('ALL');
-    setLogDateFrom('');
-    setLogDateTo('');
+    setLogDateFrom(today);
+    setLogDateTo(today);
   };
   const openExportModal = () => {
     setExportMode('all');
@@ -103,20 +110,38 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
         return matchesType && matchesMaterial && (!exportDate || localDate === exportDate);
       });
   const exportPreviewCount = exportMode === 'all' ? stockLogs.length : exportCustomLogs.length;
-  const downloadStockHistoryPDF = () => {
-    const exportLogs = exportMode === 'all' ? stockLogs : exportCustomLogs;
+  const downloadStockHistoryPDF = async () => {
+    setIsExporting(true);
+    try {
+      const fullLogsRes = typeof fetchAllStockLogs === 'function'
+        ? await fetchAllStockLogs()
+        : { data: stockLogs };
+      const sourceLogs = fullLogsRes?.data || stockLogs;
+      const filteredExportLogs = sourceLogs.filter(log => {
+        const matchesType = exportType === 'ALL' || (exportType === 'WASTE'
+          ? log.type === 'WASTE' || log.type === 'RETURN_ORDER'
+          : log.type === exportType);
+        const matchesMaterial = exportMaterial === 'ALL' || log.rawMaterialName === exportMaterial;
+        const date = new Date(log.createdAt);
+        const localDate = Number.isNaN(date.getTime()) ? '' : [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+        return matchesType && matchesMaterial && (!exportDate || localDate === exportDate);
+      });
+      const exportLogs = exportMode === 'all' ? sourceLogs : filteredExportLogs;
 
-    if (!exportLogs.length) return;
-    exportStockHistoryToPDF({
-      logs: exportLogs,
-      storeName: currentUser?.activeBranchName || currentUser?.branchName || 'XCrepes POS',
-      filters: exportMode === 'all' ? null : {
-        type: exportType,
-        material: exportMaterial,
-        date: exportDate
-      }
-    });
-    setIsExportModalOpen(false);
+      if (!exportLogs.length) return;
+      exportStockHistoryToPDF({
+        logs: exportLogs,
+        storeName: currentUser?.activeBranchName || currentUser?.branchName || 'XCrepes POS',
+        filters: exportMode === 'all' ? null : {
+          type: exportType,
+          material: exportMaterial,
+          date: exportDate
+        }
+      });
+      setIsExportModalOpen(false);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const serverLogDateFilters = useMemo(() => {
@@ -327,9 +352,10 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
       <div className="blue-card stock-history-main-card" style={{ padding: 0 }}>
         {/* Toolbar */}
         <div className="stock-history-toolbar" style={styles.toolbar}>
-          <div className="stock-history-filter-controls">
+          <div className={`stock-history-filter-controls ${isCashier ? 'is-cashier' : ''}`}>
             {!isCashier && (
-              <div className="stock-history-type-select">
+              <label className="stock-history-filter-field stock-history-type-select">
+                <span>Jenis Mutasi</span>
                 <SearchSelect
                   options={[
                     { value: 'ALL', label: 'Semua Jenis', badge: stockLogs.length },
@@ -346,10 +372,11 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                   clearable={false}
                   size="sm"
                 />
-              </div>
+              </label>
             )}
 
-            <div className="stock-history-material-select">
+            <label className="stock-history-filter-field stock-history-material-select">
+              <span>Bahan Baku</span>
               <SearchSelect
                 options={materialFilterOptions}
                 value={logMaterialFilter}
@@ -360,49 +387,59 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
                 clearable={false}
                 size="sm"
               />
-            </div>
+            </label>
 
-            <div className="stock-history-date-filter">
-              <CalendarDays size={16} aria-hidden="true" />
-              <input
-                type="date"
-                className="blue-input"
-                aria-label="Filter tanggal"
-                title="Pilih tanggal"
-                value={logDateFrom || logDateTo}
-                onChange={(e) => { setLogDateFrom(e.target.value); setLogDateTo(e.target.value); }}
-              />
-              {(logDateFrom || logDateTo) && (
-                <button type="button" className="stock-history-date-clear" aria-label="Hapus filter tanggal" title="Hapus tanggal" onClick={() => { setLogDateFrom(''); setLogDateTo(''); }}>
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            <label className="stock-history-filter-field">
+              <span>Tanggal</span>
+              <div className="stock-history-date-filter">
+                <CalendarDays size={16} aria-hidden="true" />
+                <input
+                  type="date"
+                  className="blue-input"
+                  aria-label="Filter tanggal"
+                  title="Pilih tanggal"
+                  value={logDateFrom || logDateTo}
+                  onChange={(e) => { setLogDateFrom(e.target.value); setLogDateTo(e.target.value); }}
+                />
+                {(logDateFrom || logDateTo) && (
+                  <button type="button" className="stock-history-date-clear" aria-label="Hapus filter tanggal" title="Hapus tanggal" onClick={() => { setLogDateFrom(''); setLogDateTo(''); }}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </label>
 
-            <div className="stock-history-search-wrap" style={{ ...styles.searchWrapper, maxWidth: isCashier ? '380px' : '320px' }}>
-              <Search size={16} color="var(--neutral-400)" style={styles.filterIcon} />
-              <input
-                type="text"
-                className="blue-input"
-                style={styles.filterInput}
-                placeholder={isCashier ? "Cari riwayat perubahan stok, petugas..." : "Cari riwayat, alasan, petugas..."}
-                value={logSearchTerm}
-                onChange={(e) => setLogSearchTerm(e.target.value)}
-              />
-              {logSearchTerm && (
-                <button
-                  onClick={() => setLogSearchTerm('')}
-                  style={styles.clearSearchBtn}
-                  title="Hapus pencarian"
-                >
-                  <X size={15} />
-                </button>
-              )}
+            <label className="stock-history-filter-field stock-history-search-field">
+              <span>Cari Riwayat</span>
+              <div className="stock-history-search-wrap" style={styles.searchWrapper}>
+                <Search size={16} color="var(--neutral-400)" style={styles.filterIcon} />
+                <input
+                  type="text"
+                  className="blue-input"
+                  style={styles.filterInput}
+                  placeholder={isCashier ? "Cari riwayat perubahan stok, petugas..." : "Cari riwayat, alasan, petugas..."}
+                  value={logSearchTerm}
+                  onChange={(e) => setLogSearchTerm(e.target.value)}
+                />
+                {logSearchTerm && (
+                  <button
+                    onClick={() => setLogSearchTerm('')}
+                    style={styles.clearSearchBtn}
+                    title="Hapus pencarian"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+            </label>
+
+            <div className="stock-history-filter-action">
+              <span>Export</span>
+              <button type="button" className="stock-history-export-button" onClick={openExportModal} title="Unduh riwayat stok dalam format PDF">
+                <Download size={16} />
+                <span>Unduh PDF</span>
+              </button>
             </div>
-            <button type="button" className="stock-history-export-button" onClick={openExportModal} title="Unduh riwayat stok dalam format PDF">
-              <Download size={16} />
-              <span>Unduh PDF</span>
-            </button>
           </div>
         </div>
 
@@ -690,8 +727,8 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
         footer={(
           <>
             <Button variant="secondary" onClick={() => setIsExportModalOpen(false)}>Batal</Button>
-            <Button variant="primary" icon={FileText} onClick={downloadStockHistoryPDF} disabled={exportPreviewCount === 0}>
-              Unduh {exportPreviewCount} data
+            <Button variant="primary" icon={FileText} onClick={downloadStockHistoryPDF} disabled={exportPreviewCount === 0 || isExporting}>
+              {isExporting ? 'Menyiapkan PDF...' : `Unduh ${exportPreviewCount} data`}
             </Button>
           </>
         )}
@@ -791,16 +828,54 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
           gap: 12px;
           margin-bottom: 12px;
         }
+        .stock-history-toolbar {
+          flex-direction: column;
+          align-items: stretch !important;
+          justify-content: flex-start !important;
+        }
         .stock-history-filter-controls {
           display: grid;
-          grid-template-columns: minmax(145px, 0.9fr) minmax(165px, 1fr) minmax(170px, 0.9fr) minmax(190px, 1.2fr) auto;
+          grid-template-columns: minmax(140px, 0.8fr) minmax(170px, 1fr) minmax(150px, 0.8fr) minmax(250px, 1.4fr) 118px;
           align-items: end;
-          gap: 12px;
+          gap: 8px;
           width: 100%;
           min-width: 0;
         }
+        .stock-history-filter-controls.is-cashier {
+          grid-template-columns: minmax(170px, 1fr) minmax(150px, 0.85fr) minmax(320px, 1.8fr) 118px;
+        }
+        .stock-history-filter-field,
+        .stock-history-filter-action {
+          display: grid;
+          gap: 4px;
+          min-width: 0;
+        }
+        .stock-history-filter-field > span,
+        .stock-history-filter-action > span {
+          color: var(--neutral-500);
+          font-size: 0.625rem;
+          font-weight: 800;
+          line-height: 1;
+          text-transform: uppercase;
+        }
         .stock-history-type-select,
         .stock-history-material-select { min-width: 0; }
+        .stock-history-filter-field .search-select-container > [role="button"] {
+          height: 42px !important;
+          min-height: 42px !important;
+          border-radius: 7px;
+        }
+        .stock-history-filter-field .search-select-container svg {
+          flex-shrink: 0;
+        }
+        .stock-history-search-field {
+          min-width: 0;
+        }
+        .stock-history-search-wrap {
+          max-width: none !important;
+          min-width: 0 !important;
+          height: 42px;
+        }
         .stock-history-date-filter {
           display: flex;
           align-items: center;
@@ -812,6 +887,8 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
         .stock-history-date-filter > svg {
           position: absolute;
           left: 11px;
+          top: 50%;
+          transform: translateY(-50%);
           z-index: 1;
           pointer-events: none;
         }
@@ -822,6 +899,17 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
           padding: 0 36px;
           box-sizing: border-box;
           font-size: 0.8rem;
+        }
+        .stock-history-date-filter input::-webkit-calendar-picker-indicator {
+          position: absolute;
+          right: 10px;
+          width: 16px;
+          height: 16px;
+          margin: 0;
+          cursor: pointer;
+        }
+        .stock-history-date-filter input::-webkit-datetime-edit {
+          padding: 0;
         }
         .stock-history-date-clear {
           position: absolute;
@@ -841,15 +929,16 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           height: 42px;
-          padding: 0 16px;
+          width: 100%;
+          padding: 0 10px;
           border: 1px solid #FECACA;
-          border-radius: 8px;
+          border-radius: 7px;
           color: #B91C1C;
           background: #FEF2F2;
           font: inherit;
-          font-size: 0.813rem;
+          font-size: 0.75rem;
           font-weight: 600;
           white-space: nowrap;
           cursor: pointer;
@@ -889,12 +978,17 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
           .stock-history-filter-controls {
             grid-template-columns: minmax(0, 1fr);
             gap: 12px;
+            padding: 0 14px;
           }
           .stock-history-type-select,
           .stock-history-material-select,
+          .stock-history-filter-field,
           .stock-history-date-filter,
           .stock-history-search-wrap,
-          .stock-history-export-button { grid-column: 1 / -1; }
+          .stock-history-filter-action,
+          .stock-history-export-button {
+            grid-column: 1 / -1;
+          }
           .stock-history-search-wrap {
             width: 100% !important;
             max-width: 100% !important;
@@ -908,9 +1002,9 @@ export const StockHistoryListView = ({ mobileActionButtons, tabsSlot }) => {
             gap: 6px !important;
           }
           .stock-history-filter-controls .search-select-container > [role="button"] {
-            height: 44px !important;
+            height: 42px !important;
           }
-          .stock-history-date-filter input { height: 44px; }
+          .stock-history-date-filter input { height: 42px; }
           .stock-history-export-button { width: 100%; }
         }
       `}</style>
@@ -958,13 +1052,13 @@ const styles = {
     color: 'var(--neutral-400)'
   },
   toolbar: {
-    padding: '14px 16px',
+    padding: '12px 14px 10px',
     borderBottom: '1px solid var(--border-color)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     flexWrap: 'wrap',
-    gap: '12px'
+    gap: '8px'
   },
   searchWrapper: {
     position: 'relative',
@@ -972,7 +1066,8 @@ const styles = {
     alignItems: 'center',
     minWidth: '220px',
     maxWidth: '320px',
-    width: '100%'
+    width: '100%',
+    height: '42px'
   },
   filterIcon: {
     position: 'absolute',
@@ -986,7 +1081,7 @@ const styles = {
     width: '100%',
     paddingLeft: '38px',
     paddingRight: '36px',
-    height: '40px',
+    height: '42px',
     fontSize: '0.813rem',
     boxSizing: 'border-box'
   },

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { useReport } from '../../controllers/ReportController';
-import { useUnit } from '../../controllers/UnitController';
+import { useNavigation } from '../../controllers/UIController';
 import { useAuth } from '../../controllers/AuthController';
 import { SalesReportTab } from './SalesReportTab';
 import { MaterialUsageReportTab } from './MaterialUsageReportTab';
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const ReportsView = () => {
-  const { activeMenu } = useUnit();
+  const { activeMenu } = useNavigation();
   const { currentUser } = useAuth();
   const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const isCashier = currentUser?.role === 'kasir';

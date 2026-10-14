@@ -56,11 +56,12 @@ export const RawMaterialProvider = ({ children }) => {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // 6. Search, Filter & Pagination for Stock History Logs
+  const defaultStockHistoryDate = getLocalDateStr();
   const [logSearchTerm, setLogSearchTermState] = useState('');
   const [logTypeFilter, setLogTypeFilterState] = useState('ALL'); // 'ALL' | 'IN' | 'OUT' | 'ADJUST' | 'WASTE'
   const [logMaterialFilter, setLogMaterialFilterState] = useState('ALL');
-  const [logDateFrom, setLogDateFromState] = useState('');
-  const [logDateTo, setLogDateToState] = useState('');
+  const [logDateFrom, setLogDateFromState] = useState(defaultStockHistoryDate);
+  const [logDateTo, setLogDateToState] = useState(defaultStockHistoryDate);
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [logItemsPerPage, setLogItemsPerPage] = useState(8);
 
@@ -195,7 +196,7 @@ export const RawMaterialProvider = ({ children }) => {
     try {
       const [matRes, logsRes, opnameRes] = await Promise.all([
         rawMaterialsService.getRawMaterials(activeBranchId),
-        stockLogsService.getStockLogs(activeBranchId),
+        stockLogsService.getStockLogsPage({ branchId: activeBranchId, page: 1, pageSize: 50 }),
         opnameReportsService.getOpnameReports(activeBranchId)
       ]);
 
@@ -263,6 +264,17 @@ export const RawMaterialProvider = ({ children }) => {
       pageSize,
       filters
     });
+  }, [activeBranchId]);
+
+  const fetchAllStockLogs = useCallback(async () => {
+    const { data, error: fetchErr } = await stockLogsService.getStockLogs(activeBranchId);
+    if (fetchErr) {
+      console.error('Failed to fetch all stock logs:', fetchErr);
+      return { data: [], error: fetchErr };
+    }
+
+    setStockLogs(data || []);
+    return { data: data || [], error: null };
   }, [activeBranchId]);
 
   const fetchMaterialsAndReports = useCallback(async () => {
@@ -2144,6 +2156,7 @@ export const RawMaterialProvider = ({ children }) => {
         isSubmitting,
         refetch: fetchData,
         fetchStockLogsPage,
+        fetchAllStockLogs,
         copyMaterialsFromBranch,
         availableUnits,
         activeTab,

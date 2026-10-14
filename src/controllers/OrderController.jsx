@@ -141,7 +141,11 @@ export const OrderProvider = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await ordersService.getOrders(activeBranchId);
+      const { data, error: fetchErr } = await ordersService.getOrdersPage({
+        branchId: activeBranchId,
+        page: 1,
+        pageSize: 50
+      });
       if (fetchErr) {
         setError(fetchErr.message || 'Gagal memuat transaksi pesanan dari cloud.');
       } else {
@@ -149,6 +153,24 @@ export const OrderProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Failed to fetch orders:', err);
+      setError(err.message || 'Terjadi kesalahan jaringan.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeBranchId]);
+
+  const fetchAllOrders = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data, error: fetchErr } = await ordersService.getOrders(activeBranchId);
+      if (fetchErr) {
+        setError(fetchErr.message || 'Gagal memuat transaksi pesanan dari cloud.');
+      } else {
+        setOrders(data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch all orders:', err);
       setError(err.message || 'Terjadi kesalahan jaringan.');
     } finally {
       setIsLoading(false);
@@ -206,6 +228,23 @@ export const OrderProvider = ({ children }) => {
       upsertOrderInState(data);
     }
   }, [activeBranchId, upsertOrderInState]);
+
+  const resolveOrderForAction = useCallback(async (orderId) => {
+    const localOrder = orders.find(o => o.id === orderId || o.invoiceNumber === orderId);
+    if (localOrder) return localOrder;
+
+    const { data, error: fetchErr } = await ordersService.getOrderById(orderId);
+    if (fetchErr) {
+      console.error('Failed to fetch order for action:', fetchErr);
+      return null;
+    }
+
+    if (data) {
+      upsertOrderInState(data);
+    }
+
+    return data || null;
+  }, [orders, upsertOrderInState]);
 
   // Initial fetch and Realtime sync
   useEffect(() => {
@@ -649,7 +688,7 @@ export const OrderProvider = ({ children }) => {
     photo = null, 
     user = 'Kasir' 
   }) => {
-    const targetOrder = orders.find(o => o.id === orderId || o.invoiceNumber === orderId);
+    const targetOrder = await resolveOrderForAction(orderId);
     if (!targetOrder) {
       return { success: false, error: 'Pesanan tidak ditemukan.' };
     }
@@ -849,7 +888,7 @@ export const OrderProvider = ({ children }) => {
   };
 
   const reviseOrder = async ({ orderId, updatedItems, reason = '', actor = 'Kasir' }) => {
-    const originalOrder = orders.find(o => o.id === orderId);
+    const originalOrder = await resolveOrderForAction(orderId);
     if (!originalOrder) {
       showToast('Data transaksi tidak ditemukan.', 'error', 'Error');
       return { success: false, error: 'Order not found' };
@@ -1009,7 +1048,7 @@ export const OrderProvider = ({ children }) => {
   };
 
   const cancelOrder = async ({ orderId, reason, note = '', restoreStock = true, user }) => {
-    const targetOrder = orders.find(o => o.id === orderId);
+    const targetOrder = await resolveOrderForAction(orderId);
     if (!targetOrder) {
       showToast('Data transaksi tidak ditemukan.', 'error', 'Error');
       return { success: false, error: 'Order not found' };
@@ -1085,6 +1124,7 @@ export const OrderProvider = ({ children }) => {
         error,
         isSubmitting,
         refetch: fetchOrders,
+        refetchAll: fetchAllOrders,
         fetchOrdersPage,
         cart,
         customerName,

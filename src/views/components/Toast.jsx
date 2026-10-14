@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useUnit } from '../../controllers/UnitController';
+import { useToast } from '../../controllers/UIController';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
 let globalShowToast = null;
@@ -34,7 +34,7 @@ export const toast = {
 };
 
 export const ToastContainer = () => {
-  const { toasts, removeToast, showToast } = useUnit();
+  const { toasts, removeToast, showToast } = useToast();
 
   useEffect(() => {
     globalShowToast = showToast;

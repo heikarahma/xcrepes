@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { useOrder } from './OrderController';
 import { useRawMaterial } from './RawMaterialController';
 import { useProductMenu } from './ProductMenuController';
 import { useTopping } from './ToppingController';
 import { useSettings } from './SettingsController';
 import { useAuth } from './AuthController';
-import { useUnit } from './UnitController';
+import { useNavigation } from './UIController';
 import {
   getPeriodLabel,
   exportProductPerformanceToExcel,
@@ -31,7 +31,7 @@ export const useReportController = useReport;
 
 export const ReportProvider = ({ children }) => {
   const { currentUser } = useAuth();
-  const { activeMenu } = useUnit();
+  const { activeMenu } = useNavigation();
   const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'admin' || currentUser?.role === 'kepala_toko';
   const isCashier = currentUser?.role === 'kasir';
   const isReportRoute = activeMenu === 'reports' ||
@@ -39,8 +39,8 @@ export const ReportProvider = ({ children }) => {
     activeMenu === 'reports-sales-summary' ||
     activeMenu === 'reports-sales-transactions' ||
     activeMenu === 'reports-materials';
-  const { orders = [] } = useOrder();
-  const { rawMaterials = [], stockLogs = [] } = useRawMaterial();
+  const { orders = [], refetchAll: refetchAllOrders } = useOrder();
+  const { rawMaterials = [], stockLogs = [], fetchAllStockLogs } = useRawMaterial();
   const { productMenus = [] } = useProductMenu();
   const { toppings = [] } = useTopping();
   const { settings = {} } = useSettings();
@@ -53,7 +53,7 @@ export const ReportProvider = ({ children }) => {
   const [activeSalesSection, setActiveSalesSection] = useState('products');
 
   // Date Range Filter Preset: 'all' | 'today' | 'yesterday' | '7days' | '30days' | 'this_month' | 'custom'
-  const [dateRangePreset, setDateRangePreset] = useState('all');
+  const [dateRangePreset, setDateRangePreset] = useState('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
 
@@ -67,6 +67,20 @@ export const ReportProvider = ({ children }) => {
   const [materialSearchTerm, setMaterialSearchTerm] = useState('');
   const [materialIdFilter, setMaterialIdFilter] = useState('ALL');
   const [materialEventTypeFilter, setMaterialEventTypeFilter] = useState('ALL'); // 'ALL' | 'SALE' | 'MANUAL_OUT' | 'ADJUST'
+
+  useEffect(() => {
+    if (!isReportRoute || activeReportTab !== 'sales') return;
+    if (typeof refetchAllOrders === 'function') {
+      refetchAllOrders();
+    }
+  }, [isReportRoute, activeReportTab, refetchAllOrders]);
+
+  useEffect(() => {
+    if (!isReportRoute || activeReportTab !== 'materials') return;
+    if (typeof fetchAllStockLogs === 'function') {
+      fetchAllStockLogs();
+    }
+  }, [isReportRoute, activeReportTab, fetchAllStockLogs]);
 
   // Helper: Date Bounds Calculator
   const getDateBounds = (preset) => {
