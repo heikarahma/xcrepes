@@ -266,8 +266,8 @@ export const RawMaterialProvider = ({ children }) => {
     });
   }, [activeBranchId]);
 
-  const fetchAllStockLogs = useCallback(async () => {
-    const { data, error: fetchErr } = await stockLogsService.getStockLogs(activeBranchId);
+  const fetchAllStockLogs = useCallback(async (filters = {}) => {
+    const { data, error: fetchErr } = await stockLogsService.getStockLogs(activeBranchId, filters);
     if (fetchErr) {
       console.error('Failed to fetch all stock logs:', fetchErr);
       return { data: [], error: fetchErr };

@@ -47,7 +47,7 @@ const mapStockLogRow = (row) => ({
   createdAt: row.created_at
 });
 
-const fetchStockLogsPaged = async (branchId, includeBranchFilter = true) => {
+const fetchStockLogsPaged = async (branchId, includeBranchFilter = true, filters = {}) => {
   const rows = [];
   let from = 0;
 
@@ -62,6 +62,7 @@ const fetchStockLogsPaged = async (branchId, includeBranchFilter = true) => {
     if (includeBranchFilter && branchId) {
       query = query.eq('branch_id', branchId);
     }
+    query = applyStockLogPageFilters(query, filters, null, false);
 
     const { data, error } = await query;
     if (error) return { data: rows, error };
@@ -148,12 +149,12 @@ const fetchStockLogsPage = async ({ branchId, page = 1, pageSize = 10, filters =
 };
 
 export const stockLogsService = {
-  async getStockLogs(branchId = DEFAULT_BRANCH_ID) {
+  async getStockLogs(branchId = DEFAULT_BRANCH_ID, filters = {}) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    let { data, error } = await fetchStockLogsPaged(branchId, true);
+    let { data, error } = await fetchStockLogsPaged(branchId, true, filters);
 
     if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
-      const retry = await fetchStockLogsPaged(branchId, false);
+      const retry = await fetchStockLogsPaged(branchId, false, filters);
       data = retry.data;
       error = retry.error;
     }

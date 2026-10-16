@@ -101,8 +101,9 @@ export const CategoryProvider = ({ children }) => {
     const channel1 = subscribeToTable('categories', () => {
       fetchCategories();
     });
-    const channel2 = subscribeToTable('inventory_stock_logs', () => {
-      fetchCategories();
+    const channel2 = subscribeToTable('inventory_stock_logs', (payload) => {
+      const changedId = payload?.new?.id || payload?.old?.id;
+      if (changedId === 'CONFIG-CATEGORY-ORDER') fetchCategories();
     });
 
     return () => {

@@ -36,6 +36,11 @@ const ORDER_COLUMNS = [
   'created_at'
 ].join(',');
 
+const stripImagesFromItems = (items) => (Array.isArray(items) ? items : []).map(item => {
+  const { image, imageUrl, photo, ...compactItem } = item || {};
+  return compactItem;
+});
+
 const mapOrderRow = (row) => {
   const subtotal = Number(row.subtotal) || 0;
   const discount = Number(row.discount) || 0;
@@ -93,7 +98,7 @@ const mapOrderRow = (row) => {
   };
 };
 
-const fetchOrdersPaged = async (branchId, includeBranchFilter = true) => {
+const fetchOrdersPaged = async (branchId, includeBranchFilter = true, filters = {}) => {
   const rows = [];
   let from = 0;
 
@@ -107,6 +112,7 @@ const fetchOrdersPaged = async (branchId, includeBranchFilter = true) => {
     if (includeBranchFilter && branchId) {
       query = query.eq('branch_id', branchId);
     }
+    query = applyOrderPageFilters(query, filters, null, false);
 
     const { data, error } = await query;
     if (error) return { data: rows, error };
@@ -188,12 +194,12 @@ const fetchOrdersPage = async ({ branchId, page = 1, pageSize = 10, filters = {}
 };
 
 export const ordersService = {
-  async getOrders(branchId = DEFAULT_BRANCH_ID) {
+  async getOrders(branchId = DEFAULT_BRANCH_ID, filters = {}) {
     if (!isSupabaseConfigured()) return { data: [], error: null };
-    let { data, error } = await fetchOrdersPaged(branchId, true);
+    let { data, error } = await fetchOrdersPaged(branchId, true, filters);
 
     if (error && (error.code === 'PGRST204' || String(error.message || '').includes('branch_id'))) {
-      const retry = await fetchOrdersPaged(branchId, false);
+      const retry = await fetchOrdersPaged(branchId, false, filters);
       data = retry.data;
       error = retry.error;
     }
@@ -276,7 +282,7 @@ export const ordersService = {
       cashier_name: order.cashierName || 'Kasir',
       customer_name: order.customerName || 'Pelanggan Umum',
       table_number: order.tableNumber || '',
-      items: Array.isArray(order.items) ? order.items : [],
+      items: stripImagesFromItems(order.items),
       subtotal: Number(order.subtotal) || 0,
       items_discount_total: Number(order.itemsDiscountTotal) || 0,
       order_discount_type: order.orderDiscountType || 'none',
@@ -408,9 +414,12 @@ export const ordersService = {
 
   async updateOrder(id, payload) {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
+    const compactPayload = payload?.items
+      ? { ...payload, items: stripImagesFromItems(payload.items) }
+      : payload;
     const { data, error } = await supabase
       .from(TABLE)
-      .update(payload)
+      .update(compactPayload)
       .eq('id', id)
       .select()
       .single();

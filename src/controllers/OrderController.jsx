@@ -159,11 +159,11 @@ export const OrderProvider = ({ children }) => {
     }
   }, [activeBranchId]);
 
-  const fetchAllOrders = useCallback(async () => {
+  const fetchAllOrders = useCallback(async (filters = {}) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await ordersService.getOrders(activeBranchId);
+      const { data, error: fetchErr } = await ordersService.getOrders(activeBranchId, filters);
       if (fetchErr) {
         setError(fetchErr.message || 'Gagal memuat transaksi pesanan dari cloud.');
       } else {

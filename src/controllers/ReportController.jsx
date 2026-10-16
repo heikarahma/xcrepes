@@ -6,6 +6,8 @@ import { useTopping } from './ToppingController';
 import { useSettings } from './SettingsController';
 import { useAuth } from './AuthController';
 import { useNavigation } from './UIController';
+import { ordersService } from '../services/ordersService';
+import { stockLogsService } from '../services/stockLogsService';
 import {
   getPeriodLabel,
   exportProductPerformanceToExcel,
@@ -39,12 +41,17 @@ export const ReportProvider = ({ children }) => {
     activeMenu === 'reports-sales-summary' ||
     activeMenu === 'reports-sales-transactions' ||
     activeMenu === 'reports-materials';
-  const { orders = [], refetchAll: refetchAllOrders } = useOrder();
-  const { rawMaterials = [], stockLogs = [], fetchAllStockLogs } = useRawMaterial();
+  const { orders: liveOrders = [] } = useOrder();
+  const { rawMaterials = [], stockLogs: liveStockLogs = [] } = useRawMaterial();
   const { productMenus = [] } = useProductMenu();
   const { toppings = [] } = useTopping();
   const { settings = {} } = useSettings();
   const storeName = currentUser?.activeBranchName || settings.storeName || settings.appName || 'XCrepes POS';
+  const activeBranchId = currentUser?.activeBranchId || 'BR-DEFAULT';
+  const [reportOrders, setReportOrders] = useState([]);
+  const [reportStockLogs, setReportStockLogs] = useState([]);
+  const orders = isReportRoute ? reportOrders : liveOrders;
+  const stockLogs = isReportRoute ? reportStockLogs : liveStockLogs;
 
   // Active Submenu Tab: 'sales' | 'materials'
   const [activeReportTab, setActiveReportTab] = useState('sales');
@@ -68,22 +75,8 @@ export const ReportProvider = ({ children }) => {
   const [materialIdFilter, setMaterialIdFilter] = useState('ALL');
   const [materialEventTypeFilter, setMaterialEventTypeFilter] = useState('ALL'); // 'ALL' | 'SALE' | 'MANUAL_OUT' | 'ADJUST'
 
-  useEffect(() => {
-    if (!isReportRoute || activeReportTab !== 'sales') return;
-    if (typeof refetchAllOrders === 'function') {
-      refetchAllOrders();
-    }
-  }, [isReportRoute, activeReportTab, refetchAllOrders]);
-
-  useEffect(() => {
-    if (!isReportRoute || activeReportTab !== 'materials') return;
-    if (typeof fetchAllStockLogs === 'function') {
-      fetchAllStockLogs();
-    }
-  }, [isReportRoute, activeReportTab, fetchAllStockLogs]);
-
   // Helper: Date Bounds Calculator
-  const getDateBounds = (preset) => {
+  function getDateBounds(preset) {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
@@ -132,7 +125,41 @@ export const ReportProvider = ({ children }) => {
       default:
         return { start: new Date(0), end: new Date(2099, 11, 31) };
     }
-  };
+  }
+
+  useEffect(() => {
+    if (!isReportRoute || activeReportTab !== 'sales') return undefined;
+    let cancelled = false;
+    const { start, end } = getDateBounds(dateRangePreset);
+    const filters = dateRangePreset === 'all'
+      ? {}
+      : { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+
+    ordersService.getOrders(activeBranchId, filters).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) console.error('Failed to load filtered sales report:', error);
+      else setReportOrders(data || []);
+    });
+
+    return () => { cancelled = true; };
+  }, [isReportRoute, activeReportTab, activeBranchId, dateRangePreset, customStartDate, customEndDate]);
+
+  useEffect(() => {
+    if (!isReportRoute || activeReportTab !== 'materials') return undefined;
+    let cancelled = false;
+    const { start, end } = getDateBounds(dateRangePreset);
+    const filters = dateRangePreset === 'all'
+      ? {}
+      : { dateFrom: start.toISOString(), dateTo: end.toISOString() };
+
+    stockLogsService.getStockLogs(activeBranchId, filters).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) console.error('Failed to load filtered material report:', error);
+      else setReportStockLogs(data || []);
+    });
+
+    return () => { cancelled = true; };
+  }, [isReportRoute, activeReportTab, activeBranchId, dateRangePreset, customStartDate, customEndDate]);
 
   // Helper: Lookup Price per Unit of Raw Material
   const getMaterialPrice = (rawMaterialId) => {
