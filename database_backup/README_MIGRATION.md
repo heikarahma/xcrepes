@@ -6,7 +6,7 @@ Seluruh struktur skema dan data real/live dari database Supabase XCrepes telah b
 
 ## 📁 Daftar Berkas yang Telah Disediakan
 
-1. **`new_database_full_with_data.sql`** (Tersedia di root folder & folder `database_backup/`):
+1. **`database_backup/new_database_full_with_data.sql`**:
    - Berisi seluruh definisi tabel (`CREATE TABLE`), indeks, Row Level Security (RLS) policies, Realtime Publication, serta seluruh perintah `INSERT` data asli dari database Supabase sumber.
    - **Ukuran**: Lengkap beserta seluruh foto/gambar base64 produk, catatan stok, akun kasir, dan histori order.
    - **Siap dieksekusi 1-klik** di project Supabase baru ataupun PostgreSQL.
@@ -39,7 +39,7 @@ Seluruh struktur skema dan data real/live dari database Supabase XCrepes telah b
 ### Opsi 1: Menggunakan Supabase Project Baru (Direkomendasikan & Paling Mudah)
 1. Buat project baru di [supabase.com](https://supabase.com).
 2. Buka dashboard project baru Anda, lalu pilih menu **SQL Editor** di sidebar kiri.
-3. Buka berkas `new_database_full_with_data.sql`, lalu salin (*copy*) seluruh isinya.
+3. Buka berkas `database_backup/new_database_full_with_data.sql`, lalu salin (*copy*) seluruh isinya.
 4. Tempel (*paste*) ke dalam **SQL Editor** Supabase, lalu klik tombol **Run**.
 5. Selesai! Seluruh tabel, index, RLS policy, realtime sync, dan seluruh data asli langsung aktif 100%.
 6. Perbarui file `.env` di aplikasi Anda dengan URL & Anon Key project Supabase yang baru:

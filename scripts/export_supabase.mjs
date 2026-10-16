@@ -141,10 +141,6 @@ ${insertSqlBlocks.join('\n')}
   fs.writeFileSync(outputSqlPath, fullSql, 'utf-8');
   console.log(`🎉 File SQL lengkap berhasil dibuat di: ${outputSqlPath}`);
 
-  // Simpan juga salinan langsung di root proyek agar sangat mudah dibuka/ditemukan
-  const rootSqlPath = path.resolve('new_database_full_with_data.sql');
-  fs.writeFileSync(rootSqlPath, fullSql, 'utf-8');
-  console.log(`🎉 Salinan SQL di root proyek: ${rootSqlPath}`);
 }
 
 exportAll().catch(err => {

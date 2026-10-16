@@ -1,61 +1,45 @@
-## 🚀 Cara Menjalankan Aplikasi
+# XCrepes POS
 
-### Prasyarat:
-- Node.js versi 18 atau lebih baru.
-- npm atau yarn.
+Aplikasi kasir dan pengelolaan stok berbasis React, Vite, dan Supabase. Mencakup master data, transaksi, retur, stock opname, laporan, dan pengaturan cabang.
 
-### Langkah-langkah:
-1. **Masuk ke folder proyek**:
-   ```bash
-   cd /Users/heyrahma/Documents/XcrpesPOS
-   ```
+## Menjalankan aplikasi
 
-2. **Instal dependensi**:
-   ```bash
-   npm install
-   ```
+1. Instal dependensi dengan `npm install`.
+2. Salin `.env.example` menjadi `.env`, lalu sesuaikan konfigurasi Supabase dengan project tujuan.
+3. Jalankan `npm run dev` dan buka `http://localhost:5173`.
 
-3. **Jalankan development server**:
-   ```bash
-   npm run dev
-   ```
-   Buka browser pada alamat: `http://localhost:5173`.
+Untuk akses development dari perangkat lain di jaringan, gunakan `npm run dev:host` pada port 5174. Buat build produksi dengan `npm run build`, lalu periksa hasilnya menggunakan `npm run preview`.
 
-4. **Build untuk produksi**:
-   ```bash
-   npm run build
-   ```
+## Struktur repo
 
----
-
-## 📂 Struktur Proyek MVP
-
-```
+```text
 src/
-├── components/
-│   ├── common/              # Komponen Reusable Blibli BLUE 3
-│   │   ├── Navbar.jsx       # Header & status sistem
-│   │   ├── Sidebar.jsx      # Navigasi Master Data
-│   │   ├── Button.jsx       # Tombol varian (Primary, Secondary, Outline, Danger)
-│   │   ├── Badge.jsx        # Tag status dengan titik indikator
-│   │   ├── Input.jsx        # Form input dengan prefix icon & validasi error
-│   │   ├── Modal.jsx        # Dialog popup dengan backdrop blur
-│   │   ├── Pagination.jsx   # Kontrol paginasi tabel data
-│   │   ├── Toast.jsx        # Notifikasi sistem real-time
-│   │   └── EmptyState.jsx   # State saat data kosong / tidak ditemukan
-│   └── master/
-│       └── unit/            # Modul Satuan Ukur
-│           ├── UnitListView.jsx       # Tampilan tabel master data
-│           ├── UnitFormModal.jsx      # Modal input tambah/ubah
-│           └── UnitDeleteModal.jsx    # Modal konfirmasi hapus
-├── context/
-│   └── UnitContext.jsx      # Central Store CRUD & LocalStorage sync
-├── data/
-│   └── initialUnits.js      # Data preset satuan ukur standar Indonesia
-├── styles/
-│   ├── tokens.css           # Design tokens Blibli BLUE 3
-│   ├── components.css       # Styling komponen UI BLUE
-│   └── index.css            # Base stylesheet & responsivitas
-├── App.jsx
-└── main.jsx
+  controllers/       State, context, dan alur fitur
+  models/            Model serta transformasi data
+  services/          Akses data Supabase
+  lib/               Konfigurasi client dan subscription realtime
+  utils/             Utilitas data, tanggal, dan ekspor laporan
+  views/             Halaman dan komponen antarmuka
+  styles/            Stylesheet dan design tokens
+public/              Aset statis aplikasi
+scripts/             Utilitas ekspor dan migrasi database
+database_backup/     Snapshot database dan panduan pemulihan
+docs/                Dokumentasi tambahan
+output/pdf/          Panduan penggunaan aplikasi
 ```
+
+## Database dan utilitas
+
+- `supabase_schema.sql`: struktur dan konfigurasi awal database Supabase.
+- `supabase_performance_indexes.sql`: indeks tambahan untuk performa query.
+- `remove_photo_from_stock_logs.sql`: utilitas penghapusan foto pada catatan stok.
+- `preview_oct14_2026_entries.sql` dan `rollback_oct14_2026_entries.sql`: utilitas pemeriksaan dan pembatalan data tanggal 14 Oktober 2026.
+- [Panduan backup dan migrasi](database_backup/README_MIGRATION.md): lokasi snapshot serta cara pemulihan dan kloning database.
+
+Skrip ekspor menyimpan SQL lengkap di `database_backup/new_database_full_with_data.sql`. Gunakan satu salinan ini agar tidak ada duplikasi di root repo. Snapshot merupakan data pada saat ekspor, bukan backup yang diperbarui otomatis.
+
+Data dummy di `src/utils/dummyData.js` masih digunakan model aplikasi. Folder `node_modules/`, hasil build `dist/`, dan konfigurasi lokal `.env` tidak dilacak Git.
+
+## Deployment
+
+Build menghasilkan folder `dist/` untuk hosting frontend seperti Vercel. Atur environment variable Supabase sesuai project tujuan sebelum build. Konfigurasi Netlify yang tersedia disimpan di `netlify.toml` dan `public/_redirects`.
